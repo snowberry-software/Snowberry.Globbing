@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Snowberry.Globbing.Models;
 
 namespace Snowberry.Globbing.Tests;
 
@@ -302,5 +303,164 @@ public class ApiTests
     public void IsMatchShouldHandleExactlyOneExtglobs(string input, string pattern, bool expected)
     {
         Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ShouldReturnRegexPattern()
+    {
+        var pattern = GlobMatcher.GenerateRegex("*.js");
+        Assert.NotNull(pattern);
+        Assert.False(string.IsNullOrEmpty(pattern));
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ShouldIncludeAnchors()
+    {
+        var pattern = GlobMatcher.GenerateRegex("*.js");
+        Assert.StartsWith("^", pattern);
+        Assert.EndsWith("$", pattern);
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ShouldMatchCorrectly()
+    {
+        var pattern = GlobMatcher.GenerateRegex("*.js");
+        var regex = new Regex(pattern);
+
+        Assert.Matches(regex, "test.js");
+        Assert.Matches(regex, "app.js");
+        Assert.DoesNotMatch(regex, "test.txt");
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ShouldAcceptOptions()
+    {
+        var options = new GlobbingOptions { Contains = true };
+        var pattern = GlobMatcher.GenerateRegex("bar", options);
+
+        Assert.DoesNotContain("^", pattern);
+        Assert.DoesNotContain("$", pattern);
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ContainsOption_ShouldMatchSubstring()
+    {
+        var options = new GlobbingOptions { Contains = true };
+        var pattern = GlobMatcher.GenerateRegex("bar", options);
+        var regex = new Regex(pattern);
+
+        Assert.Matches(regex, "foobar");
+        Assert.Matches(regex, "barbaz");
+        Assert.Matches(regex, "foobarbaz");
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ShouldThrowForEmptyInput()
+    {
+        Assert.Throws<ArgumentException>(() => GlobMatcher.GenerateRegex(""));
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ShouldThrowForNullInput()
+    {
+        Assert.Throws<ArgumentException>(() => GlobMatcher.GenerateRegex((string)null!));
+    }
+
+    [Fact]
+    public void GenerateRegex_WithParseState_ShouldReturnRegexPattern()
+    {
+        var state = GlobMatcher.Parse("*.js");
+        var pattern = GlobMatcher.GenerateRegex(state);
+
+        Assert.NotNull(pattern);
+        Assert.False(string.IsNullOrEmpty(pattern));
+    }
+
+    [Fact]
+    public void GenerateRegex_WithParseState_ShouldIncludeAnchors()
+    {
+        var state = GlobMatcher.Parse("*.js");
+        var pattern = GlobMatcher.GenerateRegex(state);
+
+        Assert.StartsWith("^", pattern);
+        Assert.EndsWith("$", pattern);
+    }
+
+    [Fact]
+    public void GenerateRegex_WithParseState_ShouldMatchCorrectly()
+    {
+        var state = GlobMatcher.Parse("*.js");
+        var pattern = GlobMatcher.GenerateRegex(state);
+        var regex = new Regex(pattern);
+
+        Assert.Matches(regex, "test.js");
+        Assert.DoesNotMatch(regex, "test.txt");
+    }
+
+    [Fact]
+    public void GenerateRegex_WithParseState_ShouldThrowForNullState()
+    {
+        Assert.Throws<ArgumentNullException>(() => GlobMatcher.GenerateRegex((ParseState)null!));
+    }
+
+    [Fact]
+    public void GenerateRegex_WithParseState_ContainsOption_ShouldOmitAnchors()
+    {
+        var state = GlobMatcher.Parse("bar");
+        var options = new GlobbingOptions { Contains = true };
+        var pattern = GlobMatcher.GenerateRegex(state, options);
+
+        Assert.DoesNotContain("^(?:", pattern);
+        Assert.DoesNotContain(")$", pattern);
+    }
+
+    [Fact]
+    public void GenerateRegex_WithParseState_NegatedPattern_ShouldWrapWithNegativeLookahead()
+    {
+        var state = GlobMatcher.Parse("!*.md");
+        var pattern = GlobMatcher.GenerateRegex(state);
+
+        Assert.Contains("(?!", pattern);
+        Assert.EndsWith(".*$", pattern);
+    }
+
+    [Fact]
+    public void GenerateRegex_WithParseState_NegatedPattern_ShouldMatchCorrectly()
+    {
+        var state = GlobMatcher.Parse("!*.md");
+        var pattern = GlobMatcher.GenerateRegex(state);
+        var regex = new Regex(pattern);
+
+        Assert.Matches(regex, "test.js");
+        Assert.Matches(regex, "app.txt");
+        Assert.DoesNotMatch(regex, "readme.md");
+    }
+
+    [Theory]
+    [InlineData("*.js")]
+    [InlineData("**/*.ts")]
+    [InlineData("src/[abc]/*.js")]
+    [InlineData("{a,b,c}.txt")]
+    public void GenerateRegex_WithString_ShouldProduceValidRegex(string glob)
+    {
+        var pattern = GlobMatcher.GenerateRegex(glob);
+
+        // Should not throw when creating regex
+        var regex = new Regex(pattern);
+        Assert.NotNull(regex);
+    }
+
+    [Fact]
+    public void GenerateRegex_WithString_ShouldProduceSameResultAsMakeRe()
+    {
+        var pattern = "*.js";
+        var generatedPattern = GlobMatcher.GenerateRegex(pattern);
+        var makeReRegex = GlobMatcher.MakeRe(pattern);
+
+        var generatedRegex = new Regex(generatedPattern);
+
+        // Both should match the same inputs
+        Assert.Equal(makeReRegex.IsMatch("test.js"), generatedRegex.IsMatch("test.js"));
+        Assert.Equal(makeReRegex.IsMatch("test.txt"), generatedRegex.IsMatch("test.txt"));
     }
 }

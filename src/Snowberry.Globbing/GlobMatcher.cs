@@ -185,6 +185,48 @@ public static partial class GlobMatcher
     }
 
     /// <summary>
+    /// Generates a regular expression pattern string based on the specified parse state and globbing options.
+    /// </summary>
+    /// <remarks>The returned regular expression pattern may include anchors or negation based on the provided
+    /// options and parse state. The pattern is suitable for use with .NET regular expression APIs.</remarks>
+    /// <param name="state">The parse state containing the output pattern and negation flag to use when constructing the regular expression.</param>
+    /// <param name="options">The globbing options that influence how the regular expression is generated. If null, default options are used.</param>
+    /// <returns>A string containing the generated regular expression pattern that reflects the provided parse state and options.</returns>
+    public static string GenerateRegex(ParseState state, GlobbingOptions? options = null)
+    {
+        _ = state ?? throw new ArgumentNullException(nameof(state));
+        options ??= new GlobbingOptions();
+
+        string prepend = options.Contains ? "" : "^";
+        string append = options.Contains ? "" : "$";
+        string source = $"{prepend}(?:{state.Output}){append}";
+
+        if (state.Negated)
+            source = $"^(?!{source}).*$";
+
+        return source;
+    }
+
+    /// <summary>
+    /// Generates a regular expression pattern that matches the specified glob pattern.
+    /// </summary>
+    /// <param name="input">The glob pattern to convert to a regular expression. Cannot be null or empty.</param>
+    /// <param name="options">An optional set of options that control globbing behavior. If null, default options are used.</param>
+    /// <returns>A string containing the regular expression pattern equivalent to the specified glob pattern.</returns>
+    public static string GenerateRegex(string input, GlobbingOptions? options = null)
+    {
+        if (string.IsNullOrEmpty(input))
+            throw new ArgumentException("Expected a non-empty string");
+
+        options ??= new GlobbingOptions();
+
+        var parser = new GlobParser(options);
+        var parsed = parser.Parse(input);
+
+        return GenerateRegex(parsed, options);
+    }
+
+    /// <summary>
     /// Compiles a regex from a parsed <see cref="ParseState"/>.
     /// </summary>
     /// <param name="state">The parsed pattern state.</param>
@@ -195,13 +237,8 @@ public static partial class GlobMatcher
         _ = state ?? throw new ArgumentNullException(nameof(state));
 
         options ??= new GlobbingOptions();
-        string prepend = options.Contains ? "" : "^";
-        string append = options.Contains ? "" : "$";
 
-        string source = $"{prepend}(?:{state.Output}){append}";
-        if (state.Negated)
-            source = $"^(?!{source}).*$";
-
+        string source = GenerateRegex(state, options);
         return ToRegex(source, options);
     }
 
