@@ -1,4 +1,4 @@
-[![License](https://img.shields.io/github/license/snowberry-software/Snowberry.Globbing)](https://github.com/snowberry-software/Snowberry.Globbing/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/snowberry-software/Snowberry.Globbing)](https://github.com/snowberry-software/Snowberry.Globbing/blob/main/LICENSE)
 [![NuGet Version](https://img.shields.io/nuget/v/Snowberry.Globbing.svg?logo=nuget)](https://www.nuget.org/packages/Snowberry.Globbing/)
 
 Accurate glob pattern matching library for .NET. This library is based on and essentially a C# port of the JavaScript library [picomatch](https://github.com/micromatch/picomatch).
