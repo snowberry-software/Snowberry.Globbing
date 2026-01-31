@@ -417,17 +417,12 @@ public static partial class GlobMatcher
         return (match.Success, match, input);
     }
 
-    /// <summary>
-    /// Determines whether file paths should be converted to use POSIX-style slashes based on the specified options or the current operating system.
-    /// </summary>
-    /// <remarks>If the provided options specify a Windows platform, the method returns true. If options are
-    /// not provided, the method checks the current operating system to determine whether conversion is
-    /// necessary.</remarks>
-    /// <param name="options">The options that influence the conversion behavior. If null, the method defaults to checking the current
-    /// operating system.</param>
-    /// <returns>true if conversion to POSIX slashes is required; otherwise, false.</returns>
+
     public static bool ShouldConvertToPosixSlashes(GlobbingOptions? options)
     {
-        return options?.Windows ?? RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        if (options == null || options.Windows == null)
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+        return !options.Windows.Value;
     }
 }
