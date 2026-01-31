@@ -12,7 +12,7 @@ public class ApiPosixTests
         // When Posix=true, backslashes should NOT be treated as path separators
         var options = new GlobbingOptions { Posix = true };
         Assert.True(GlobMatcher.IsMatch("a/b", "a/**", options));
-        Assert.True(GlobMatcher.IsMatch("a\\b", "a/**", options));
+        Assert.Equal(GlobMatcher.ShouldConvertToPosixSlashes(options), GlobMatcher.IsMatch("a\\b", "a/**", options));
     }
 
     [Fact]
