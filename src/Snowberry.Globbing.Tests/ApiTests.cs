@@ -308,7 +308,7 @@ public class ApiTests
     [Fact]
     public void GenerateRegex_WithString_ShouldReturnRegexPattern()
     {
-        var pattern = GlobMatcher.GenerateRegex("*.js");
+        string pattern = GlobMatcher.GenerateRegex("*.js");
         Assert.NotNull(pattern);
         Assert.False(string.IsNullOrEmpty(pattern));
     }
@@ -316,7 +316,7 @@ public class ApiTests
     [Fact]
     public void GenerateRegex_WithString_ShouldIncludeAnchors()
     {
-        var pattern = GlobMatcher.GenerateRegex("*.js");
+        string pattern = GlobMatcher.GenerateRegex("*.js");
         Assert.StartsWith("^", pattern);
         Assert.EndsWith("$", pattern);
     }
@@ -324,7 +324,7 @@ public class ApiTests
     [Fact]
     public void GenerateRegex_WithString_ShouldMatchCorrectly()
     {
-        var pattern = GlobMatcher.GenerateRegex("*.js");
+        string pattern = GlobMatcher.GenerateRegex("*.js");
         var regex = new Regex(pattern);
 
         Assert.Matches(regex, "test.js");
@@ -336,7 +336,7 @@ public class ApiTests
     public void GenerateRegex_WithString_ShouldAcceptOptions()
     {
         var options = new GlobbingOptions { Contains = true };
-        var pattern = GlobMatcher.GenerateRegex("bar", options);
+        string pattern = GlobMatcher.GenerateRegex("bar", options);
 
         Assert.DoesNotContain("^", pattern);
         Assert.DoesNotContain("$", pattern);
@@ -346,7 +346,7 @@ public class ApiTests
     public void GenerateRegex_WithString_ContainsOption_ShouldMatchSubstring()
     {
         var options = new GlobbingOptions { Contains = true };
-        var pattern = GlobMatcher.GenerateRegex("bar", options);
+        string pattern = GlobMatcher.GenerateRegex("bar", options);
         var regex = new Regex(pattern);
 
         Assert.Matches(regex, "foobar");
@@ -370,7 +370,7 @@ public class ApiTests
     public void GenerateRegex_WithParseState_ShouldReturnRegexPattern()
     {
         var state = GlobMatcher.Parse("*.js");
-        var pattern = GlobMatcher.GenerateRegex(state);
+        string pattern = GlobMatcher.GenerateRegex(state);
 
         Assert.NotNull(pattern);
         Assert.False(string.IsNullOrEmpty(pattern));
@@ -380,7 +380,7 @@ public class ApiTests
     public void GenerateRegex_WithParseState_ShouldIncludeAnchors()
     {
         var state = GlobMatcher.Parse("*.js");
-        var pattern = GlobMatcher.GenerateRegex(state);
+        string pattern = GlobMatcher.GenerateRegex(state);
 
         Assert.StartsWith("^", pattern);
         Assert.EndsWith("$", pattern);
@@ -390,7 +390,7 @@ public class ApiTests
     public void GenerateRegex_WithParseState_ShouldMatchCorrectly()
     {
         var state = GlobMatcher.Parse("*.js");
-        var pattern = GlobMatcher.GenerateRegex(state);
+        string pattern = GlobMatcher.GenerateRegex(state);
         var regex = new Regex(pattern);
 
         Assert.Matches(regex, "test.js");
@@ -408,7 +408,7 @@ public class ApiTests
     {
         var state = GlobMatcher.Parse("bar");
         var options = new GlobbingOptions { Contains = true };
-        var pattern = GlobMatcher.GenerateRegex(state, options);
+        string pattern = GlobMatcher.GenerateRegex(state, options);
 
         Assert.DoesNotContain("^(?:", pattern);
         Assert.DoesNotContain(")$", pattern);
@@ -418,7 +418,7 @@ public class ApiTests
     public void GenerateRegex_WithParseState_NegatedPattern_ShouldWrapWithNegativeLookahead()
     {
         var state = GlobMatcher.Parse("!*.md");
-        var pattern = GlobMatcher.GenerateRegex(state);
+        string pattern = GlobMatcher.GenerateRegex(state);
 
         Assert.Contains("(?!", pattern);
         Assert.EndsWith(".*$", pattern);
@@ -428,7 +428,7 @@ public class ApiTests
     public void GenerateRegex_WithParseState_NegatedPattern_ShouldMatchCorrectly()
     {
         var state = GlobMatcher.Parse("!*.md");
-        var pattern = GlobMatcher.GenerateRegex(state);
+        string pattern = GlobMatcher.GenerateRegex(state);
         var regex = new Regex(pattern);
 
         Assert.Matches(regex, "test.js");
@@ -443,7 +443,7 @@ public class ApiTests
     [InlineData("{a,b,c}.txt")]
     public void GenerateRegex_WithString_ShouldProduceValidRegex(string glob)
     {
-        var pattern = GlobMatcher.GenerateRegex(glob);
+        string pattern = GlobMatcher.GenerateRegex(glob);
 
         // Should not throw when creating regex
         var regex = new Regex(pattern);
@@ -453,8 +453,8 @@ public class ApiTests
     [Fact]
     public void GenerateRegex_WithString_ShouldProduceSameResultAsMakeRe()
     {
-        var pattern = "*.js";
-        var generatedPattern = GlobMatcher.GenerateRegex(pattern);
+        string pattern = "*.js";
+        string generatedPattern = GlobMatcher.GenerateRegex(pattern);
         var makeReRegex = GlobMatcher.MakeRe(pattern);
 
         var generatedRegex = new Regex(generatedPattern);

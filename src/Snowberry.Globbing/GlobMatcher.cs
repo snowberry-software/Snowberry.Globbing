@@ -59,7 +59,6 @@ public static partial class GlobMatcher
             throw new ArgumentException("Expected pattern to be a non-empty string");
 
         options ??= new();
-        bool transformPosixSlashes = options.Windows ?? RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         var regex = MakeRe(glob, options);
 
@@ -70,7 +69,7 @@ public static partial class GlobMatcher
             isIgnored = Create(options.Ignore, ignoreOpts);
         }
 
-        return input => MatchWithCallbacks(input, glob, regex, transformPosixSlashes, options, isIgnored);
+        return input => MatchWithCallbacks(input, glob, regex, options, isIgnored);
     }
 
     /// <summary>
@@ -80,22 +79,23 @@ public static partial class GlobMatcher
     /// <param name="regex">The compiled regex.</param>
     /// <param name="options">Optional options for formatting.</param>
     /// <returns>A tuple with match status, the Match object, and the formatted output.</returns>
-    public static (bool IsMatch, Match? Match, string Output) Test(string input, Regex regex, GlobbingOptions? options = null)
+    public static (bool IsMatch, Match? Match, string Output) Test(
+        string input,
+        Regex regex,
+        GlobbingOptions? options = null)
     {
         if (string.IsNullOrEmpty(input))
             return (false, null, "");
 
-        if (options == null || (options.Format == null && options.Windows != true))
-        {
-            var match = regex.Match(input);
-            return (match.Success, match, input);
-        }
+        bool transformPosixSlashes = ShouldConvertToPosixSlashes(options);
+        if (options == null || (options.Format == null && !transformPosixSlashes))
+            return TestDirectly(input, regex);
 
-        var format = options.Format ?? Utils.ToPosixSlashes;
-        string output = format(input);
+        var format = options.Format ?? (transformPosixSlashes ? Utils.ToPosixSlashes : null);
+        string output = format == null ? input : format(input);
         var formattedMatch = regex.Match(output);
 
-        return (formattedMatch.Success, formattedMatch, output);
+        return TestDirectly(output, regex);
     }
 
     /// <summary>
@@ -103,11 +103,11 @@ public static partial class GlobMatcher
     /// </summary>
     /// <param name="input">The full file path.</param>
     /// <param name="regex">The compiled regex.</param>
-    /// <param name="options">Optional matching options.</param>
+    /// <param name="windows">Whether to use Windows path separators.</param>
     /// <returns><see langword="true"/> if the basename matches.</returns>
-    public static bool MatchBase(string input, Regex regex, GlobbingOptions? options = null)
+    public static bool MatchBase(string input, Regex regex, bool windows = false)
     {
-        return regex.IsMatch(Utils.BaseName(input, options?.Windows ?? false));
+        return regex.IsMatch(Utils.BaseName(input, windows));
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public static partial class GlobMatcher
     public static bool MatchBase(string input, string glob, GlobbingOptions? options = null)
     {
         var regex = MakeRe(glob, options);
-        return MatchBase(input, regex, options);
+        return MatchBase(input, regex, options?.Windows ?? RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
     }
 
     /// <summary>
@@ -318,10 +318,11 @@ public static partial class GlobMatcher
         string input,
         string glob,
         Regex regex,
-        bool transformPosixSlashes,
         GlobbingOptions opts,
         MatcherHandler isIgnored)
     {
+        bool transformPosixSlashes = ShouldConvertToPosixSlashes(opts);
+
         bool hasCallbacks = opts.OnResult != null || opts.OnMatch != null || opts.OnIgnore != null;
 
         if (isIgnored(input))
@@ -362,12 +363,12 @@ public static partial class GlobMatcher
         }
         else if (opts.BaseName)
         {
-            bool baseMatch = MatchBase(input, regex, opts);
+            bool baseMatch = MatchBase(output, regex, !transformPosixSlashes);
             result = (baseMatch, null, output);
         }
         else
         {
-            result = Test(input, regex, opts);
+            result = TestDirectly(output, regex);
         }
 
         if (hasCallbacks)
@@ -403,5 +404,30 @@ public static partial class GlobMatcher
             return false;
 
         return true;
+    }
+
+    public static (bool IsMatch, Match? Match, string Output) TestDirectly(
+        string input,
+        Regex regex)
+    {
+        if (string.IsNullOrEmpty(input))
+            return (false, null, "");
+
+        var match = regex.Match(input);
+        return (match.Success, match, input);
+    }
+
+    /// <summary>
+    /// Determines whether file paths should be converted to use POSIX-style slashes based on the specified options or the current operating system.
+    /// </summary>
+    /// <remarks>If the provided options specify a Windows platform, the method returns true. If options are
+    /// not provided, the method checks the current operating system to determine whether conversion is
+    /// necessary.</remarks>
+    /// <param name="options">The options that influence the conversion behavior. If null, the method defaults to checking the current
+    /// operating system.</param>
+    /// <returns>true if conversion to POSIX slashes is required; otherwise, false.</returns>
+    public static bool ShouldConvertToPosixSlashes(GlobbingOptions? options)
+    {
+        return options?.Windows ?? RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     }
 }
