@@ -230,5 +230,4 @@ public class DebugTests
         Assert.True(GlobMatcher.IsMatch("abc", "[[:alpha:]]+", opts));
         Assert.True(GlobMatcher.IsMatch("a", "[[:alpha:]]+", opts));
     }
-
 }
