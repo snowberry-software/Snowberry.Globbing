@@ -423,6 +423,6 @@ public static partial class GlobMatcher
         if (options == null || options.Windows == null)
             return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-        return !options.Windows.Value;
+        return options.Windows.Value;
     }
 }
