@@ -26,10 +26,15 @@ public class EdgeCaseTests
         Assert.True(GlobMatcher.IsMatch(input, pattern));
     }
 
-    [Fact]
-    public void EdgeCase_EmptyString_DoesNotMatch()
+    [Theory]
+    [InlineData("", "*", false)]
+    // ** should match deep paths
+    [InlineData("a/b/c.js", "**/c.js", true)]
+    [InlineData("a/b/c.js", "**/*.js", true)]
+    [InlineData("a/b/c.js", "a/**/c.js", true)]
+    public void EdgeCase_DefaultOptions_MatchExpectations(string input, string pattern, bool expected)
     {
-        Assert.False(GlobMatcher.IsMatch("", "*"));
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
     }
 
     [Theory]
@@ -39,15 +44,6 @@ public class EdgeCaseTests
     public void EdgeCase_ExactMatch_Works(string input, string pattern)
     {
         Assert.True(GlobMatcher.IsMatch(input, pattern));
-    }
-
-    [Fact]
-    public void EdgeCase_DoubleStarGlobstar_MatchesDeepPaths()
-    {
-        // ** should match deep paths
-        Assert.True(GlobMatcher.IsMatch("a/b/c.js", "**/c.js"));
-        Assert.True(GlobMatcher.IsMatch("a/b/c.js", "**/*.js"));
-        Assert.True(GlobMatcher.IsMatch("a/b/c.js", "a/**/c.js"));
     }
 
     [Theory]

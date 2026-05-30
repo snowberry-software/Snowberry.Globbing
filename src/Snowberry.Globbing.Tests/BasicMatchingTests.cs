@@ -55,11 +55,12 @@ public class BasicMatchingTests
         Assert.True(matcher("test.js"));
     }
 
-    [Fact]
-    public void TestIsMatch()
+    [Theory]
+    [InlineData("foo.js", "*.js", true)]
+    [InlineData("foo.md", "*.js", false)]
+    public void TestIsMatch(string input, string pattern, bool expected)
     {
-        Assert.True(GlobMatcher.IsMatch("foo.js", "*.js"));
-        Assert.False(GlobMatcher.IsMatch("foo.md", "*.js"));
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
     }
 
     [Fact]

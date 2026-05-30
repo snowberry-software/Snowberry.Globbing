@@ -10,26 +10,24 @@ public class MatchBaseMethodTests
     [InlineData("foo/bar/baz.js", "*.js", true)]
     [InlineData("test.js", "*.js", true)]
     [InlineData("foo/bar.md", "*.js", false)]
+    [InlineData("a/b/c/d/e/test.js", "*.js", true)]
+    [InlineData("a/b/c/d/e/test.md", "*.js", false)]
+    // Should match the basename only, not the full path
+    [InlineData("src/components/Button.tsx", "*.tsx", true)]
+    [InlineData("src/components/Button.tsx", "src/*.tsx", false)]
     public void MatchBase_WithStringPattern_MatchesBaseName(string input, string pattern, bool expected)
     {
         Assert.Equal(expected, GlobMatcher.MatchBase(input, pattern));
     }
 
-    [Fact]
-    public void MatchBase_WithRegex_MatchesBaseName()
+    [Theory]
+    [InlineData("foo/bar.js", true)]
+    [InlineData("foo/bar/baz.js", true)]
+    [InlineData("foo/bar.md", false)]
+    public void MatchBase_WithRegex_MatchesBaseName(string input, bool expected)
     {
         var regex = GlobMatcher.MakeRe("*.js");
-
-        Assert.True(GlobMatcher.MatchBase("foo/bar.js", regex));
-        Assert.True(GlobMatcher.MatchBase("foo/bar/baz.js", regex));
-        Assert.False(GlobMatcher.MatchBase("foo/bar.md", regex));
-    }
-
-    [Fact]
-    public void MatchBase_WithComplexPath_ExtractsBaseNameCorrectly()
-    {
-        Assert.True(GlobMatcher.MatchBase("a/b/c/d/e/test.js", "*.js"));
-        Assert.False(GlobMatcher.MatchBase("a/b/c/d/e/test.md", "*.js"));
+        Assert.Equal(expected, GlobMatcher.MatchBase(input, regex));
     }
 
     [Fact]
@@ -37,13 +35,5 @@ public class MatchBaseMethodTests
     {
         var options = new GlobbingOptions { Windows = true };
         Assert.True(GlobMatcher.MatchBase("foo\\bar.js", "*.js", options));
-    }
-
-    [Fact]
-    public void MatchBase_WithPattern_MatchesOnlyBaseName()
-    {
-        // Should match basename, not full path
-        Assert.True(GlobMatcher.MatchBase("src/components/Button.tsx", "*.tsx"));
-        Assert.False(GlobMatcher.MatchBase("src/components/Button.tsx", "src/*.tsx"));
     }
 }

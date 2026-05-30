@@ -1,9 +1,11 @@
 namespace Snowberry.Globbing.Tests;
 
 /// <summary>
-/// Tests for real-world usage scenarios
+/// Tests for real-world include/exclude workflows that combine multiple matchers
+/// (gitignore negation, build-tool exclusions, monorepo selection, etc.).
+/// Distinct from <see cref="RealWorldScenariosTests"/>, which covers single-pattern scenarios.
 /// </summary>
-public class RealWorldScenarioTests
+public class RealWorldWorkflowTests
 {
     [Fact]
     public void GitignorePatterns_ShouldWork()

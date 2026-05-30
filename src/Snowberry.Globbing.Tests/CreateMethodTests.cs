@@ -70,8 +70,11 @@ public class CreateMethodTests
         Assert.True(matcher("test.js"));
     }
 
-    [Fact]
-    public void Create_WithIgnorePatterns_ExcludesMatches()
+    [Theory]
+    [InlineData("app.js", true)]
+    [InlineData("app.test.js", false)]
+    [InlineData("app.spec.js", false)]
+    public void Create_WithIgnorePatterns_ExcludesMatches(string input, bool expected)
     {
         var options = new GlobbingOptions
         {
@@ -79,9 +82,7 @@ public class CreateMethodTests
         };
         var matcher = GlobMatcher.Create("*.js", options);
 
-        Assert.True(matcher("app.js"));
-        Assert.False(matcher("app.test.js"));
-        Assert.False(matcher("app.spec.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -148,27 +149,29 @@ public class CreateMethodTests
         Assert.True(withoutDot("regular.txt"));
     }
 
-    [Fact]
-    public void Create_WithNocaseOption_IgnoresCase()
+    [Theory]
+    [InlineData("test.js", true)]
+    [InlineData("test.JS", true)]
+    [InlineData("test.Js", true)]
+    [InlineData("test.jS", true)]
+    public void Create_WithNocaseOption_IgnoresCase(string input, bool expected)
     {
         var matcher = GlobMatcher.Create("*.JS", new GlobbingOptions { NoCase = true });
 
-        Assert.True(matcher("test.js"));
-        Assert.True(matcher("test.JS"));
-        Assert.True(matcher("test.Js"));
-        Assert.True(matcher("test.jS"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void Create_WithContainsOption_MatchesSubstring()
+    [Theory]
+    [InlineData("test", true)]
+    [InlineData("my-test-file", true)]
+    [InlineData("testing", true)]
+    [InlineData("pretest", true)]
+    [InlineData("file", false)]
+    public void Create_WithContainsOption_MatchesSubstring(string input, bool expected)
     {
         var matcher = GlobMatcher.Create("test", new GlobbingOptions { Contains = true });
 
-        Assert.True(matcher("test"));
-        Assert.True(matcher("my-test-file"));
-        Assert.True(matcher("testing"));
-        Assert.True(matcher("pretest"));
-        Assert.False(matcher("file"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -191,157 +194,100 @@ public class CreateMethodTests
         Assert.NotNull(matcher);
     }
 
-    [Fact]
-    public void Create_WithNonegateOption_DisablesNegation()
+    [Theory]
+    [InlineData("!test.md", true)]
+    [InlineData("test.md", false)]
+    public void Create_WithNonegateOption_DisablesNegation(string input, bool expected)
     {
+        // With nonegate, ! should be treated literally
         var matcher = GlobMatcher.Create("!*.md", new GlobbingOptions { NoNegate = true });
 
-        // With nonegate, ! should be treated literally
-        Assert.True(matcher("!test.md"));
-        Assert.False(matcher("test.md"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void Create_WithBashOption_UsesBashRules()
+    [Theory]
+    [InlineData("test.js", true)]
+    [InlineData("file", true)]
+    public void Create_WithBashOption_UsesBashRules(string input, bool expected)
     {
         var matcher = GlobMatcher.Create("*", new GlobbingOptions { Bash = true });
 
-        Assert.True(matcher("test.js"));
-        Assert.True(matcher("file"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void Create_WithNobraceOption_DisablesBraceExpansion()
+    [Theory]
+    [InlineData("test.{js,ts}", true)]
+    [InlineData("test.js", false)]
+    public void Create_WithNobraceOption_DisablesBraceExpansion(string input, bool expected)
     {
+        // Should match literal pattern
         var matcher = GlobMatcher.Create("*.{js,ts}", new GlobbingOptions { NoBrace = true });
 
-        // Should match literal pattern
-        Assert.True(matcher("test.{js,ts}"));
-        Assert.False(matcher("test.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void Create_WithComplexPattern_MatchesCorrectly()
+    [Theory]
+    // Create_WithComplexPattern_MatchesCorrectly
+    [InlineData("src/app.js", "**/src/**/*.{js,ts}", true)]
+    [InlineData("src/lib/utils.ts", "**/src/**/*.{js,ts}", true)]
+    [InlineData("packages/core/src/index.js", "**/src/**/*.{js,ts}", true)]
+    [InlineData("test/app.js", "**/src/**/*.{js,ts}", false)]
+    // Create_WithNestedGlobstars_MatchesCorrectly
+    [InlineData("test.js", "**/**/test.js", true)]
+    [InlineData("src/test.js", "**/**/test.js", true)]
+    [InlineData("src/lib/test.js", "**/**/test.js", true)]
+    // Create_WithMultipleWildcards_MatchesCorrectly
+    [InlineData("foo-bar-baz.js", "*-*-*.js", true)]
+    [InlineData("a-b-c.js", "*-*-*.js", true)]
+    [InlineData("foo-bar.js", "*-*-*.js", false)]
+    [InlineData("foo.js", "*-*-*.js", false)]
+    // Create_WithQuestionMarks_MatchesSingleCharacters
+    [InlineData("test-1.js", "test-?.js", true)]
+    [InlineData("test-a.js", "test-?.js", true)]
+    [InlineData("test-12.js", "test-?.js", false)]
+    [InlineData("test-.js", "test-?.js", false)]
+    // Create_WithCharacterRanges_MatchesCorrectly
+    [InlineData("test-0.js", "test-[0-9].js", true)]
+    [InlineData("test-5.js", "test-[0-9].js", true)]
+    [InlineData("test-9.js", "test-[0-9].js", true)]
+    [InlineData("test-a.js", "test-[0-9].js", false)]
+    // Create_WithNegatedCharacterClass_MatchesCorrectly
+    [InlineData("test-0.js", "test-[^0-9].js", false)]
+    [InlineData("test-9.js", "test-[^0-9].js", false)]
+    [InlineData("test-a.js", "test-[^0-9].js", true)]
+    [InlineData("test-z.js", "test-[^0-9].js", true)]
+    // Create_WithExtglobPlus_MatchesOneOrMore
+    [InlineData("a", "+(a|b)", true)]
+    [InlineData("b", "+(a|b)", true)]
+    [InlineData("aa", "+(a|b)", true)]
+    [InlineData("ab", "+(a|b)", true)]
+    [InlineData("ba", "+(a|b)", true)]
+    [InlineData("", "+(a|b)", false)]
+    [InlineData("c", "+(a|b)", false)]
+    // Create_WithExtglobStar_MatchesZeroOrMore
+    [InlineData("a", "a*(b)", true)]
+    [InlineData("ab", "a*(b)", true)]
+    [InlineData("abb", "a*(b)", true)]
+    [InlineData("abbb", "a*(b)", true)]
+    [InlineData("b", "a*(b)", false)]
+    // Create_WithExtglobAt_MatchesExactlyOne
+    [InlineData("a", "@(a|b|c)", true)]
+    [InlineData("b", "@(a|b|c)", true)]
+    [InlineData("c", "@(a|b|c)", true)]
+    [InlineData("ab", "@(a|b|c)", false)]
+    [InlineData("d", "@(a|b|c)", false)]
+    // Create_WithExtglobQuestion_MatchesZeroOrOne
+    [InlineData("a", "a?(b)", true)]
+    [InlineData("ab", "a?(b)", true)]
+    [InlineData("abb", "a?(b)", false)]
+    [InlineData("b", "a?(b)", false)]
+    // Create_WithExtglobNegate_MatchesAnythingBut
+    [InlineData("readme.md", "!(*.md)", false)]
+    [InlineData("test.md", "!(*.md)", false)]
+    [InlineData("app.js", "!(*.md)", true)]
+    [InlineData("test.txt", "!(*.md)", true)]
+    public void Create_WithPattern_MatchesCorrectly(string input, string pattern, bool expected)
     {
-        var matcher = GlobMatcher.Create("**/src/**/*.{js,ts}");
-
-        Assert.True(matcher("src/app.js"));
-        Assert.True(matcher("src/lib/utils.ts"));
-        Assert.True(matcher("packages/core/src/index.js"));
-        Assert.False(matcher("test/app.js"));
-    }
-
-    [Fact]
-    public void Create_WithNestedGlobstars_MatchesCorrectly()
-    {
-        var matcher = GlobMatcher.Create("**/**/test.js");
-
-        Assert.True(matcher("test.js"));
-        Assert.True(matcher("src/test.js"));
-        Assert.True(matcher("src/lib/test.js"));
-    }
-
-    [Fact]
-    public void Create_WithMultipleWildcards_MatchesCorrectly()
-    {
-        var matcher = GlobMatcher.Create("*-*-*.js");
-
-        Assert.True(matcher("foo-bar-baz.js"));
-        Assert.True(matcher("a-b-c.js"));
-        Assert.False(matcher("foo-bar.js"));
-        Assert.False(matcher("foo.js"));
-    }
-
-    [Fact]
-    public void Create_WithQuestionMarks_MatchesSingleCharacters()
-    {
-        var matcher = GlobMatcher.Create("test-?.js");
-
-        Assert.True(matcher("test-1.js"));
-        Assert.True(matcher("test-a.js"));
-        Assert.False(matcher("test-12.js"));
-        Assert.False(matcher("test-.js"));
-    }
-
-    [Fact]
-    public void Create_WithCharacterRanges_MatchesCorrectly()
-    {
-        var matcher = GlobMatcher.Create("test-[0-9].js");
-
-        Assert.True(matcher("test-0.js"));
-        Assert.True(matcher("test-5.js"));
-        Assert.True(matcher("test-9.js"));
-        Assert.False(matcher("test-a.js"));
-    }
-
-    [Fact]
-    public void Create_WithNegatedCharacterClass_MatchesCorrectly()
-    {
-        var matcher = GlobMatcher.Create("test-[^0-9].js");
-
-        Assert.False(matcher("test-0.js"));
-        Assert.False(matcher("test-9.js"));
-        Assert.True(matcher("test-a.js"));
-        Assert.True(matcher("test-z.js"));
-    }
-
-    [Fact]
-    public void Create_WithExtglobPlus_MatchesOneOrMore()
-    {
-        var matcher = GlobMatcher.Create("+(a|b)");
-
-        Assert.True(matcher("a"));
-        Assert.True(matcher("b"));
-        Assert.True(matcher("aa"));
-        Assert.True(matcher("ab"));
-        Assert.True(matcher("ba"));
-        Assert.False(matcher(""));
-        Assert.False(matcher("c"));
-    }
-
-    [Fact]
-    public void Create_WithExtglobStar_MatchesZeroOrMore()
-    {
-        var matcher = GlobMatcher.Create("a*(b)");
-
-        Assert.True(matcher("a"));
-        Assert.True(matcher("ab"));
-        Assert.True(matcher("abb"));
-        Assert.True(matcher("abbb"));
-        Assert.False(matcher("b"));
-    }
-
-    [Fact]
-    public void Create_WithExtglobAt_MatchesExactlyOne()
-    {
-        var matcher = GlobMatcher.Create("@(a|b|c)");
-
-        Assert.True(matcher("a"));
-        Assert.True(matcher("b"));
-        Assert.True(matcher("c"));
-        Assert.False(matcher("ab"));
-        Assert.False(matcher("d"));
-    }
-
-    [Fact]
-    public void Create_WithExtglobQuestion_MatchesZeroOrOne()
-    {
-        var matcher = GlobMatcher.Create("a?(b)");
-
-        Assert.True(matcher("a"));
-        Assert.True(matcher("ab"));
-        Assert.False(matcher("abb"));
-        Assert.False(matcher("b"));
-    }
-
-    [Fact]
-    public void Create_WithExtglobNegate_MatchesAnythingBut()
-    {
-        var matcher = GlobMatcher.Create("!(*.md)");
-
-        Assert.False(matcher("readme.md"));
-        Assert.False(matcher("test.md"));
-        Assert.True(matcher("app.js"));
-        Assert.True(matcher("test.txt"));
+        Assert.Equal(expected, GlobMatcher.Create(pattern)(input));
     }
 }

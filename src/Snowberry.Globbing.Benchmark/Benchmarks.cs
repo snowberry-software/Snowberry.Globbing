@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
 using Microsoft.VSDiagnostics;
@@ -6,52 +6,14 @@ using Microsoft.VSDiagnostics;
 namespace Snowberry.Globbing.Benchmark;
 
 /// <summary>
-/// Comprehensive benchmarks for glob pattern matching performance.
-/// Tests various pattern complexities and matching scenarios.
+/// Shared test datasets for the benchmark classes. Generated once per benchmark
+/// class in its <c>[GlobalSetup]</c> so each <c>[Params]</c> dimension stays isolated
+/// to its own class (a single class holding all params would run every benchmark
+/// against the full cartesian product of params).
 /// </summary>
-[MemoryDiagnoser]
-[CPUUsageDiagnoser]
-[HtmlExporter]
-[MarkdownExporterAttribute.GitHub]
-public class Benchmarks
+internal static class BenchmarkData
 {
-    private MatcherHandler _simpleWildcardMatcher;
-    private MatcherHandler _globstarMatcher;
-    private MatcherHandler _braceExpansionMatcher;
-    private MatcherHandler _extglobMatcher;
-    private MatcherHandler _complexNestedMatcher;
-    private MatcherHandler _multiplePatternsMatcher;
-    private MatcherHandler _negationMatcher;
-    private MatcherHandler _characterClassMatcher;
-
-    private string[] _testPaths;
-    private string[] _jsFiles;
-    private string[] _deepPaths;
-    private string[] _mixedExtensions;
-    private string[] _realWorldPaths;
-
-    [GlobalSetup]
-    public void Setup()
-    {
-        // Initialize matchers with various pattern complexities
-        _simpleWildcardMatcher = GlobMatcher.Create("*.js");
-        _globstarMatcher = GlobMatcher.Create("**/*.js");
-        _braceExpansionMatcher = GlobMatcher.Create("*.{js,ts,jsx,tsx}");
-        _extglobMatcher = GlobMatcher.Create("!(*.test|*.spec).{js,ts}");
-        _complexNestedMatcher = GlobMatcher.Create("src/**/!(*.test|*.spec).{js,jsx,ts,tsx}");
-        _multiplePatternsMatcher = GlobMatcher.Create(["**/*.js", "**/*.ts", "!**/node_modules/**"]);
-        _negationMatcher = GlobMatcher.Create("!*.md");
-        _characterClassMatcher = GlobMatcher.Create("test-[0-9][a-z].txt");
-
-        // Generate test data sets
-        _testPaths = GenerateTestPaths();
-        _jsFiles = GenerateJsFiles();
-        _deepPaths = GenerateDeepPaths();
-        _mixedExtensions = GenerateMixedExtensions();
-        _realWorldPaths = GenerateRealWorldPaths();
-    }
-
-    private string[] GenerateTestPaths()
+    public static string[] GenerateTestPaths()
     {
         var paths = new List<string>();
 
@@ -74,12 +36,12 @@ public class Benchmarks
         return [.. paths];
     }
 
-    private string[] GenerateJsFiles()
+    public static string[] GenerateJsFiles()
     {
         return [.. Enumerable.Range(0, 500).Select(i => $"app{i}.js")];
     }
 
-    private string[] GenerateDeepPaths()
+    public static string[] GenerateDeepPaths()
     {
         var paths = new List<string>();
         for (int depth = 1; depth <= 5; depth++)
@@ -96,13 +58,18 @@ public class Benchmarks
         return [.. paths];
     }
 
-    private string[] GenerateMixedExtensions()
+    public static string[] GenerateMixedExtensions()
     {
         string[] extensions = new[] { "js", "ts", "jsx", "tsx", "css", "scss", "html", "json", "md", "txt" };
         return [.. Enumerable.Range(0, 1000).Select(i => $"file{i}.{extensions[i % extensions.Length]}")];
     }
 
-    private string[] GenerateRealWorldPaths()
+    public static string[] GenerateCharacterClassFiles()
+    {
+        return [.. Enumerable.Range(0, 100).SelectMany(i => new[] { $"test-{i % 10}a.txt", $"test-{i % 10}z.txt", $"test-{i % 10}X.txt" })];
+    }
+
+    public static string[] GenerateRealWorldPaths()
     {
         return
         [
@@ -125,145 +92,96 @@ public class Benchmarks
             ".github/workflows/ci.yml"
         ];
     }
+}
 
-    // ===== Pattern Compilation Benchmarks =====
-
-    [Benchmark]
-    public MatcherHandler CreateSimpleWildcard()
+/// <summary>
+/// Throughput of pre-compiled matchers against representative datasets.
+/// One result row per <see cref="MatchScenario"/>.
+/// </summary>
+[MemoryDiagnoser]
+[CPUUsageDiagnoser]
+[HtmlExporter]
+[MarkdownExporterAttribute.GitHub]
+public class MatchBenchmarks
+{
+    /// <summary>Pre-compiled matcher + dataset pairings exercised by <see cref="Match"/>.</summary>
+    public enum MatchScenario
     {
-        return GlobMatcher.Create("*.js");
+        SimpleWildcard,
+        Globstar,
+        BraceExpansion,
+        Extglob,
+        ComplexNested,
+        MultiplePatterns,
+        Negation,
+        CharacterClass
     }
 
-    [Benchmark]
-    public MatcherHandler CreateGlobstar()
-    {
-        return GlobMatcher.Create("**/*.{js,ts}");
-    }
+    private Dictionary<MatchScenario, (MatcherHandler Matcher, string[] Data)> _scenarios;
 
-    [Benchmark]
-    public MatcherHandler CreateComplexPattern()
-    {
-        return GlobMatcher.Create("src/**/!(*.test|*.spec).{js,jsx,ts,tsx}");
-    }
+    [ParamsAllValues]
+    public MatchScenario Scenario { get; set; }
 
-    [Benchmark]
-    public MatcherHandler CreateMultiplePatterns()
+    [GlobalSetup]
+    public void Setup()
     {
-        return GlobMatcher.Create(["**/*.js", "**/*.ts", "!**/node_modules/**"]);
-    }
+        string[] jsFiles = BenchmarkData.GenerateJsFiles();
+        string[] deepPaths = BenchmarkData.GenerateDeepPaths();
+        string[] mixedExtensions = BenchmarkData.GenerateMixedExtensions();
+        string[] realWorldPaths = BenchmarkData.GenerateRealWorldPaths();
+        string[] characterClassFiles = BenchmarkData.GenerateCharacterClassFiles();
 
-    // ===== Matching Performance Benchmarks =====
-
-    [Benchmark]
-    public int SimpleWildcardMatching()
-    {
-        int count = 0;
-        foreach (string path in _jsFiles)
+        _scenarios = new Dictionary<MatchScenario, (MatcherHandler, string[])>
         {
-            if (_simpleWildcardMatcher(path))
+            [MatchScenario.SimpleWildcard] = (GlobMatcher.Create("*.js"), jsFiles),
+            [MatchScenario.Globstar] = (GlobMatcher.Create("**/*.js"), deepPaths),
+            [MatchScenario.BraceExpansion] = (GlobMatcher.Create("*.{js,ts,jsx,tsx}"), mixedExtensions),
+            [MatchScenario.Extglob] = (GlobMatcher.Create("!(*.test|*.spec).{js,ts}"), deepPaths),
+            [MatchScenario.ComplexNested] = (GlobMatcher.Create("src/**/!(*.test|*.spec).{js,jsx,ts,tsx}"), deepPaths),
+            [MatchScenario.MultiplePatterns] = (GlobMatcher.Create(["**/*.js", "**/*.ts", "!**/node_modules/**"]), realWorldPaths),
+            [MatchScenario.Negation] = (GlobMatcher.Create("!*.md"), mixedExtensions),
+            [MatchScenario.CharacterClass] = (GlobMatcher.Create("test-[0-9][a-z].txt"), characterClassFiles),
+        };
+    }
+
+    [Benchmark]
+    public int Match()
+    {
+        var (matcher, data) = _scenarios[Scenario];
+        int count = 0;
+        foreach (string path in data)
+        {
+            if (matcher(path))
                 count++;
         }
 
         return count;
     }
+}
+
+/// <summary>
+/// Compile-then-filter cost for real-world include/exclude patterns.
+/// One result row per <see cref="RealWorldPattern"/>.
+/// </summary>
+[MemoryDiagnoser]
+[CPUUsageDiagnoser]
+[HtmlExporter]
+[MarkdownExporterAttribute.GitHub]
+public class RealWorldBenchmarks
+{
+    private string[] _realWorldPaths;
+
+    // Filter JS, filter source, exclude tests, find all tests.
+    [Params("**/*.{js,jsx}", "src/**/*.{js,ts,jsx,tsx}", "!(*.test|*.spec).*", "**/*.{test,spec}.{js,ts,jsx,tsx}")]
+    public string RealWorldPattern { get; set; }
+
+    [GlobalSetup]
+    public void Setup() => _realWorldPaths = BenchmarkData.GenerateRealWorldPaths();
 
     [Benchmark]
-    public int GlobstarMatching()
+    public int RealWorld()
     {
-        int count = 0;
-        foreach (string path in _deepPaths)
-        {
-            if (_globstarMatcher(path))
-                count++;
-        }
-
-        return count;
-    }
-
-    [Benchmark]
-    public int BraceExpansionMatching()
-    {
-        int count = 0;
-        foreach (string path in _mixedExtensions)
-        {
-            if (_braceExpansionMatcher(path))
-                count++;
-        }
-
-        return count;
-    }
-
-    [Benchmark]
-    public int ExtglobMatching()
-    {
-        int count = 0;
-        foreach (string path in _deepPaths)
-        {
-            if (_extglobMatcher(path))
-                count++;
-        }
-
-        return count;
-    }
-
-    [Benchmark]
-    public int ComplexNestedMatching()
-    {
-        int count = 0;
-        foreach (string path in _deepPaths)
-        {
-            if (_complexNestedMatcher(path))
-                count++;
-        }
-
-        return count;
-    }
-
-    [Benchmark]
-    public int MultiplePatternsMatching()
-    {
-        int count = 0;
-        foreach (string path in _realWorldPaths)
-        {
-            if (_multiplePatternsMatcher(path))
-                count++;
-        }
-
-        return count;
-    }
-
-    // ===== IsMatch Method Benchmarks =====
-
-    [Benchmark]
-    public bool IsMatch_Simple()
-    {
-        return GlobMatcher.IsMatch("app.js", "*.js");
-    }
-
-    [Benchmark]
-    public bool IsMatch_Globstar()
-    {
-        return GlobMatcher.IsMatch("src/components/Button.tsx", "**/*.tsx");
-    }
-
-    [Benchmark]
-    public bool IsMatch_Complex()
-    {
-        return GlobMatcher.IsMatch("src/utils/helper.js", "src/**/!(*.test).{js,ts}");
-    }
-
-    [Benchmark]
-    public bool IsMatch_MultiplePatterns()
-    {
-        return GlobMatcher.IsMatch("src/app.js", ["**/*.js", "!**/test/**"]);
-    }
-
-    // ===== Real-World Scenarios =====
-
-    [Benchmark]
-    public int RealWorld_FilterJavaScriptFiles()
-    {
-        var matcher = GlobMatcher.Create("**/*.{js,jsx}");
+        var matcher = GlobMatcher.Create(RealWorldPattern);
         int count = 0;
         foreach (string path in _realWorldPaths)
         {
@@ -273,122 +191,85 @@ public class Benchmarks
 
         return count;
     }
+}
 
-    [Benchmark]
-    public int RealWorld_FilterSourceFiles()
+/// <summary>
+/// Pattern-processing primitives (Parse / Scan / MakeRe) over a simple and a complex pattern.
+/// Two result rows per benchmark, one per <see cref="PatternComplexity"/>.
+/// </summary>
+[MemoryDiagnoser]
+[CPUUsageDiagnoser]
+[HtmlExporter]
+[MarkdownExporterAttribute.GitHub]
+public class OperationBenchmarks
+{
+    public enum Complexity
     {
-        var matcher = GlobMatcher.Create("src/**/*.{js,ts,jsx,tsx}");
-        int count = 0;
-        foreach (string path in _realWorldPaths)
-        {
-            if (matcher(path))
-                count++;
-        }
-
-        return count;
+        Simple,
+        Complex
     }
 
-    [Benchmark]
-    public int RealWorld_ExcludeTests()
-    {
-        var matcher = GlobMatcher.Create("!(*.test|*.spec).*");
-        int count = 0;
-        foreach (string path in _realWorldPaths)
-        {
-            if (matcher(path))
-                count++;
-        }
+    [ParamsAllValues]
+    public Complexity PatternComplexity { get; set; }
 
-        return count;
-    }
+    private string Pattern => PatternComplexity == Complexity.Simple
+        ? "*.js"
+        : "src/**/!(*.test|*.spec).{js,jsx,ts,tsx}";
 
     [Benchmark]
-    public int RealWorld_FindAllTests()
-    {
-        var matcher = GlobMatcher.Create("**/*.{test,spec}.{js,ts,jsx,tsx}");
-        int count = 0;
-        foreach (string path in _realWorldPaths)
-        {
-            if (matcher(path))
-                count++;
-        }
-
-        return count;
-    }
-
-    // ===== Character Class Benchmarks =====
+    public object Parse() => GlobMatcher.Parse(Pattern);
 
     [Benchmark]
-    public int CharacterClassMatching()
-    {
-        string[] testFiles = [.. Enumerable.Range(0, 100).SelectMany(i => new[] { $"test-{i % 10}a.txt", $"test-{i % 10}z.txt", $"test-{i % 10}X.txt" })];
-
-        int count = 0;
-        foreach (string path in testFiles)
-        {
-            if (_characterClassMatcher(path))
-                count++;
-        }
-
-        return count;
-    }
-
-    // ===== Negation Pattern Benchmarks =====
+    public object Scan() => GlobMatcher.Scan(Pattern);
 
     [Benchmark]
-    public int NegationMatching()
-    {
-        int count = 0;
-        foreach (string path in _mixedExtensions)
-        {
-            if (_negationMatcher(path))
-                count++;
-        }
+    public object MakeRe() => GlobMatcher.MakeRe(Pattern);
+}
 
-        return count;
-    }
+/// <summary>
+/// One-shot compilation, one-shot <see cref="GlobMatcher.IsMatch(string, string, GlobbingOptions)"/>,
+/// and batch-over-many-matchers benchmarks that don't fit a single parameter axis.
+/// </summary>
+[MemoryDiagnoser]
+[CPUUsageDiagnoser]
+[HtmlExporter]
+[MarkdownExporterAttribute.GitHub]
+public class CompilationBenchmarks
+{
+    private string[] _testPaths;
 
-    // ===== Parse and Scan Benchmarks =====
+    [GlobalSetup]
+    public void Setup() => _testPaths = BenchmarkData.GenerateTestPaths();
 
-    [Benchmark]
-    public object Parse_SimplePattern()
-    {
-        return GlobMatcher.Parse("*.js");
-    }
-
-    [Benchmark]
-    public object Parse_ComplexPattern()
-    {
-        return GlobMatcher.Parse("src/**/!(*.test|*.spec).{js,jsx,ts,tsx}");
-    }
+    // ===== Pattern Compilation =====
 
     [Benchmark]
-    public object Scan_SimplePattern()
-    {
-        return GlobMatcher.Scan("*.js");
-    }
+    public MatcherHandler CreateSimpleWildcard() => GlobMatcher.Create("*.js");
 
     [Benchmark]
-    public object Scan_ComplexPattern()
-    {
-        return GlobMatcher.Scan("src/**/!(*.test|*.spec).{js,jsx,ts,tsx}");
-    }
-
-    // ===== MakeRe Benchmarks =====
+    public MatcherHandler CreateGlobstar() => GlobMatcher.Create("**/*.{js,ts}");
 
     [Benchmark]
-    public object MakeRe_SimplePattern()
-    {
-        return GlobMatcher.MakeRe("*.js");
-    }
+    public MatcherHandler CreateComplexPattern() => GlobMatcher.Create("src/**/!(*.test|*.spec).{js,jsx,ts,tsx}");
 
     [Benchmark]
-    public object MakeRe_ComplexPattern()
-    {
-        return GlobMatcher.MakeRe("src/**/!(*.test|*.spec).{js,jsx,ts,tsx}");
-    }
+    public MatcherHandler CreateMultiplePatterns() => GlobMatcher.Create(["**/*.js", "**/*.ts", "!**/node_modules/**"]);
 
-    // ===== Batch Processing Benchmark =====
+    // ===== One-shot IsMatch =====
+
+    [Benchmark]
+    public bool IsMatch_Simple() => GlobMatcher.IsMatch("app.js", "*.js");
+
+    [Benchmark]
+    public bool IsMatch_Globstar() => GlobMatcher.IsMatch("src/components/Button.tsx", "**/*.tsx");
+
+    [Benchmark]
+    public bool IsMatch_Complex() => GlobMatcher.IsMatch("src/utils/helper.js", "src/**/!(*.test).{js,ts}");
+
+    [Benchmark]
+    public bool IsMatch_MultiplePatterns() => GlobMatcher.IsMatch("src/app.js", ["**/*.js", "!**/test/**"]);
+
+    // ===== Batch Processing =====
 
     [Benchmark]
     public int BatchProcess_LargeDataset()

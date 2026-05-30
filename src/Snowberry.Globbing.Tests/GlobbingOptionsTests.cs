@@ -137,14 +137,15 @@ public class GlobbingOptionsTests
         Assert.True(options.FastPaths);
     }
 
-    [Fact]
-    public void Fastpaths_WhenFalse_DisablesOptimizations()
+    [Theory]
+    [InlineData("test.js", true)]
+    [InlineData("test.md", false)]
+    public void Fastpaths_WhenFalse_DisablesOptimizations(string input, bool expected)
     {
         var options = new GlobbingOptions { FastPaths = false };
         var matcher = GlobMatcher.Create("*.js", options);
 
-        Assert.True(matcher("test.js"));
-        Assert.False(matcher("test.md"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -180,8 +181,11 @@ public class GlobbingOptionsTests
         Assert.Null(options.Format);
     }
 
-    [Fact]
-    public void Ignore_WhenSet_ExcludesPatterns()
+    [Theory]
+    [InlineData("app.js", true)]
+    [InlineData("app.test.js", false)]
+    [InlineData("app.spec.js", false)]
+    public void Ignore_WhenSet_ExcludesPatterns(string input, bool expected)
     {
         var options = new GlobbingOptions
         {
@@ -189,9 +193,7 @@ public class GlobbingOptionsTests
         };
         var matcher = GlobMatcher.Create("*.js", options);
 
-        Assert.True(matcher("app.js"));
-        Assert.False(matcher("app.test.js"));
-        Assert.False(matcher("app.spec.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -217,27 +219,29 @@ public class GlobbingOptionsTests
         Assert.False(options.KeepQuotes);
     }
 
-    [Fact]
-    public void LiteralBrackets_WhenTrue_TreatsBracketsAsLiteral()
+    [Theory]
+    [InlineData("[abc].js", true)]
+    [InlineData("a.js", false)]
+    public void LiteralBrackets_WhenTrue_TreatsBracketsAsLiteral(string input, bool expected)
     {
         var options = new GlobbingOptions { LiteralBrackets = true };
         var matcher = GlobMatcher.Create("[abc].js", options);
 
-        Assert.True(matcher("[abc].js"));
-        Assert.False(matcher("a.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void LiteralBrackets_WhenFalse_BracketsAreCharacterClass()
+    [Theory]
+    [InlineData("a.js", true)]
+    [InlineData("b.js", true)]
+    // Note: Direct string comparison matches "[abc].js" to the pattern "[abc].js"
+    // This is consistent with JS picomatch behavior (input === glob fast path)
+    [InlineData("[abc].js", true)]
+    public void LiteralBrackets_WhenFalse_BracketsAreCharacterClass(string input, bool expected)
     {
         var options = new GlobbingOptions { LiteralBrackets = false };
         var matcher = GlobMatcher.Create("[abc].js", options);
 
-        Assert.True(matcher("a.js"));
-        Assert.True(matcher("b.js"));
-        // Note: Direct string comparison matches "[abc].js" to the pattern "[abc].js"
-        // This is consistent with JS picomatch behavior (input === glob fast path)
-        Assert.True(matcher("[abc].js"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -268,35 +272,38 @@ public class GlobbingOptionsTests
         Assert.Equal(100, options.MaxLength);
     }
 
-    [Fact]
-    public void NoBrace_WhenTrue_TreatsBracesAsLiteral()
+    [Theory]
+    [InlineData("test.{js,ts}", true)]
+    [InlineData("test.js", false)]
+    public void NoBrace_WhenTrue_TreatsBracesAsLiteral(string input, bool expected)
     {
         var options = new GlobbingOptions { NoBrace = true };
         var matcher = GlobMatcher.Create("*.{js,ts}", options);
 
-        Assert.True(matcher("test.{js,ts}"));
-        Assert.False(matcher("test.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void NoBrace_WhenFalse_ExpandsBraces()
+    [Theory]
+    [InlineData("test.js", true)]
+    [InlineData("test.ts", true)]
+    [InlineData("test.{js,ts}", false)]
+    public void NoBrace_WhenFalse_ExpandsBraces(string input, bool expected)
     {
         var options = new GlobbingOptions { NoBrace = false };
         var matcher = GlobMatcher.Create("*.{js,ts}", options);
 
-        Assert.True(matcher("test.js"));
-        Assert.True(matcher("test.ts"));
-        Assert.False(matcher("test.{js,ts}"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void NoBracket_WhenTrue_TreatsBracketsAsLiteral()
+    [Theory]
+    [InlineData("[abc].txt", true)]
+    [InlineData("a.txt", false)]
+    public void NoBracket_WhenTrue_TreatsBracketsAsLiteral(string input, bool expected)
     {
         var options = new GlobbingOptions { NoBracket = true };
         var matcher = GlobMatcher.Create("[abc].txt", options);
 
-        Assert.True(matcher("[abc].txt"));
-        Assert.False(matcher("a.txt"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -334,64 +341,70 @@ public class GlobbingOptionsTests
         Assert.Null(options.NoExt);
     }
 
-    [Fact]
-    public void NoExtglob_WhenTrue_DisablesExtglobs()
+    [Theory]
+    // Without extglob, pattern is treated differently
+    [InlineData("a", false)]
+    public void NoExtglob_WhenTrue_DisablesExtglobs(string input, bool expected)
     {
         var options = new GlobbingOptions { NoExtglob = true };
         var matcher = GlobMatcher.Create("+(a)", options);
 
-        // Without extglob, pattern is treated differently
-        Assert.False(matcher("a"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void NoExtglob_WhenFalse_EnablesExtglobs()
+    [Theory]
+    [InlineData("a", true)]
+    [InlineData("aa", true)]
+    public void NoExtglob_WhenFalse_EnablesExtglobs(string input, bool expected)
     {
         var options = new GlobbingOptions { NoExtglob = false };
         var matcher = GlobMatcher.Create("+(a)", options);
 
-        Assert.True(matcher("a"));
-        Assert.True(matcher("aa"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void NoGlobstar_WhenTrue_TreatsDoubleStarAsSingleStar()
+    [Theory]
+    [InlineData("foo", true)]
+    [InlineData("foo/bar", false)]
+    public void NoGlobstar_WhenTrue_TreatsDoubleStarAsSingleStar(string input, bool expected)
     {
         var options = new GlobbingOptions { NoGlobstar = true };
         var matcher = GlobMatcher.Create("**", options);
 
-        Assert.True(matcher("foo"));
-        Assert.False(matcher("foo/bar"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void NoGlobstar_WhenFalse_DoubleStarMatchesDeep()
+    [Theory]
+    [InlineData("src/lib/app.js", true)]
+    [InlineData("app.js", true)]
+    public void NoGlobstar_WhenFalse_DoubleStarMatchesDeep(string input, bool expected)
     {
         var options = new GlobbingOptions { NoGlobstar = false };
         var matcher = GlobMatcher.Create("**/*.js", options);
 
-        Assert.True(matcher("src/lib/app.js"));
-        Assert.True(matcher("app.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void NoNegate_WhenTrue_TreatsExclamationAsLiteral()
+    [Theory]
+    [InlineData("!test.md", true)]
+    [InlineData("test.md", false)]
+    public void NoNegate_WhenTrue_TreatsExclamationAsLiteral(string input, bool expected)
     {
         var options = new GlobbingOptions { NoNegate = true };
         var matcher = GlobMatcher.Create("!*.md", options);
 
-        Assert.True(matcher("!test.md"));
-        Assert.False(matcher("test.md"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void NoNegate_WhenFalse_ExclamationIsNegation()
+    [Theory]
+    [InlineData("test.md", false)]
+    [InlineData("test.js", true)]
+    public void NoNegate_WhenFalse_ExclamationIsNegation(string input, bool expected)
     {
         var options = new GlobbingOptions { NoNegate = false };
         var matcher = GlobMatcher.Create("!*.md", options);
 
-        Assert.False(matcher("test.md"));
-        Assert.True(matcher("test.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -550,23 +563,25 @@ public class GlobbingOptionsTests
         Assert.Null(options.Unescape);
     }
 
-    [Fact]
-    public void Windows_WhenTrue_TreatsBackslashAsPathSeparator()
+    [Theory]
+    [InlineData(@"src\lib\app.js", true)]
+    [InlineData("src/lib/app.js", true)]
+    public void Windows_WhenTrue_TreatsBackslashAsPathSeparator(string input, bool expected)
     {
         var options = new GlobbingOptions { Windows = true };
         var matcher = GlobMatcher.Create("src/**/*.js", options);
 
-        Assert.True(matcher(@"src\lib\app.js"));
-        Assert.True(matcher("src/lib/app.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void Windows_WhenFalse_OnlyForwardSlashIsPathSeparator()
+    [Theory]
+    [InlineData("src/lib/app.js", true)]
+    public void Windows_WhenFalse_OnlyForwardSlashIsPathSeparator(string input, bool expected)
     {
         var options = new GlobbingOptions { Windows = false };
         var matcher = GlobMatcher.Create("src/**/*.js", options);
 
-        Assert.True(matcher("src/lib/app.js"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -653,36 +668,39 @@ public class GlobbingOptionsTests
         Assert.True(ignoreOptions.Windows);
     }
 
-    [Fact]
-    public void Contains_WhenTrue_MatchesSubstring()
+    [Theory]
+    [InlineData("foobar", true)]
+    [InlineData("barbaz", true)]
+    [InlineData("foobarbaz", true)]
+    [InlineData("foo", false)]
+    public void Contains_WhenTrue_MatchesSubstring(string input, bool expected)
     {
         var options = new GlobbingOptions { Contains = true };
         var matcher = GlobMatcher.Create("bar", options);
 
-        Assert.True(matcher("foobar"));
-        Assert.True(matcher("barbaz"));
-        Assert.True(matcher("foobarbaz"));
-        Assert.False(matcher("foo"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void Contains_WhenFalse_RequiresFullMatch()
+    [Theory]
+    [InlineData("foobar", false)]
+    [InlineData("bar", true)]
+    public void Contains_WhenFalse_RequiresFullMatch(string input, bool expected)
     {
         var options = new GlobbingOptions { Contains = false };
         var matcher = GlobMatcher.Create("bar", options);
 
-        Assert.False(matcher("foobar"));
-        Assert.True(matcher("bar"));
+        Assert.Equal(expected, matcher(input));
     }
 
-    [Fact]
-    public void Bash_WhenTrue_UsesBashRules()
+    [Theory]
+    [InlineData("foo", true)]
+    [InlineData("bar", true)]
+    public void Bash_WhenTrue_UsesBashRules(string input, bool expected)
     {
         var options = new GlobbingOptions { Bash = true };
         var matcher = GlobMatcher.Create("*", options);
 
-        Assert.True(matcher("foo"));
-        Assert.True(matcher("bar"));
+        Assert.Equal(expected, matcher(input));
     }
 
     [Fact]
@@ -798,14 +816,15 @@ public class GlobbingOptionsTests
         Assert.Equal(RegexFlags.IgnoreCase, ignoreOptions.Flags);
     }
 
-    [Fact]
-    public void NoBracket_WhenFalse_BracketsAreCharacterClass()
+    [Theory]
+    [InlineData("a.txt", true)]
+    [InlineData("b.txt", true)]
+    public void NoBracket_WhenFalse_BracketsAreCharacterClass(string input, bool expected)
     {
         var options = new GlobbingOptions { NoBracket = false };
         var matcher = GlobMatcher.Create("[abc].txt", options);
 
-        Assert.True(matcher("a.txt"));
-        Assert.True(matcher("b.txt"));
+        Assert.Equal(expected, matcher(input));
     }
 
 }

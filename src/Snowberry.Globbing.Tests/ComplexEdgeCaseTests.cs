@@ -1,4 +1,4 @@
-﻿namespace Snowberry.Globbing.Tests;
+namespace Snowberry.Globbing.Tests;
 
 /// <summary>
 /// Tests for complex edge cases and boundary conditions
@@ -23,104 +23,85 @@ public class ComplexEdgeCaseTests
         Assert.Throws<ArgumentException>(() => GlobMatcher.MakeRe(pattern));
     }
 
-    [Fact]
-    public void DeeplyNestedBraces_ShouldMatch()
+    [Theory]
+    // DeeplyNestedBraces_ShouldMatch
+    [InlineData("a", "{a,{b,{c,{d,e}}}}", true)]
+    [InlineData("b", "{a,{b,{c,{d,e}}}}", true)]
+    [InlineData("c", "{a,{b,{c,{d,e}}}}", true)]
+    [InlineData("d", "{a,{b,{c,{d,e}}}}", true)]
+    [InlineData("e", "{a,{b,{c,{d,e}}}}", true)]
+    [InlineData("f", "{a,{b,{c,{d,e}}}}", false)]
+    // MultipleConsecutiveGlobstars_SimplifiedCorrectly
+    [InlineData("a/b/c/test.js", "**/**/***/**/*.js", true)]
+    [InlineData("x/test.js", "**/**/***/**/*.js", true)]
+    [InlineData("test.ts", "**/**/***/**/*.js", false)]
+    // ComplexExtglobCombinations_MatchCorrectly
+    [InlineData("test.js", "!(*.md|*.txt)", true)]
+    [InlineData("app.ts", "!(*.md|*.txt)", true)]
+    [InlineData("readme.md", "!(*.md|*.txt)", false)]
+    [InlineData("notes.txt", "!(*.md|*.txt)", false)]
+    // NestedExtglobs_ShouldWork
+    [InlineData("a", "+(+(a|b)|+(c|d))", true)]
+    [InlineData("b", "+(+(a|b)|+(c|d))", true)]
+    [InlineData("c", "+(+(a|b)|+(c|d))", true)]
+    [InlineData("d", "+(+(a|b)|+(c|d))", true)]
+    [InlineData("aa", "+(+(a|b)|+(c|d))", true)]
+    [InlineData("ab", "+(+(a|b)|+(c|d))", true)]
+    [InlineData("aabbccdd", "+(+(a|b)|+(c|d))", true)]
+    [InlineData("e", "+(+(a|b)|+(c|d))", false)]
+    // MixedBracesAndExtglobs_ShouldMatch
+    [InlineData("src/app.js", "{src,test}/+(*.js|*.ts)", true)]
+    [InlineData("test/test.ts", "{src,test}/+(*.js|*.ts)", true)]
+    [InlineData("src/index.ts", "{src,test}/+(*.js|*.ts)", true)]
+    [InlineData("lib/app.js", "{src,test}/+(*.js|*.ts)", false)]
+    // ComplexCharacterClasses_WithRangesAndNegation
+    [InlineData("test-g.txt", "test-[^a-fA-F0-9].txt", true)]
+    [InlineData("test-Z.txt", "test-[^a-fA-F0-9].txt", true)]
+    [InlineData("test-a.txt", "test-[^a-fA-F0-9].txt", false)]
+    [InlineData("test-5.txt", "test-[^a-fA-F0-9].txt", false)]
+    [InlineData("test-A.txt", "test-[^a-fA-F0-9].txt", false)]
+    // EscapedSpecialCharacters_InComplexPatterns
+    [InlineData(@"test*?[]{}.js", @"test\*\?\[\]\{\}\.js", true)]
+    [InlineData("testanything.js", @"test\*\?\[\]\{\}\.js", false)]
+    // MultipleNegatedPatterns_ShouldAllBeRespected
+    // Note: Patterns starting with ! negate the match.
+    // A negated pattern matches everything EXCEPT the pattern.
+    [InlineData("readme.js", "!*.md", true)]  // Not .md, so matches
+    [InlineData("readme.md", "!*.md", false)] // Is .md, so doesn't match
+    [InlineData("readme.md", "!*.txt", true)]
+    [InlineData("notes.txt", "!*.txt", false)]
+    [InlineData("readme.md", "!*.log", true)]
+    [InlineData("debug.log", "!*.log", false)]
+    // MultipleGlobstarsInDifferentSegments_MatchCorrectly
+    [InlineData("src/test/app.js", "**/src/**/test/**/*.js", true)]
+    [InlineData("a/src/b/test/c/file.js", "**/src/**/test/**/*.js", true)]
+    [InlineData("x/y/z/src/u/v/test/w/test.js", "**/src/**/test/**/*.js", true)]
+    [InlineData("src/file.js", "**/src/**/test/**/*.js", false)]
+    [InlineData("test/file.js", "**/src/**/test/**/*.js", false)]
+    // SpecialCharactersInPath_ShouldNotBreakMatching
+    [InlineData("path with spaces/file.js", "**/*.js", true)]
+    [InlineData("path-with-dashes/file.js", "**/*.js", true)]
+    [InlineData("path_with_underscores/file.js", "**/*.js", true)]
+    [InlineData("path.with.dots/file.js", "**/*.js", true)]
+    // NestedBracesWithWildcards_ShouldMatch
+    [InlineData("app.js", "{*.{js,ts},*.md}", true)]
+    [InlineData("app.ts", "{*.{js,ts},*.md}", true)]
+    [InlineData("README.md", "{*.{js,ts},*.md}", true)]
+    [InlineData("app.css", "{*.{js,ts},*.md}", false)]
+    // PathWithConsecutiveSlashes_ShouldNormalize
+    [InlineData("a/b/test.js", "**/test.js", true)]
+    [InlineData("a/b/c/test.js", "**/test.js", true)]
+    // UnicodeCharactersInPaths_ShouldMatch
+    [InlineData("路径/文件.js", "**/*.js", true)]
+    [InlineData("مسار/ملف.js", "**/*.js", true)]
+    [InlineData("путь/файл.js", "**/*.js", true)]
+    // MaximumBraceNesting_ShouldNotCrash
+    [InlineData("a", "{a,{b,{c,{d,{e,{f,{g,{h,i}}}}}}}}", true)]
+    [InlineData("i", "{a,{b,{c,{d,{e,{f,{g,{h,i}}}}}}}}", true)]
+    [InlineData("j", "{a,{b,{c,{d,{e,{f,{g,{h,i}}}}}}}}", false)]
+    public void DefaultOptions_MatchCorrectly(string input, string pattern, bool expected)
     {
-        var matcher = GlobMatcher.Create("{a,{b,{c,{d,e}}}}");
-
-        Assert.True(matcher("a"));
-        Assert.True(matcher("b"));
-        Assert.True(matcher("c"));
-        Assert.True(matcher("d"));
-        Assert.True(matcher("e"));
-        Assert.False(matcher("f"));
-    }
-
-    [Fact]
-    public void MultipleConsecutiveGlobstars_SimplifiedCorrectly()
-    {
-        var matcher = GlobMatcher.Create("**/**/***/**/*.js");
-
-        Assert.True(matcher("a/b/c/test.js"));
-        Assert.True(matcher("x/test.js"));
-        Assert.False(matcher("test.ts"));
-    }
-
-    [Fact]
-    public void ComplexExtglobCombinations_MatchCorrectly()
-    {
-        var matcher = GlobMatcher.Create("!(*.md|*.txt)");
-
-        Assert.True(matcher("test.js"));
-        Assert.True(matcher("app.ts"));
-        Assert.False(matcher("readme.md"));
-        Assert.False(matcher("notes.txt"));
-    }
-
-    [Fact]
-    public void NestedExtglobs_ShouldWork()
-    {
-        var matcher = GlobMatcher.Create("+(+(a|b)|+(c|d))");
-
-        Assert.True(matcher("a"));
-        Assert.True(matcher("b"));
-        Assert.True(matcher("c"));
-        Assert.True(matcher("d"));
-        Assert.True(matcher("aa"));
-        Assert.True(matcher("ab"));
-        Assert.True(matcher("aabbccdd"));
-        Assert.False(matcher("e"));
-    }
-
-    [Fact]
-    public void MixedBracesAndExtglobs_ShouldMatch()
-    {
-        var matcher = GlobMatcher.Create("{src,test}/+(*.js|*.ts)");
-
-        Assert.True(matcher("src/app.js"));
-        Assert.True(matcher("test/test.ts"));
-        Assert.True(matcher("src/index.ts"));
-        Assert.False(matcher("lib/app.js"));
-    }
-
-    [Fact]
-    public void ComplexCharacterClasses_WithRangesAndNegation()
-    {
-        var matcher = GlobMatcher.Create("test-[^a-fA-F0-9].txt");
-
-        Assert.True(matcher("test-g.txt"));
-        Assert.True(matcher("test-Z.txt"));
-        Assert.False(matcher("test-a.txt"));
-        Assert.False(matcher("test-5.txt"));
-        Assert.False(matcher("test-A.txt"));
-    }
-
-    [Fact]
-    public void EscapedSpecialCharacters_InComplexPatterns()
-    {
-        var matcher = GlobMatcher.Create(@"test\*\?\[\]\{\}\.js");
-
-        Assert.True(matcher(@"test*?[]{}.js"));
-        Assert.False(matcher("testanything.js"));
-    }
-
-    [Fact]
-    public void MultipleNegatedPatterns_ShouldAllBeRespected()
-    {
-        // Note: Patterns starting with ! negate the match
-        var mdMatcher = GlobMatcher.Create("!*.md");
-        var txtMatcher = GlobMatcher.Create("!*.txt");
-        var logMatcher = GlobMatcher.Create("!*.log");
-
-        // A negated pattern matches everything EXCEPT the pattern
-        Assert.True(mdMatcher("readme.js"));  // Not .md, so matches
-        Assert.False(mdMatcher("readme.md")); // Is .md, so doesn't match
-
-        Assert.True(txtMatcher("readme.md"));
-        Assert.False(txtMatcher("notes.txt"));
-
-        Assert.True(logMatcher("readme.md"));
-        Assert.False(logMatcher("debug.log"));
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
     }
 
     [Theory]
@@ -143,16 +124,16 @@ public class ComplexEdgeCaseTests
         }
     }
 
-    [Fact]
-    public void ComplexWindowsPaths_WithMixedSeparators()
+    [Theory]
+    // ComplexWindowsPaths_WithMixedSeparators
+    [InlineData(@"src\components\Button.js", "src/**/*.js", true)]
+    [InlineData("src/components/Button.js", "src/**/*.js", true)]
+    [InlineData(@"src\lib\utils\helper.js", "src/**/*.js", true)]
+    [InlineData(@"test\app.js", "src/**/*.js", false)]
+    public void WindowsOption_MatchCorrectly(string input, string pattern, bool expected)
     {
         var options = new GlobbingOptions { Windows = true };
-        var matcher = GlobMatcher.Create("src/**/*.js", options);
-
-        Assert.True(matcher(@"src\components\Button.js"));
-        Assert.True(matcher("src/components/Button.js"));
-        Assert.True(matcher(@"src\lib\utils\helper.js"));
-        Assert.False(matcher(@"test\app.js"));
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));
     }
 
     [Fact]
@@ -166,29 +147,6 @@ public class ComplexEdgeCaseTests
     }
 
     [Fact]
-    public void MultipleGlobstarsInDifferentSegments_MatchCorrectly()
-    {
-        var matcher = GlobMatcher.Create("**/src/**/test/**/*.js");
-
-        Assert.True(matcher("src/test/app.js"));
-        Assert.True(matcher("a/src/b/test/c/file.js"));
-        Assert.True(matcher("x/y/z/src/u/v/test/w/test.js"));
-        Assert.False(matcher("src/file.js"));
-        Assert.False(matcher("test/file.js"));
-    }
-
-    [Fact]
-    public void SpecialCharactersInPath_ShouldNotBreakMatching()
-    {
-        var matcher = GlobMatcher.Create("**/*.js");
-
-        Assert.True(matcher("path with spaces/file.js"));
-        Assert.True(matcher("path-with-dashes/file.js"));
-        Assert.True(matcher("path_with_underscores/file.js"));
-        Assert.True(matcher("path.with.dots/file.js"));
-    }
-
-    [Fact]
     public void PosixCharacterClasses_ComplexCombinations()
     {
         var options = new GlobbingOptions { Posix = true };
@@ -197,18 +155,24 @@ public class ComplexEdgeCaseTests
         Assert.NotNull(matcher);
     }
 
-    [Fact]
-    public void CaseSensitivityWithComplexPatterns()
+    [Theory]
+    // CaseSensitivityWithComplexPatterns (case-sensitive / default options)
+    [InlineData("Test-A.js", "Test-[A-Z].js", true)]
+    [InlineData("test-a.js", "Test-[A-Z].js", false)]
+    public void CaseSensitive_MatchCorrectly(string input, string pattern, bool expected)
     {
-        var caseSensitive = GlobMatcher.Create("Test-[A-Z].js");
-        var caseInsensitive = GlobMatcher.Create("Test-[A-Z].js", new GlobbingOptions { NoCase = true });
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
+    }
 
-        Assert.True(caseSensitive("Test-A.js"));
-        Assert.False(caseSensitive("test-a.js"));
-
-        Assert.True(caseInsensitive("Test-A.js"));
-        Assert.True(caseInsensitive("test-a.js"));
-        Assert.True(caseInsensitive("TEST-A.JS"));
+    [Theory]
+    // CaseSensitivityWithComplexPatterns (case-insensitive)
+    [InlineData("Test-A.js", "Test-[A-Z].js", true)]
+    [InlineData("test-a.js", "Test-[A-Z].js", true)]
+    [InlineData("TEST-A.JS", "Test-[A-Z].js", true)]
+    public void NoCaseOption_MatchCorrectly(string input, string pattern, bool expected)
+    {
+        var options = new GlobbingOptions { NoCase = true };
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));
     }
 
     [Fact]
@@ -239,17 +203,6 @@ public class ComplexEdgeCaseTests
     }
 
     [Fact]
-    public void NestedBracesWithWildcards_ShouldMatch()
-    {
-        var matcher = GlobMatcher.Create("{*.{js,ts},*.md}");
-
-        Assert.True(matcher("app.js"));
-        Assert.True(matcher("app.ts"));
-        Assert.True(matcher("README.md"));
-        Assert.False(matcher("app.css"));
-    }
-
-    [Fact]
     public void VeryComplexRealWorldPattern_ShouldWork()
     {
         string pattern = "src/**/!(*.test|*.spec).{js,jsx,ts,tsx}";
@@ -275,26 +228,24 @@ public class ComplexEdgeCaseTests
         Assert.All(matchers, Assert.NotNull);
     }
 
-    [Fact]
-    public void PathWithConsecutiveSlashes_ShouldNormalize()
+    [Theory]
+    // DotfilesInComplexPaths_WithDotOption (Dot = true)
+    [InlineData(".config/settings.json", "**/*", true)]
+    [InlineData("src/.hidden/file.js", "**/*", true)]
+    public void DotOption_MatchCorrectly(string input, string pattern, bool expected)
     {
-        var matcher = GlobMatcher.Create("**/test.js");
-
-        Assert.True(matcher("a/b/test.js"));
-        Assert.True(matcher("a/b/c/test.js"));
+        var options = new GlobbingOptions { Dot = true };
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));
     }
 
-    [Fact]
-    public void DotfilesInComplexPaths_WithDotOption()
+    [Theory]
+    // DotfilesInComplexPaths_WithDotOption (Dot = false)
+    [InlineData(".config/settings.json", "**/*", false)]
+    [InlineData("src/.hidden/file.js", "**/*", false)]
+    public void NoDotOption_MatchCorrectly(string input, string pattern, bool expected)
     {
-        var withDot = GlobMatcher.Create("**/*", new GlobbingOptions { Dot = true });
-        var withoutDot = GlobMatcher.Create("**/*", new GlobbingOptions { Dot = false });
-
-        Assert.True(withDot(".config/settings.json"));
-        Assert.False(withoutDot(".config/settings.json"));
-
-        Assert.True(withDot("src/.hidden/file.js"));
-        Assert.False(withoutDot("src/.hidden/file.js"));
+        var options = new GlobbingOptions { Dot = false };
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));
     }
 
     [Fact]
@@ -305,26 +256,5 @@ public class ComplexEdgeCaseTests
 
         Assert.NotNull(strict);
         Assert.NotNull(notStrict);
-    }
-
-    [Fact]
-    public void UnicodeCharactersInPaths_ShouldMatch()
-    {
-        var matcher = GlobMatcher.Create("**/*.js");
-
-        Assert.True(matcher("路径/文件.js"));
-        Assert.True(matcher("مسار/ملف.js"));
-        Assert.True(matcher("путь/файл.js"));
-    }
-
-    [Fact]
-    public void MaximumBraceNesting_ShouldNotCrash()
-    {
-        string pattern = "{a,{b,{c,{d,{e,{f,{g,{h,i}}}}}}}}";
-        var matcher = GlobMatcher.Create(pattern);
-
-        Assert.True(matcher("a"));
-        Assert.True(matcher("i"));
-        Assert.False(matcher("j"));
     }
 }
