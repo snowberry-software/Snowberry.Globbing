@@ -124,27 +124,27 @@ public class ApiTests
     [Fact]
     public void ToRegexShouldReturnRegex()
     {
-        var regex = GlobMatcher.ToRegex("*.js");
+        var regex = GlobMatcher.ToRegex(@"^.*\.js$");
         Assert.NotNull(regex);
-        Assert.IsAssignableFrom<Regex>(regex); // Use IsAssignableFrom instead of IsType
+        Assert.IsAssignableFrom<Regex>(regex);
     }
 
-    // Test that MakeRe returns correct regex for matching
+    // ToRegex compiles a regex *source string* (not a glob) into a Regex.
     [Fact]
     public void ToRegexShouldMatchCorrectly()
     {
-        var regex = GlobMatcher.MakeRe("*.js");
+        var regex = GlobMatcher.ToRegex(@"^.*\.js$");
         Assert.Matches(regex, "a.js");
         Assert.Matches(regex, "foo.js");
         Assert.DoesNotMatch(regex, "a.txt");
     }
 
-    // Test that MakeRe accepts options
+    // ToRegex honors the NoCase option when compiling the source.
     [Fact]
-    public void ToRegexShouldAcceptOptions()
+    public void ToRegexShouldApplyNoCaseOption()
     {
         var options = new GlobbingOptions { NoCase = true };
-        var regex = GlobMatcher.MakeRe("*.JS", options);
+        var regex = GlobMatcher.ToRegex(@"^.*\.JS$", options);
         Assert.Matches(regex, "a.js");
         Assert.Matches(regex, "a.JS");
     }

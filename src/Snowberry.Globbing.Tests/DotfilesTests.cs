@@ -243,7 +243,7 @@ public class DotfilesTests
     [InlineData("..", "*", false)]
     [InlineData("..", "**", false)]
     [InlineData("a/..", "*/*", false)]
-    public void DoubleDotShouldBeMatchedWithDotOption(string input, string pattern, bool expected)
+    public void DoubleDotShouldNotBeMatchedEvenWithDotOption(string input, string pattern, bool expected)
     {
         var options = new GlobbingOptions { Dot = true };
         Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));

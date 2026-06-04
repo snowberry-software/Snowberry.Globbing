@@ -88,7 +88,7 @@ public class ComplexEdgeCaseTests
     [InlineData("app.ts", "{*.{js,ts},*.md}", true)]
     [InlineData("README.md", "{*.{js,ts},*.md}", true)]
     [InlineData("app.css", "{*.{js,ts},*.md}", false)]
-    // PathWithConsecutiveSlashes_ShouldNormalize
+    // DeepGlobstar_ShouldMatchAtAnyDepth
     [InlineData("a/b/test.js", "**/test.js", true)]
     [InlineData("a/b/c/test.js", "**/test.js", true)]
     // UnicodeCharactersInPaths_ShouldMatch

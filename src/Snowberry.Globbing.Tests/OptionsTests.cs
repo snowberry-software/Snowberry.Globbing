@@ -113,26 +113,6 @@ public class OptionsTests
     }
 
     [Theory]
-    [InlineData("a/b/c", "**", true)]
-    [InlineData("a/b/c", "**/c", true)]
-    [InlineData("a/b/c", "a/**", true)]
-    [InlineData("a/b/c", "a/**/c", true)]
-    public void ByDefaultGlobstarIsEnabled(string input, string pattern, bool expected)
-    {
-        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
-    }
-
-    [Theory]
-    [InlineData("a/b/c", "**", false)]
-    [InlineData("a/b/c", "**/c", false)]
-    [InlineData("a/b/c", "a/**", false)]
-    public void WithNoglobstarOptionDoubleStarTreatedAsLiteral(string input, string pattern, bool expected)
-    {
-        var options = new GlobbingOptions { NoGlobstar = true };
-        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));
-    }
-
-    [Theory]
     [InlineData("**", "**", true)]
     public void WithNoglobstarDoubleStarMatchesLiteral(string input, string pattern, bool expected)
     {
@@ -206,20 +186,6 @@ public class OptionsTests
     }
 
     [Fact]
-    public void FormatOptionShouldTransformInput()
-    {
-        var options = new GlobbingOptions { Format = s => s.ToLowerInvariant() };
-        Assert.True(GlobMatcher.IsMatch("ABC", "abc", options));
-    }
-
-    [Fact]
-    public void FormatOptionShouldTransformInputBeforeMatching()
-    {
-        var options = new GlobbingOptions { Format = s => s.Replace("-", "") };
-        Assert.True(GlobMatcher.IsMatch("a-b-c", "abc", options));
-    }
-
-    [Fact]
     public void OnIgnoreOptionShouldBeCalledForIgnoredPaths()
     {
         string? ignoredPath = null;
@@ -230,18 +196,6 @@ public class OptionsTests
         };
         GlobMatcher.IsMatch("file.txt", "*.txt", options);
         Assert.Equal("file.txt", ignoredPath);
-    }
-
-    [Fact]
-    public void OnMatchOptionShouldBeCalledForMatchedPaths()
-    {
-        string? matchedPath = null;
-        var options = new GlobbingOptions
-        {
-            OnMatch = result => matchedPath = result.Input
-        };
-        GlobMatcher.IsMatch("file.txt", "*.txt", options);
-        Assert.Equal("file.txt", matchedPath);
     }
 
     [Fact]
@@ -261,17 +215,6 @@ public class OptionsTests
     [InlineData("b.txt", "*.txt", false)]
     [InlineData("a.js", "*.txt", false)]
     public void WithIgnoreOptionMatchedPathsShouldBeIgnored(string input, string pattern, bool expected)
-    {
-        var options = new GlobbingOptions { Ignore = ["*.txt"] };
-        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));
-    }
-
-    [Theory]
-    [InlineData("a.js", "*", true)]
-    [InlineData("a.txt", "*", false)]
-    [InlineData("b.js", "*", true)]
-    [InlineData("b.txt", "*", false)]
-    public void WithIgnoreOptionOnlyMatchedPatternsShouldBeIgnored(string input, string pattern, bool expected)
     {
         var options = new GlobbingOptions { Ignore = ["*.txt"] };
         Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, options));

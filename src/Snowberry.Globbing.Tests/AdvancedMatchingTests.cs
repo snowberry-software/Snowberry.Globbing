@@ -132,11 +132,12 @@ public class AdvancedMatchingTests
     [Fact]
     public void TestNoextglobOption()
     {
-        var matcher = GlobMatcher.Create("test.js", new GlobbingOptions { NoExtglob = true });
+        // With NoExtglob enabled, extglob syntax is treated literally, not as a group.
+        var matcher = GlobMatcher.Create("@(a|b)", new GlobbingOptions { NoExtglob = true });
 
-        // With NoExtglob disabled, patterns are treated literally
-        Assert.True(matcher("test.js"));
-        Assert.False(matcher("app.js"));
+        Assert.True(matcher("@(a|b)"));
+        Assert.False(matcher("a"));
+        Assert.False(matcher("b"));
     }
 
     [Fact]

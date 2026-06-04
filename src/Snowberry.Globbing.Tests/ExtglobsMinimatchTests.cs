@@ -469,6 +469,7 @@ public class ExtglobsMinimatchTests
     [InlineData("foo", "!(foo)", false)]
     [InlineData("bar", "!(foo)", true)]
     [InlineData("foobar", "!(foo)", true)]
+    [InlineData("foo/bar", "!(foo)", false)] // negation extglob does not match across a path separator
     public void ExclusionNotFoo(string input, string pattern, bool expected)
     {
         Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, _opts));
@@ -600,6 +601,239 @@ public class ExtglobsMinimatchTests
     public void StarDotPlusBOrD(string input, string pattern, bool expected)
     {
         Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern, _opts));
+    }
+
+    // ---- Migrated from former ExtglobsTempTests: cases unique to that file ----
+
+    [Theory]
+    [InlineData("bar", false)]
+    [InlineData("f", false)]
+    [InlineData("fa", false)]
+    [InlineData("foo", true)]
+    [InlineData("foobar", false)]
+    public void NegationExtglob_DoubleNegation(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "!(!(foo))", _opts));
+    }
+
+    [Theory]
+    [InlineData("bar", true)]
+    [InlineData("f", true)]
+    [InlineData("foo", false)]
+    [InlineData("foobar", true)]
+    public void NegationExtglob_TripleNegation(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "!(!(!(foo)))", _opts));
+    }
+
+    [Theory]
+    [InlineData("bar", false)]
+    [InlineData("f", false)]
+    [InlineData("foo", true)]
+    [InlineData("foobar", false)]
+    public void NegationExtglob_QuadNegation(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "!(!(!(!(foo))))", _opts));
+    }
+
+    [Theory]
+    [InlineData("bar", true)]
+    [InlineData("f", true)]
+    [InlineData("foo", false)]
+    [InlineData("foobar", false)]
+    [InlineData("foot", false)]
+    [InlineData("foox", false)]
+    [InlineData("o", true)]
+    [InlineData("x", true)]
+    public void NegationWithStar_ExcludeFooPrefix(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "!(foo)*", _opts));
+    }
+
+    [Theory]
+    [InlineData("bar", false)]
+    [InlineData("f", false)]
+    [InlineData("foo", true)]
+    [InlineData("foobar", true)]
+    [InlineData("foot", true)]
+    [InlineData("foox", true)]
+    [InlineData("o", false)]
+    public void NegationWithStar_DoubleNegationFoo(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "!(!(foo))*", _opts));
+    }
+
+    [Theory]
+    [InlineData("bar", true)]
+    [InlineData("f", false)]
+    [InlineData("fa", false)]
+    [InlineData("fb", false)]
+    [InlineData("ff", false)]
+    [InlineData("fff", false)]
+    [InlineData("fo", true)]
+    [InlineData("foo", false)]
+    [InlineData("foobar", false)]
+    [InlineData("o", true)]
+    [InlineData("x", true)]
+    public void ComplexNegation_ExcludeFNotO(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "!(f!(o))", _opts));
+    }
+
+    [Theory]
+    [InlineData("bar", true)]
+    [InlineData("f", true)]
+    [InlineData("fo", false)]
+    [InlineData("foo", true)]
+    [InlineData("foobar", true)]
+    public void NegationGroup_ExcludeFO(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "!(f(o))", _opts));
+    }
+
+    [Theory]
+    [InlineData("bar", false)]
+    [InlineData("foo", true)]
+    [InlineData("foofoo", true)]
+    [InlineData("foobar", false)]
+    public void StarExtglob_DoubleParenFoo(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "*((foo))", _opts));
+    }
+
+    [Theory]
+    [InlineData("foo/bar", true)]
+    public void AtExtglob_NotZOrXWithPath(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "@(!(z*/*)|*x)", _opts));
+    }
+
+    [Theory]
+    [InlineData("/dev/udp/129.22.8.102/45", true)]
+    public void DevPath_TcpOrUdp_UnescapedSlashes(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "/dev/@(tcp|udp)/*/*", _opts));
+    }
+
+    [Theory]
+    [InlineData("12", true)]
+    [InlineData("0", false)]
+    [InlineData("1", false)]
+    [InlineData("12abc", false)]
+    [InlineData("555", false)]
+    public void NumberRange_1To6FollowedByDigit(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "[1-6]([0-9])", _opts));
+    }
+
+    [Theory]
+    [InlineData("12", true)]
+    [InlineData("1", true)]
+    [InlineData("555", true)]
+    [InlineData("0", false)]
+    [InlineData("12abc", false)]
+    public void NumberRange_1To6StarDigits(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "[1-6]*([0-9])", _opts));
+    }
+
+    [Theory]
+    [InlineData("a", true)]
+    [InlineData("abc", true)]
+    [InlineData("abcd", false)]
+    [InlineData("abcde", false)]
+    public void PlusAOrAbc(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "+(a|abc)", _opts));
+    }
+
+    [Theory]
+    [InlineData("f", true)]
+    [InlineData("def", true)]
+    [InlineData("cdef", false)]
+    [InlineData("bcdef", false)]
+    public void PlusFOrDef(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "+(f|def)", _opts));
+    }
+
+    [Theory]
+    [InlineData("abcd", true)]
+    [InlineData("a", false)]
+    [InlineData("ab", false)]
+    [InlineData("abc", false)]
+    public void StarAOrBFollowedByCd(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "*(a|b)cd", _opts));
+    }
+
+    [Theory]
+    [InlineData("a.c", true)]
+    public void PosixWithExtglob_PlusAlphaDot(string input, bool expected)
+    {
+        var opts = new GlobbingOptions { Posix = true };
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "+([[:alpha:].])", opts));
+    }
+
+    [Theory]
+    [InlineData("a.c", true)]
+    public void PosixWithExtglob_StarAlphaDot(string input, bool expected)
+    {
+        var opts = new GlobbingOptions { Posix = true };
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "*([[:alpha:].])", opts));
+    }
+
+    [Theory]
+    [InlineData("a.b", true)]
+    [InlineData("a,b", true)]
+    [InlineData("a:b", true)]
+    [InlineData("a-b", true)]
+    [InlineData("a;b", true)]
+    [InlineData("a b", true)]
+    [InlineData("a_b", true)]
+    public void PosixWithExtglob_AtNotAlnum(string input, bool expected)
+    {
+        var opts = new GlobbingOptions { Posix = true };
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "a@([^[:alnum:]])b", opts));
+    }
+
+    [Theory]
+    [InlineData("a.b", true)]
+    [InlineData("a,b", true)]
+    [InlineData("a:b", true)]
+    [InlineData("a-b", true)]
+    [InlineData("a;b", true)]
+    [InlineData("a b", true)]
+    [InlineData("a_b", true)]
+    public void ExtglobWithCharClass_AtPunctuation(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "a@([-.,:; _])b", _opts));
+    }
+
+    [Theory]
+    [InlineData("a.b", true)]
+    [InlineData("a,b", false)]
+    [InlineData("a-b", false)]
+    public void ExtglobWithCharClass_AtDot(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "a@([.])b", _opts));
+    }
+
+    [Theory]
+    [InlineData("a.b", false)]
+    [InlineData("a,b", true)]
+    [InlineData("a:b", true)]
+    [InlineData("a-b", true)]
+    public void ExtglobWithCharClass_AtNotDot(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "a@([^.])b", _opts));
+    }
+
+    [Theory]
+    [InlineData("aac", false)]
+    public void StarAtABAtC(string input, bool expected)
+    {
+        Assert.Equal(expected, GlobMatcher.IsMatch(input, "*(@(a))b@(c)", _opts));
     }
 
 }

@@ -18,7 +18,7 @@ public class MaliciousTests
     [Fact]
     public void ShouldThrowErrorWhenPatternIsTooLong()
     {
-        string longPattern = new('*', 65537);
+        string longPattern = new('*', Constants.c_MaxLength + 1);
         Assert.Throws<ArgumentException>(() => GlobMatcher.IsMatch("foo", longPattern));
     }
 
@@ -33,21 +33,19 @@ public class MaliciousTests
     [Fact]
     public void ShouldSupportLongEscapeSequences()
     {
-        // Test with reasonably long escape sequences within limits
+        // Long escape sequence within the length limit must compile and run without throwing.
         string escapeSequence = new string('\\', 100) + "A";
-        // Should not throw, and should handle the pattern
-        bool result = GlobMatcher.IsMatch("A", "!" + escapeSequence);
-        // The result depends on implementation, just verify it doesn't throw
-        Assert.True(result || !result);
+        var ex = Record.Exception(() => GlobMatcher.IsMatch("A", "!" + escapeSequence));
+        Assert.Null(ex);
     }
 
     [Fact]
     public void ShouldHandleNegationWithLongEscapeSequences()
     {
         string escapeSequence = new string('\\', 100) + "A";
-        // Test negation patterns with long escape sequences
-        bool result = GlobMatcher.IsMatch("A", "!(" + escapeSequence + ")");
-        Assert.True(result || !result);
+        // Negation extglob with a long escape sequence must compile and run without throwing.
+        var ex = Record.Exception(() => GlobMatcher.IsMatch("A", "!(" + escapeSequence + ")"));
+        Assert.Null(ex);
     }
 
 }

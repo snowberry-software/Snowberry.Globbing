@@ -95,10 +95,7 @@ public class RealWorldWorkflowTests
 
         foreach (string testFile in projectFiles["test"])
         {
-            // The pattern **/*.{test,spec}.{ts,tsx} should match these
-            bool matches = testFiles(testFile);
-            // Skip this assertion for now as the pattern format might not be supported as expected
-            // Assert.True(matches, $"Expected test file '{testFile}' to match test pattern");
+            Assert.True(testFiles(testFile), $"Expected test file '{testFile}' to match test pattern");
         }
 
         foreach (string configFile in projectFiles["config"])
@@ -331,6 +328,7 @@ public class RealWorldWorkflowTests
 
             Assert.Equal(expected.isBlog, blogPosts(file));
             Assert.Equal(expected.isDraft, drafts(file));
+            Assert.Equal(expected.isPublished, published(file));
         }
     }
 
@@ -381,6 +379,7 @@ public class RealWorldWorkflowTests
 
             Assert.Equal(expected.isTrans, translationFiles(file));
             Assert.Equal(expected.isEn, englishFiles(file));
+            Assert.Equal(expected.isRegional, regionalFiles(file));
         }
     }
 }

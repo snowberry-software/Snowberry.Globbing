@@ -97,16 +97,22 @@ public class GlobbingOptionsTests
     [Fact]
     public void ExpandRange_WhenSet_UsesCustomHandler()
     {
+        bool invoked = false;
         var options = new GlobbingOptions
         {
             ExpandRange = (args, opts) =>
             {
-                return "a|b|c";
+                invoked = true;
+                return "(a|b|c)";
             }
         };
 
         var matcher = GlobMatcher.Create("file-{a..c}.txt", options);
-        Assert.NotNull(matcher);
+
+        // The custom handler must be invoked for the {a..c} range and drive matching.
+        Assert.True(invoked);
+        Assert.True(matcher("file-a.txt"));
+        Assert.False(matcher("file-d.txt"));
     }
 
     [Fact]
@@ -479,7 +485,8 @@ public class GlobbingOptionsTests
         var options = new GlobbingOptions { Posix = true };
         var matcher = GlobMatcher.Create("[[:alnum:]]*", options);
 
-        Assert.NotNull(matcher);
+        Assert.True(matcher("abc123"));
+        Assert.False(matcher("!!!"));
     }
 
     [Fact]

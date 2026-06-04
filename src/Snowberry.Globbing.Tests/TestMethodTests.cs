@@ -47,15 +47,17 @@ public class TestMethodTests
         var result = GlobMatcher.Test("test.js", regex, options);
 
         Assert.Equal("TEST.JS", result.Output);
+        // Uppercased output no longer matches the case-sensitive "*.js" pattern.
+        Assert.False(result.IsMatch);
     }
 
     [Fact]
-    public void Test_WithWindowsOption_ConvertsSlashes()
+    public void Test_WithWindowsOption_ConvertsBackslashesToForwardSlashes()
     {
         var regex = GlobMatcher.MakeRe("*.js");
         var options = new GlobbingOptions { Windows = true };
-        var result = GlobMatcher.Test("test.js", regex, options);
+        var result = GlobMatcher.Test("foo\\bar.js", regex, options);
 
-        Assert.True(result.IsMatch);
+        Assert.Equal("foo/bar.js", result.Output);
     }
 }

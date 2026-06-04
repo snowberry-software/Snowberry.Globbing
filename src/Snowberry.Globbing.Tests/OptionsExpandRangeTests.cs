@@ -13,7 +13,7 @@ public class OptionsExpandRangeTests
     [InlineData("b", "{a,b,c}", true)]
     [InlineData("c", "{a,b,c}", true)]
     [InlineData("d", "{a,b,c}", false)]
-    public void ExpandRange_BasicBraces(string input, string pattern, bool expected)
+    public void BraceList_MatchesEachAlternative(string input, string pattern, bool expected)
     {
         Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
     }

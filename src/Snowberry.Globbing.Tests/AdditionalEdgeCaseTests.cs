@@ -658,38 +658,6 @@ public class AdditionalEdgeCaseTests
         Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
     }
 
-    [Fact]
-    public void Malicious_ShouldBeAbleToAcceptObjectInstanceProperties()
-    {
-        Assert.True(GlobMatcher.IsMatch("constructor", "constructor"), "valid match");
-        Assert.True(GlobMatcher.IsMatch("__proto__", "__proto__"), "valid match");
-        Assert.True(GlobMatcher.IsMatch("toString", "toString"), "valid match");
-    }
-
-    [Fact]
-    public void Malicious_ShouldThrowAnErrorWhenPatternIsTooLong()
-    {
-        string longPattern = new('*', 65537);
-        Assert.Throws<ArgumentException>(() => GlobMatcher.IsMatch("foo", longPattern));
-    }
-
-    [Fact]
-    public void Malicious_ShouldAllowMaxBytesToBeCustomized()
-    {
-        string pattern = "!(" + new string('\\', 500) + "A)";
-        Assert.Throws<ArgumentException>(() => GlobMatcher.IsMatch("A", pattern, new GlobbingOptions { MaxLength = 499 }));
-    }
-
-    [Fact]
-    public void Malicious_ShouldSupportLongEscapeSequencesWithinLimits()
-    {
-        // Within limits test
-        string escapePattern = "!(" + new string('\\', 1000) + "A)";
-        bool result = GlobMatcher.IsMatch("A", escapePattern);
-        // We don't assert a specific value - just that it doesn't crash
-        Assert.True(true);
-    }
-
     [Theory]
     [InlineData("1/2", "(*)/\\1", false)]
     [InlineData("1/1", "(*)/\\1", true)]
