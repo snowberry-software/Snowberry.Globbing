@@ -6,27 +6,27 @@ namespace Snowberry.Globbing.Parsing;
 internal enum ExtglobType
 {
     /// <summary>
-    /// Question mark extglob: ?(pattern) - matches zero or one occurrence.
+    /// Question mark extglob: <c>?(pattern)</c> - matches zero or one occurrence.
     /// </summary>
     Qmark,
 
     /// <summary>
-    /// Negation extglob: !(pattern) - matches anything except the pattern.
+    /// Negation extglob: <c>!(pattern)</c> - matches anything except the pattern.
     /// </summary>
     Negate,
 
     /// <summary>
-    /// Plus extglob: +(pattern) - matches one or more occurrences.
+    /// Plus extglob: <c>+(pattern)</c> - matches one or more occurrences.
     /// </summary>
     Plus,
 
     /// <summary>
-    /// Star extglob: *(pattern) - matches zero or more occurrences.
+    /// Star extglob: <c>*(pattern)</c> - matches zero or more occurrences.
     /// </summary>
     Star,
 
     /// <summary>
-    /// At extglob: @(pattern) - matches exactly one occurrence.
+    /// At extglob: <c>@(pattern)</c> - matches exactly one occurrence.
     /// </summary>
     At
 }

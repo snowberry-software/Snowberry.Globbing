@@ -2,7 +2,6 @@ namespace Snowberry.Globbing.Tokens;
 
 /// <summary>
 /// Defines the type of token in a parsed glob pattern.
-/// Using an enum provides better performance and type safety compared to string-based types.
 /// </summary>
 public enum TokenType
 {

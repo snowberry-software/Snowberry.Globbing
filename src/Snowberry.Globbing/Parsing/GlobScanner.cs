@@ -8,8 +8,7 @@ using static Snowberry.Globbing.Constants;
 namespace Snowberry.Globbing.Parsing;
 
 /// <summary>
-/// Instance-based scanner for quickly analyzing glob patterns and extracting structural information.
-/// Optimized for performance using spans, pooling, and minimal allocations.
+/// Scanner for analyzing glob patterns and extracting structural information.
 /// </summary>
 public class GlobScanner
 {

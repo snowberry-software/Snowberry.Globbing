@@ -20,12 +20,21 @@ public class RegexGenerationTests
     }
 
     [Fact]
-    public void MakeRe_ReturnsCompiledRegex()
+    public void MakeRe_DefaultsToInterpretedRegex()
     {
         var regex = GlobMatcher.MakeRe("*.js");
 
         Assert.NotNull(regex);
-        Assert.Contains(RegexOptions.Compiled, new[] { regex.Options & RegexOptions.Compiled });
+        Assert.False(regex.Options.HasFlag(RegexOptions.Compiled));
+    }
+
+    [Fact]
+    public void MakeRe_WithCompiledRegexOption_ReturnsCompiledRegex()
+    {
+        var regex = GlobMatcher.MakeRe("*.js", new GlobbingOptions { CompiledRegex = true });
+
+        Assert.NotNull(regex);
+        Assert.True(regex.Options.HasFlag(RegexOptions.Compiled));
     }
 
     [Theory]

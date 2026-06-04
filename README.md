@@ -169,6 +169,7 @@ The `GlobbingOptions` class provides extensive configuration:
 | `BaseName`   | `false` | Match patterns without slashes against basename only        |
 | `Bash`       | `false` | Follow bash matching rules more strictly                    |
 | `Capture`    | `false` | Use capturing groups in generated regex                     |
+| `CompiledRegex` | `false` | Compile the regex with `RegexOptions.Compiled` (see [Performance](#performance)) |
 | `Contains`   | `false` | Allow pattern to match any substring                        |
 | `Dot`        | `false` | Allow patterns to match dotfiles                            |
 | `NoCase`     | `false` | Enable case-insensitive matching                            |
@@ -180,5 +181,16 @@ The `GlobbingOptions` class provides extensive configuration:
 | `Windows`    | `null`  | Treat backslashes as path separators (auto-detects if null) |
 | `Ignore`     | `null`  | Array of patterns to exclude from matches                   |
 | `MaxLength`  | `65536` | Maximum pattern length (ReDoS protection)                   |
+
+## Performance
+
+- **Interpreted regex by default.** Generated regexes are interpreted (`CompiledRegex = false`). For the typical case of building a matcher and running it over a directory of paths, this is far faster end-to-end and allocates less, because `RegexOptions.Compiled` pays a large one-time IL-generation cost (hundreds of microseconds to several milliseconds per pattern) on the first match. Set `CompiledRegex = true` for a matcher you reuse across very many inputs (roughly tens of thousands or more), where the faster per-match speed repays that cost. Matching results are identical either way.
+
+  ```csharp
+  // Hot matcher reused across a very large number of inputs:
+  var matcher = GlobMatcher.Create("**/*.cs", new GlobbingOptions { CompiledRegex = true });
+  ```
+
+- **Reuse matchers.** `IsMatch(str, pattern)` compiles the pattern on every call. When matching many inputs against the same pattern, create a matcher once with `Create(...)` and reuse it instead of calling `IsMatch(...)` in a loop.
 
 See the unit tests in the repository for comprehensive examples of all options and edge cases.

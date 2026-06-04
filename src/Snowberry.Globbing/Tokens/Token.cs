@@ -34,7 +34,7 @@ public partial class Token
     private TokenFlags _flags;
 
     /// <summary>
-    /// Gets or sets the token type using a strongly-typed enum for better performance and type safety.
+    /// Gets or sets the token type.
     /// </summary>
     /// <value>A <see cref="TokenType"/> enum value describing the token type.</value>
     public TokenType Type { get; set; }

@@ -149,7 +149,7 @@ public static class Utils
     }
 
     /// <summary>
-    /// Get basename from a path (optimized to avoid unnecessary allocations).
+    /// Gets the basename (filename with extension) from a path.
     /// </summary>
     /// <param name="path">The file path to extract the basename from.</param>
     /// <param name="windows">If <see langword="true"/>, treats both forward and backslashes as path separators; otherwise, only forward slashes.</param>

@@ -33,6 +33,16 @@ public class GlobbingOptions
     public bool Capture { get; set; }
 
     /// <summary>
+    /// Compile the generated regex with <see cref="System.Text.RegularExpressions.RegexOptions.Compiled"/>.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to <see langword="false"/>. Set to <see langword="true"/> for a matcher that is
+    /// reused across a large number of inputs. Matching results are identical regardless of this
+    /// setting.
+    /// </remarks>
+    public bool CompiledRegex { get; set; }
+
+    /// <summary>
     /// Allow the pattern to match any part of the string (substring match).
     /// </summary>
     /// <remarks>
@@ -327,6 +337,7 @@ public class GlobbingOptions
             BaseName = BaseName,
             Bash = Bash,
             Capture = Capture,
+            CompiledRegex = CompiledRegex,
             Contains = Contains,
             Cwd = Cwd,
             Debug = Debug,

@@ -4,8 +4,7 @@ using System.Threading;
 namespace Snowberry.Globbing.Utilities;
 
 /// <summary>
-/// Generic object pool for reducing allocations using a simple array-based stack.
-/// Thread-safe for concurrent access.
+/// Thread-safe generic object pool that lends and reclaims reusable instances.
 /// </summary>
 /// <typeparam name="T">The type of objects to pool.</typeparam>
 internal class ObjectPool<T> where T : class, new()

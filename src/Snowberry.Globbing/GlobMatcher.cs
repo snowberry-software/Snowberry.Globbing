@@ -33,8 +33,8 @@ public static partial class GlobMatcher
     /// </summary>
     /// <param name="globs">Array of glob patterns.</param>
     /// <param name="options">Optional matching options.</param>
-    /// <returns>A function that tests if strings match any of the patterns.</returns>
-    /// <exception cref="ArgumentException">Patterns array is null or empty.</exception>
+    /// <returns>A function that tests whether a string matches any of the patterns.</returns>
+    /// <exception cref="ArgumentException"><paramref name="globs"/> is <see langword="null"/> or empty.</exception>
     public static MatcherHandler Create(string[] globs, GlobbingOptions? options = null)
     {
         if (globs == null || globs.Length == 0)
@@ -47,12 +47,12 @@ public static partial class GlobMatcher
     }
 
     /// <summary>
-    /// Creates a matcher function from multiple glob patterns (OR logic).
+    /// Creates a matcher function from a single glob pattern.
     /// </summary>
-    /// <param name="globs">Array of glob patterns.</param>
+    /// <param name="glob">The glob pattern.</param>
     /// <param name="options">Optional matching options.</param>
-    /// <returns>A function that tests if strings match any of the patterns.</returns>
-    /// <exception cref="ArgumentException">Patterns array is null or empty.</exception>
+    /// <returns>A function that tests whether a string matches the pattern.</returns>
+    /// <exception cref="ArgumentException"><paramref name="glob"/> is <see langword="null"/> or empty.</exception>
     public static MatcherHandler Create(string glob, GlobbingOptions? options = null)
     {
         if (string.IsNullOrEmpty(glob))
@@ -62,14 +62,18 @@ public static partial class GlobMatcher
 
         var regex = MakeRe(glob, options);
 
-        MatcherHandler isIgnored = input => false;
+        MatcherHandler? isIgnored = null;
         if (options.Ignore != null && options.Ignore.Length > 0)
         {
             var ignoreOpts = options.GetIgnoreOptions();
             isIgnored = Create(options.Ignore, ignoreOpts);
         }
 
-        return input => MatchWithCallbacks(input, glob, regex, options, isIgnored);
+        // Per-matcher invariants computed once instead of on every match.
+        bool transformPosixSlashes = ShouldConvertToPosixSlashes(options);
+        var format = options.Format ?? (transformPosixSlashes ? Utils.ToPosixSlashes : null);
+
+        return input => MatchWithCallbacks(input, glob, regex, options, isIgnored, transformPosixSlashes, format);
     }
 
     /// <summary>
@@ -190,8 +194,9 @@ public static partial class GlobMatcher
     /// <remarks>The returned regular expression pattern may include anchors or negation based on the provided
     /// options and parse state. The pattern is suitable for use with .NET regular expression APIs.</remarks>
     /// <param name="state">The parse state containing the output pattern and negation flag to use when constructing the regular expression.</param>
-    /// <param name="options">The globbing options that influence how the regular expression is generated. If null, default options are used.</param>
+    /// <param name="options">The globbing options that influence how the regular expression is generated. If <see langword="null"/>, default options are used.</param>
     /// <returns>A string containing the generated regular expression pattern that reflects the provided parse state and options.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="state"/> is <see langword="null"/>.</exception>
     public static string GenerateRegex(ParseState state, GlobbingOptions? options = null)
     {
         _ = state ?? throw new ArgumentNullException(nameof(state));
@@ -210,9 +215,10 @@ public static partial class GlobMatcher
     /// <summary>
     /// Generates a regular expression pattern that matches the specified glob pattern.
     /// </summary>
-    /// <param name="input">The glob pattern to convert to a regular expression. Cannot be null or empty.</param>
-    /// <param name="options">An optional set of options that control globbing behavior. If null, default options are used.</param>
+    /// <param name="input">The glob pattern to convert to a regular expression.</param>
+    /// <param name="options">An optional set of options that control globbing behavior. If <see langword="null"/>, default options are used.</param>
     /// <returns>A string containing the regular expression pattern equivalent to the specified glob pattern.</returns>
+    /// <exception cref="ArgumentException"><paramref name="input"/> is <see langword="null"/> or empty.</exception>
     public static string GenerateRegex(string input, GlobbingOptions? options = null)
     {
         if (string.IsNullOrEmpty(input))
@@ -223,7 +229,12 @@ public static partial class GlobMatcher
         var parser = new GlobParser(options);
         var parsed = parser.Parse(input);
 
-        return GenerateRegex(parsed, options);
+        string source = GenerateRegex(parsed, options);
+
+        // GenerateRegex(state) reads only Output/Negated; the ParseState is discarded here.
+        parser.RecycleTokens();
+
+        return source;
     }
 
     /// <summary>
@@ -231,7 +242,8 @@ public static partial class GlobMatcher
     /// </summary>
     /// <param name="state">The parsed pattern state.</param>
     /// <param name="options">Optional compilation options.</param>
-    /// <returns>A compiled <see cref="Regex"/>, or <see langword="null"/> if <paramref name="returnOutput"/> is <see langword="true"/>.</returns>
+    /// <returns>A compiled <see cref="Regex"/> built from the regular expression generated for <paramref name="state"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="state"/> is <see langword="null"/>.</exception>
     public static Regex CompileRe(ParseState state, GlobbingOptions? options = null)
     {
         _ = state ?? throw new ArgumentNullException(nameof(state));
@@ -247,8 +259,8 @@ public static partial class GlobMatcher
     /// </summary>
     /// <param name="input">The glob pattern (e.g., <c>"*.js"</c>, <c>"src/**/*.ts"</c>).</param>
     /// <param name="options">Optional regex generation options.</param>
-    /// <returns>A compiled <see cref="Regex"/> with <see cref="RegexOptions.Compiled"/> set.</returns>
-    /// <exception cref="ArgumentException">Pattern is null or empty.</exception>
+    /// <returns>A <see cref="Regex"/> compiled from the glob pattern. <see cref="RegexOptions.Compiled"/> is applied only when <see cref="GlobbingOptions.CompiledRegex"/> is <see langword="true"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="input"/> is <see langword="null"/> or empty.</exception>
     public static Regex MakeRe(string input, GlobbingOptions? options = null)
     {
         if (string.IsNullOrEmpty(input))
@@ -259,6 +271,10 @@ public static partial class GlobMatcher
         var parser = new GlobParser(options);
         var parsed = parser.Parse(input);
         var regex = CompileRe(parsed, options);
+
+        // Tokens are only needed to build parsed.Output (consumed by CompileRe above); the
+        // ParseState is discarded here, so recycle them for the next parse.
+        parser.RecycleTokens();
 
         return regex;
     }
@@ -275,7 +291,7 @@ public static partial class GlobMatcher
         {
             options ??= new GlobbingOptions();
 
-            var regexOptions = RegexOptions.Compiled;
+            var regexOptions = options.CompiledRegex ? RegexOptions.Compiled : RegexOptions.None;
 
             if (options.Flags != RegexFlags.None)
             {
@@ -319,13 +335,13 @@ public static partial class GlobMatcher
         string glob,
         Regex regex,
         GlobbingOptions opts,
-        MatcherHandler isIgnored)
+        MatcherHandler? isIgnored,
+        bool transformPosixSlashes,
+        FormatHandler? format)
     {
-        bool transformPosixSlashes = ShouldConvertToPosixSlashes(opts);
-
         bool hasCallbacks = opts.OnResult != null || opts.OnMatch != null || opts.OnIgnore != null;
 
-        if (isIgnored(input))
+        if (isIgnored != null && isIgnored(input))
         {
             if (opts.OnIgnore != null || opts.OnResult != null)
             {
@@ -348,13 +364,26 @@ public static partial class GlobMatcher
             return false;
         }
 
-        var format = opts.Format ?? (transformPosixSlashes ? Utils.ToPosixSlashes : null);
         bool directMatch = input == glob;
         string output = format != null ? format(input) : input;
 
         // NOTE(VNC): Check after formatting.
         if (!directMatch)
             directMatch = output == glob;
+
+        // Fast path: without callbacks only a boolean is needed, so avoid allocating a
+        // Match object. regex.Match allocates a Match on success (returns the shared
+        // Match.Empty singleton on failure); regex.IsMatch allocates nothing.
+        if (!hasCallbacks)
+        {
+            if (directMatch)
+                return true;
+
+            if (opts.BaseName)
+                return MatchBase(output, regex, !transformPosixSlashes);
+
+            return !string.IsNullOrEmpty(output) && regex.IsMatch(output);
+        }
 
         (bool IsMatch, Match? Match, string Output) result;
         if (directMatch)
@@ -371,41 +400,42 @@ public static partial class GlobMatcher
             result = TestDirectly(output, regex);
         }
 
-        if (hasCallbacks)
+        var matchResult = new MatchResult
         {
-            var matchResult = new MatchResult
-            {
-                Glob = glob,
-                Regex = regex,
-                TransformToPosixSlashes = transformPosixSlashes,
-                Input = input,
-                Output = result.Output,
-                Match = result.Match,
-                IsMatch = result.IsMatch,
-                Options = opts
-            };
+            Glob = glob,
+            Regex = regex,
+            TransformToPosixSlashes = transformPosixSlashes,
+            Input = input,
+            Output = result.Output,
+            Match = result.Match,
+            IsMatch = result.IsMatch,
+            Options = opts
+        };
 
-            opts.OnResult?.Invoke(matchResult);
-
-            if (!result.IsMatch)
-                return false;
-
-            if (isIgnored(input))
-            {
-                opts.OnIgnore?.Invoke(matchResult);
-                return false;
-            }
-
-            opts.OnMatch?.Invoke(matchResult);
-            return true;
-        }
+        opts.OnResult?.Invoke(matchResult);
 
         if (!result.IsMatch)
             return false;
 
+        if (isIgnored != null && isIgnored(input))
+        {
+            opts.OnIgnore?.Invoke(matchResult);
+            return false;
+        }
+
+        opts.OnMatch?.Invoke(matchResult);
         return true;
     }
 
+    /// <summary>
+    /// Tests an input string directly against a compiled regex, without any path formatting.
+    /// </summary>
+    /// <param name="input">The string to test.</param>
+    /// <param name="regex">The compiled regex to test against.</param>
+    /// <returns>
+    /// A tuple containing the match status, the <see cref="Match"/> object (or <see langword="null"/> when
+    /// <paramref name="input"/> is <see langword="null"/> or empty), and the tested input string.
+    /// </returns>
     public static (bool IsMatch, Match? Match, string Output) TestDirectly(
         string input,
         Regex regex)
@@ -417,7 +447,15 @@ public static partial class GlobMatcher
         return (match.Success, match, input);
     }
 
-
+    /// <summary>
+    /// Determines whether input paths should have backslashes converted to forward slashes for the given options.
+    /// </summary>
+    /// <param name="options">The matching options, or <see langword="null"/> to decide based on the current operating system.</param>
+    /// <returns>
+    /// <see langword="true"/> if backslashes should be converted to forward slashes; otherwise, <see langword="false"/>.
+    /// When <paramref name="options"/> or <see cref="GlobbingOptions.Windows"/> is <see langword="null"/>, the current
+    /// operating system determines the result.
+    /// </returns>
     public static bool ShouldConvertToPosixSlashes(GlobbingOptions? options)
     {
         if (options == null || options.Windows == null)

@@ -129,6 +129,7 @@ public partial class GlobParser
     /// </summary>
     /// <param name="input">The glob pattern to parse.</param>
     /// <returns>The resulting parse state containing the generated regex pattern.</returns>
+    /// <exception cref="ArgumentException"><paramref name="input"/> is <see langword="null"/> or empty, or its length exceeds <see cref="GlobbingOptions.MaxLength"/>.</exception>
     public ParseState Parse(string input)
     {
         if (string.IsNullOrEmpty(input))
@@ -221,6 +222,25 @@ public partial class GlobParser
         token.Value = value;
         token.Output = output;
         return token;
+    }
+
+    /// <summary>
+    /// Returns this parse's tokens to the shared pool so a subsequent parse can reuse them
+    /// instead of allocating fresh <see cref="Token"/> instances.
+    /// </summary>
+    /// <remarks>
+    /// Only safe when the produced <see cref="ParseState"/> is discarded without its
+    /// <see cref="ParseState.Tokens"/> being read again, as in the internal compile pipeline that
+    /// consumes only <see cref="ParseState.Output"/>. Never call when a <see cref="ParseState"/>
+    /// is handed back to a caller (the public <see cref="Parse(string)"/> API), because recycled
+    /// tokens may be re-rented and mutated by a later parse.
+    /// </remarks>
+    internal void RecycleTokens()
+    {
+        for (int i = 0; i < _tokens.Count; i++)
+            s_TokenPool.Return(_tokens[i]);
+
+        _tokens.Clear();
     }
 
     private ParseState ParseFastPath()
@@ -1323,6 +1343,7 @@ public partial class GlobParser
                     var subParser = new GlobParser(subOptions);
                     var subParsed = subParser.Parse(remaining);
                     output = token.Close = string.Concat(")", subParsed.Output, ")", extglobStar, ")");
+                    subParser.RecycleTokens();
                 }
             }
 
