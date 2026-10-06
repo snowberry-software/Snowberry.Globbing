@@ -12,21 +12,6 @@ namespace Snowberry.Globbing.Compilation;
 internal static class GlobCompiler
 {
     /// <summary>
-    /// Compiles <paramref name="pattern"/> to a regex source, anchored to the whole input unless <see cref="GlobOptions.MatchSubstring"/> is set.
-    /// </summary>
-    /// <param name="pattern">The non-empty glob pattern.</param>
-    /// <param name="options">The options.</param>
-    /// <param name="fastPaths"><see langword="true"/> to compile common patterns such as <c>*.js</c> to their compact forms and treat patterns without structural syntax as plain text with wildcards.</param>
-    /// <returns>The regex source.</returns>
-    /// <exception cref="GlobParseException"><paramref name="pattern"/> is too long, too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
-    public static string CompileRegexSource(string pattern, GlobOptions options, bool fastPaths = true)
-    {
-        pattern = Prepare(pattern, options);
-        int offset = PatternPrefix.BodyStart(pattern.AsSpan(), options, out bool negated);
-        return EmitSource(pattern, offset, negated, options, fastPaths);
-    }
-
-    /// <summary>
     /// Compiles <paramref name="pattern"/> to a regex source, as <see cref="CompileRegexSource"/> does with fast paths, plus the
     /// aids that let a matcher avoid that regex: a <see cref="LiteralHint"/> and, for a negated pattern, the source of its positive body.
     /// </summary>
@@ -63,26 +48,46 @@ internal static class GlobCompiler
     }
 
     /// <summary>
-    /// Replaces redundant spellings of simpler patterns (<c>***</c>, <c>**/**</c> and <c>**/**/**</c>) and checks the pattern length.
+    /// Compiles <paramref name="pattern"/> to a regex source, anchored to the whole input unless <see cref="GlobOptions.MatchSubstring"/> is set.
     /// </summary>
-    /// <param name="pattern">The glob pattern.</param>
-    /// <param name="options">The options, which supply <see cref="GlobOptions.MaxPatternLength"/>.</param>
-    /// <returns>The pattern to compile, which is <paramref name="pattern"/> unless it is a redundant spelling.</returns>
-    /// <exception cref="GlobParseException"><paramref name="pattern"/> is longer than <see cref="GlobOptions.MaxPatternLength"/>.</exception>
-    private static string Prepare(string pattern, GlobOptions options)
+    /// <param name="pattern">The non-empty glob pattern.</param>
+    /// <param name="options">The options.</param>
+    /// <param name="fastPaths"><see langword="true"/> to compile common patterns such as <c>*.js</c> to their compact forms and treat patterns without structural syntax as plain text with wildcards.</param>
+    /// <returns>The regex source.</returns>
+    /// <exception cref="GlobParseException"><paramref name="pattern"/> is too long, too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
+    public static string CompileRegexSource(string pattern, GlobOptions options, bool fastPaths = true)
     {
-        pattern = pattern switch
+        pattern = Prepare(pattern, options);
+        int offset = PatternPrefix.BodyStart(pattern.AsSpan(), options, out bool negated);
+        return EmitSource(pattern, offset, negated, options, fastPaths);
+    }
+
+    /// <summary>
+    /// Writes the regex for <paramref name="pattern"/>, without anchors or negation, to <paramref name="sb"/>.
+    /// </summary>
+    /// <param name="pattern">The pattern text, such as a body without a leading negation or <c>./</c>, or the text after a negated extended glob.</param>
+    /// <param name="options">The options.</param>
+    /// <param name="source">The original pattern, reported in exceptions.</param>
+    /// <param name="offset">The position of <paramref name="pattern"/> in <paramref name="source"/>.</param>
+    /// <param name="sb">The builder that receives the regex, including the optional trailing separator that <see cref="RegexEmitter.EmitRoot"/> or the shapes add.</param>
+    /// <param name="allowShapes"><see langword="true"/> to compile common patterns such as <c>*.js</c> to their compact forms.</param>
+    /// <param name="allowPlain"><see langword="true"/> to treat a pattern without structural syntax as plain text with wildcards.</param>
+    /// <exception cref="GlobParseException">The pattern is too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
+    public static void EmitBody(ReadOnlySpan<char> pattern, GlobOptions options, string source, int offset, ref ValueStringBuilder sb, bool allowShapes, bool allowPlain)
+    {
+        if (allowShapes && TryEmitShape(pattern, options, ref sb))
+            return;
+
+        bool plain = allowPlain && IsPlain(pattern);
+        var tree = GlobSyntaxTree.Parse(pattern, options, source, offset, plain);
+        try
         {
-            "***" => "*",
-            "**/**" or "**/**/**" => "**",
-            _ => pattern,
-        };
-
-        int max = options.MaxPatternLength;
-        if (pattern.Length > max)
-            throw new GlobParseException(pattern, GlobParseError.PatternTooLong, max, $"The pattern is {pattern.Length} characters long, which exceeds the maximum of {max}.");
-
-        return pattern;
+            new RegexEmitter(tree.Nodes, pattern, options, source, offset, plain).EmitRoot(tree.Root, ref sb);
+        }
+        finally
+        {
+            tree.Dispose();
+        }
     }
 
     /// <summary>
@@ -133,34 +138,6 @@ internal static class GlobCompiler
     }
 
     /// <summary>
-    /// Writes the regex for <paramref name="pattern"/>, without anchors or negation, to <paramref name="sb"/>.
-    /// </summary>
-    /// <param name="pattern">The pattern text, such as a body without a leading negation or <c>./</c>, or the text after a negated extended glob.</param>
-    /// <param name="options">The options.</param>
-    /// <param name="source">The original pattern, reported in exceptions.</param>
-    /// <param name="offset">The position of <paramref name="pattern"/> in <paramref name="source"/>.</param>
-    /// <param name="sb">The builder that receives the regex, including the optional trailing separator that <see cref="RegexEmitter.EmitRoot"/> or the shapes add.</param>
-    /// <param name="allowShapes"><see langword="true"/> to compile common patterns such as <c>*.js</c> to their compact forms.</param>
-    /// <param name="allowPlain"><see langword="true"/> to treat a pattern without structural syntax as plain text with wildcards.</param>
-    /// <exception cref="GlobParseException">The pattern is too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
-    public static void EmitBody(ReadOnlySpan<char> pattern, GlobOptions options, string source, int offset, ref ValueStringBuilder sb, bool allowShapes, bool allowPlain)
-    {
-        if (allowShapes && TryEmitShape(pattern, options, ref sb))
-            return;
-
-        bool plain = allowPlain && IsPlain(pattern);
-        var tree = GlobSyntaxTree.Parse(pattern, options, source, offset, plain);
-        try
-        {
-            new RegexEmitter(tree.Nodes, pattern, options, source, offset, plain).EmitRoot(tree.Root, ref sb);
-        }
-        finally
-        {
-            tree.Dispose();
-        }
-    }
-
-    /// <summary>
     /// Determines whether <paramref name="pattern"/> has no structural syntax: no separator, group, bracket, brace, quote or
     /// escape, and no leading <c>*</c> or <c>!</c>. In such a pattern <c>|</c> is literal and no trailing separator is matched.
     /// </summary>
@@ -169,6 +146,29 @@ internal static class GlobCompiler
     private static bool IsPlain(ReadOnlySpan<char> pattern)
     {
         return !pattern.IsEmpty && pattern[0] is not ('*' or '!') && pattern.IndexOfAny("/()[]{}\"\\".AsSpan()) < 0;
+    }
+
+    /// <summary>
+    /// Replaces redundant spellings of simpler patterns (<c>***</c>, <c>**/**</c> and <c>**/**/**</c>) and checks the pattern length.
+    /// </summary>
+    /// <param name="pattern">The glob pattern.</param>
+    /// <param name="options">The options, which supply <see cref="GlobOptions.MaxPatternLength"/>.</param>
+    /// <returns>The pattern to compile, which is <paramref name="pattern"/> unless it is a redundant spelling.</returns>
+    /// <exception cref="GlobParseException"><paramref name="pattern"/> is longer than <see cref="GlobOptions.MaxPatternLength"/>.</exception>
+    private static string Prepare(string pattern, GlobOptions options)
+    {
+        pattern = pattern switch
+        {
+            "***" => "*",
+            "**/**" or "**/**/**" => "**",
+            _ => pattern,
+        };
+
+        int max = options.MaxPatternLength;
+        if (pattern.Length > max)
+            throw new GlobParseException(pattern, GlobParseError.PatternTooLong, max, $"The pattern is {pattern.Length} characters long, which exceeds the maximum of {max}.");
+
+        return pattern;
     }
 
     /// <summary>
@@ -271,5 +271,4 @@ internal static class GlobCompiler
             sb.Append(")?");
         }
     }
-
 }

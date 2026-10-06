@@ -5,14 +5,13 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class ComplexEdgeCaseTests
 {
-    [Fact]
-    public void VeryLongPattern_ShouldHandleCorrectly()
+    [Theory]
+    // CaseSensitivityWithComplexPatterns (case-sensitive / default options)
+    [InlineData("Test-A.js", "Test-[A-Z].js", true)]
+    [InlineData("test-a.js", "Test-[A-Z].js", false)]
+    public void CaseSensitive_MatchCorrectly(string input, string pattern, bool expected)
     {
-        string pattern = string.Join("/", Enumerable.Repeat("*", 100)) + "/*.js";
-        var matcher = new Glob(pattern);
-
-        matcher.Should().NotBeNull();
-        matcher.IsMatch("test.js").Should().BeFalse();
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -78,6 +77,17 @@ public class ComplexEdgeCaseTests
     }
 
     [Theory]
+    [InlineData(".config/settings.json", "**/*", true, true)]
+    [InlineData("src/.hidden/file.js", "**/*", true, true)]
+    [InlineData(".config/settings.json", "**/*", false, false)]
+    [InlineData("src/.hidden/file.js", "**/*", false, false)]
+    public void DotOption_MatchCorrectly(string input, string pattern, bool matchDotFiles, bool expected)
+    {
+        var options = new GlobOptions { MatchDotFiles = matchDotFiles };
+        Glob.IsMatch(input, pattern, options).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("*", "", false)]
     [InlineData("**", "", false)]
     [InlineData("?", "", false)]
@@ -86,36 +96,6 @@ public class ComplexEdgeCaseTests
     public void EmptyInput_NeverMatches(string pattern, string input, bool expected)
     {
         new Glob(pattern).IsMatch(input).Should().Be(expected);
-    }
-
-    [Theory]
-    // ComplexWindowsPaths_WithMixedSeparators
-    [InlineData(@"src\components\Button.js", "src/**/*.js", true)]
-    [InlineData("src/components/Button.js", "src/**/*.js", true)]
-    [InlineData(@"test\app.js", "src/**/*.js", false)]
-    public void WindowsOption_MatchCorrectly(string input, string pattern, bool expected)
-    {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
-        Glob.IsMatch(input, pattern, options).Should().Be(expected);
-    }
-
-    [Theory]
-    // CaseSensitivityWithComplexPatterns (case-sensitive / default options)
-    [InlineData("Test-A.js", "Test-[A-Z].js", true)]
-    [InlineData("test-a.js", "Test-[A-Z].js", false)]
-    public void CaseSensitive_MatchCorrectly(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    // CaseSensitivityWithComplexPatterns (case-insensitive)
-    [InlineData("test-a.js", "Test-[A-Z].js", true)]
-    [InlineData("TEST-A.JS", "Test-[A-Z].js", true)]
-    public void NoCaseOption_MatchCorrectly(string input, string pattern, bool expected)
-    {
-        var options = new GlobOptions { IgnoreCase = true };
-        Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 
     [Fact]
@@ -137,13 +117,33 @@ public class ComplexEdgeCaseTests
     }
 
     [Theory]
-    [InlineData(".config/settings.json", "**/*", true, true)]
-    [InlineData("src/.hidden/file.js", "**/*", true, true)]
-    [InlineData(".config/settings.json", "**/*", false, false)]
-    [InlineData("src/.hidden/file.js", "**/*", false, false)]
-    public void DotOption_MatchCorrectly(string input, string pattern, bool matchDotFiles, bool expected)
+    // CaseSensitivityWithComplexPatterns (case-insensitive)
+    [InlineData("test-a.js", "Test-[A-Z].js", true)]
+    [InlineData("TEST-A.JS", "Test-[A-Z].js", true)]
+    public void NoCaseOption_MatchCorrectly(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { MatchDotFiles = matchDotFiles };
+        var options = new GlobOptions { IgnoreCase = true };
+        Glob.IsMatch(input, pattern, options).Should().Be(expected);
+    }
+
+    [Fact]
+    public void VeryLongPattern_ShouldHandleCorrectly()
+    {
+        string pattern = string.Join("/", Enumerable.Repeat("*", 100)) + "/*.js";
+        var matcher = new Glob(pattern);
+
+        matcher.Should().NotBeNull();
+        matcher.IsMatch("test.js").Should().BeFalse();
+    }
+
+    [Theory]
+    // ComplexWindowsPaths_WithMixedSeparators
+    [InlineData(@"src\components\Button.js", "src/**/*.js", true)]
+    [InlineData("src/components/Button.js", "src/**/*.js", true)]
+    [InlineData(@"test\app.js", "src/**/*.js", false)]
+    public void WindowsOption_MatchCorrectly(string input, string pattern, bool expected)
+    {
+        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 }

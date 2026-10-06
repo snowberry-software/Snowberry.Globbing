@@ -13,9 +13,9 @@ namespace Snowberry.Globbing.Compilation;
 /// </remarks>
 internal sealed class LiteralHint
 {
+    private readonly string? _contains;
     private readonly string? _prefix;
     private readonly string? _suffix;
-    private readonly string? _contains;
     private readonly bool _windowsSeparators;
 
     /// <summary>
@@ -141,6 +141,16 @@ internal sealed class LiteralHint
     }
 
     /// <summary>
+    /// Determines whether <paramref name="c"/> keeps its literal meaning under <see cref="RegexOptions.IgnorePatternWhitespace"/>.
+    /// </summary>
+    /// <param name="c">The character.</param>
+    /// <returns><see langword="false"/> for whitespace and <c>#</c>; otherwise, <see langword="true"/>.</returns>
+    private static bool IsVerbatim(char c)
+    {
+        return c != '#' && !char.IsWhiteSpace(c);
+    }
+
+    /// <summary>
     /// Determines whether <paramref name="input"/> has the required literal text.
     /// </summary>
     /// <param name="input">The input passed to the regex.</param>
@@ -171,16 +181,6 @@ internal sealed class LiteralHint
             return false;
 
         return _contains == null || input.IndexOf(_contains.AsSpan(), StringComparison.Ordinal) >= 0;
-    }
-
-    /// <summary>
-    /// Determines whether <paramref name="c"/> keeps its literal meaning under <see cref="RegexOptions.IgnorePatternWhitespace"/>.
-    /// </summary>
-    /// <param name="c">The character.</param>
-    /// <returns><see langword="false"/> for whitespace and <c>#</c>; otherwise, <see langword="true"/>.</returns>
-    private static bool IsVerbatim(char c)
-    {
-        return c != '#' && !char.IsWhiteSpace(c);
     }
 
     /// <summary>

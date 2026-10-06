@@ -33,6 +33,17 @@ internal static class PatternPrefix
     }
 
     /// <summary>
+    /// Reads a character without bounds failures.
+    /// </summary>
+    /// <param name="s">The text to read.</param>
+    /// <param name="i">The zero-based position.</param>
+    /// <returns>The character at <paramref name="i"/>, or <c>'\0'</c> if <paramref name="i"/> is past the end of <paramref name="s"/>.</returns>
+    private static char At(ReadOnlySpan<char> s, int i)
+    {
+        return i < s.Length ? s[i] : '\0';
+    }
+
+    /// <summary>
     /// Counts the leading <c>!</c> that negate the pattern; a <c>!</c> that opens <c>!(...)</c> is not counted.
     /// </summary>
     /// <remarks>
@@ -56,16 +67,5 @@ internal static class PatternPrefix
             count++;
 
         return count;
-    }
-
-    /// <summary>
-    /// Reads a character without bounds failures.
-    /// </summary>
-    /// <param name="s">The text to read.</param>
-    /// <param name="i">The zero-based position.</param>
-    /// <returns>The character at <paramref name="i"/>, or <c>'\0'</c> if <paramref name="i"/> is past the end of <paramref name="s"/>.</returns>
-    private static char At(ReadOnlySpan<char> s, int i)
-    {
-        return i < s.Length ? s[i] : '\0';
     }
 }

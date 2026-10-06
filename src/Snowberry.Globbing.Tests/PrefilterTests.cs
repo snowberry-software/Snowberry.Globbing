@@ -5,6 +5,22 @@ public class PrefilterTests
     private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
 
     [Theory]
+    [InlineData("ABC.JS", true)]
+    [InlineData("abc.js", true)]
+    public void IgnoreCase_MatchesAnyCase(string input, bool expected)
+    {
+        Glob.IsMatch(input, "*.js", s_Posix with { IgnoreCase = true }).Should().Be(expected);
+    }
+
+    [Fact]
+    public void IgnorePatternWhitespace_IgnoresLiteralSpaces()
+    {
+        var options = s_Posix with { RegexOptions = RegexOptions.IgnorePatternWhitespace };
+
+        Glob.IsMatch("foobar", "foo bar*", options).Should().BeTrue();
+    }
+
+    [Theory]
     [InlineData("**/*.js", "a/b.js", true)]
     [InlineData("**/*.js", "a/b.js/", true)]
     [InlineData("**/*.js", "a/b.ts", false)]
@@ -17,35 +33,26 @@ public class PrefilterTests
         Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
     }
 
-    [Fact]
-    public void WindowsStyle_AcceptsTrailingBackslash()
-    {
-        Glob.IsMatch("b.js\\", "*.js", new GlobOptions { PathStyle = GlobPathStyle.Windows }).Should().BeTrue();
-    }
-
     [Theory]
-    [InlineData("b", true)]
-    [InlineData("aab", true)]
-    [InlineData("ac", false)]
-    public void Unescape_RawQuantifierKeepsRegexSemantics(string input, bool expected)
+    [InlineData("a/b/x.js", true)]
+    [InlineData("a/b/x.ts", true)]
+    [InlineData("a/b/x.md", false)]
+    public void MatchFileNameOnly_ChecksEveryPatternAgainstTheFileName(string input, bool expected)
     {
-        Glob.IsMatch(input, "a\\*b", s_Posix with { Unescape = true }).Should().Be(expected);
+        var glob = new Glob(["*.js", "*.ts"], s_Posix with { MatchFileNameOnly = true });
+
+        glob.IsMatch(input).Should().Be(expected);
     }
 
     [Fact]
-    public void IgnorePatternWhitespace_IgnoresLiteralSpaces()
+    public void MultiplePatterns_ReportTheFirstMatchingPattern()
     {
-        var options = s_Posix with { RegexOptions = RegexOptions.IgnorePatternWhitespace };
+        var glob = new Glob(["**/*.js", "**/*.ts", "!**/node_modules/**"], s_Posix);
 
-        Glob.IsMatch("foobar", "foo bar*", options).Should().BeTrue();
-    }
-
-    [Theory]
-    [InlineData("ABC.JS", true)]
-    [InlineData("abc.js", true)]
-    public void IgnoreCase_MatchesAnyCase(string input, bool expected)
-    {
-        Glob.IsMatch(input, "*.js", s_Posix with { IgnoreCase = true }).Should().Be(expected);
+        glob.Match("src/a.ts").Pattern.Should().Be("**/*.ts");
+        glob.Match("src/a.md").Pattern.Should().Be("!**/node_modules/**");
+        glob.IsMatch("node_modules/a.md").Should().BeFalse();
+        glob.IsMatch("node_modules/a.js").Should().BeTrue();
     }
 
     [Theory]
@@ -72,24 +79,17 @@ public class PrefilterTests
     }
 
     [Theory]
-    [InlineData("a/b/x.js", true)]
-    [InlineData("a/b/x.ts", true)]
-    [InlineData("a/b/x.md", false)]
-    public void MatchFileNameOnly_ChecksEveryPatternAgainstTheFileName(string input, bool expected)
+    [InlineData("b", true)]
+    [InlineData("aab", true)]
+    [InlineData("ac", false)]
+    public void Unescape_RawQuantifierKeepsRegexSemantics(string input, bool expected)
     {
-        var glob = new Glob(["*.js", "*.ts"], s_Posix with { MatchFileNameOnly = true });
-
-        glob.IsMatch(input).Should().Be(expected);
+        Glob.IsMatch(input, "a\\*b", s_Posix with { Unescape = true }).Should().Be(expected);
     }
 
     [Fact]
-    public void MultiplePatterns_ReportTheFirstMatchingPattern()
+    public void WindowsStyle_AcceptsTrailingBackslash()
     {
-        var glob = new Glob(["**/*.js", "**/*.ts", "!**/node_modules/**"], s_Posix);
-
-        glob.Match("src/a.ts").Pattern.Should().Be("**/*.ts");
-        glob.Match("src/a.md").Pattern.Should().Be("!**/node_modules/**");
-        glob.IsMatch("node_modules/a.md").Should().BeFalse();
-        glob.IsMatch("node_modules/a.js").Should().BeTrue();
+        Glob.IsMatch("b.js\\", "*.js", new GlobOptions { PathStyle = GlobPathStyle.Windows }).Should().BeTrue();
     }
 }

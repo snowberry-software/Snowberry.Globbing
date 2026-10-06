@@ -11,16 +11,6 @@ internal static class PathUtilities
     private static readonly char[] s_WindowsSeparators = ['/', '\\'];
 
     /// <summary>
-    /// Converts backslashes to forward slashes.
-    /// </summary>
-    /// <param name="str">The string to convert.</param>
-    /// <returns>The string with every backslash replaced by a forward slash.</returns>
-    public static string ToPosixSlashes(string str)
-    {
-        return str.Replace('\\', '/');
-    }
-
-    /// <summary>
     /// Gets the last path segment of <paramref name="path"/>, ignoring one trailing separator.
     /// </summary>
     /// <remarks>
@@ -49,5 +39,15 @@ internal static class PathUtilities
         }
 
         return span[(lastSepIndex + 1)..].ToString();
+    }
+
+    /// <summary>
+    /// Converts backslashes to forward slashes.
+    /// </summary>
+    /// <param name="str">The string to convert.</param>
+    /// <returns>The string with every backslash replaced by a forward slash.</returns>
+    public static string ToPosixSlashes(string str)
+    {
+        return str.Replace('\\', '/');
     }
 }

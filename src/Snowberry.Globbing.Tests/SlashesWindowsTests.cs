@@ -5,7 +5,6 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class SlashesWindowsTests
 {
-
     [Theory]
     [InlineData("a\\b", "a/b", true)]
     [InlineData("a\\a", "a/b", false)]

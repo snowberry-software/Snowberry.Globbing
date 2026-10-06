@@ -55,16 +55,6 @@ public sealed class GlobInfo
     }
 
     /// <summary>
-    /// Gets the analyzed pattern.
-    /// </summary>
-    public string Pattern { get; }
-
-    /// <summary>
-    /// Gets the leading negation and <c>./</c> that precede the pattern body, such as <c>!</c>, <c>./</c> or <c>!./</c>, or an empty string.
-    /// </summary>
-    public string Prefix { get; }
-
-    /// <summary>
     /// Gets the literal directory part of the pattern, after <see cref="Prefix"/>, before the first segment that
     /// contains a glob, or an empty string if the first segment contains one.
     /// </summary>
@@ -83,27 +73,6 @@ public sealed class GlobInfo
     /// With <see cref="GlobOptions.Unescape"/>, backslash escapes are removed.
     /// </remarks>
     public string GlobPart { get; }
-
-    /// <summary>
-    /// Gets a value indicating whether the pattern contains any glob syntax; <see langword="false"/> for a literal path.
-    /// </summary>
-    public bool IsGlob { get; }
-
-    /// <summary>
-    /// Gets a value indicating whether the pattern is negated: it starts, after an optional <c>./</c>, with an odd
-    /// number of <c>!</c>.
-    /// </summary>
-    /// <remarks>
-    /// Always <see langword="false"/> when <see cref="GlobOptions.Negation"/> is disabled. With
-    /// <see cref="GlobOptions.Extglobs"/>, a <c>!</c> that opens <c>!(...)</c> is not a negation.
-    /// </remarks>
-    public bool IsNegated { get; }
-
-    /// <summary>
-    /// Gets a value indicating whether the pattern, after <see cref="Prefix"/>, starts with a negated extended glob such
-    /// as <c>!(a|b)</c>.
-    /// </summary>
-    public bool IsNegatedExtglob { get; }
 
     /// <summary>
     /// Gets a value indicating whether the pattern contains a balanced pair of braces, such as <c>{a,b}</c>.
@@ -132,6 +101,37 @@ public sealed class GlobInfo
     /// segment and even when <see cref="GlobOptions.Globstar"/> is disabled.
     /// </remarks>
     public bool HasGlobstar { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the pattern contains any glob syntax; <see langword="false"/> for a literal path.
+    /// </summary>
+    public bool IsGlob { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the pattern is negated: it starts, after an optional <c>./</c>, with an odd
+    /// number of <c>!</c>.
+    /// </summary>
+    /// <remarks>
+    /// Always <see langword="false"/> when <see cref="GlobOptions.Negation"/> is disabled. With
+    /// <see cref="GlobOptions.Extglobs"/>, a <c>!</c> that opens <c>!(...)</c> is not a negation.
+    /// </remarks>
+    public bool IsNegated { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the pattern, after <see cref="Prefix"/>, starts with a negated extended glob such
+    /// as <c>!(a|b)</c>.
+    /// </summary>
+    public bool IsNegatedExtglob { get; }
+
+    /// <summary>
+    /// Gets the analyzed pattern.
+    /// </summary>
+    public string Pattern { get; }
+
+    /// <summary>
+    /// Gets the leading negation and <c>./</c> that precede the pattern body, such as <c>!</c>, <c>./</c> or <c>!./</c>, or an empty string.
+    /// </summary>
+    public string Prefix { get; }
 
     /// <summary>
     /// Gets the path segments of the pattern after <see cref="Prefix"/>, split on separators outside braces, brackets and groups.

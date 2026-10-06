@@ -22,48 +22,6 @@ internal sealed class GlobChars
         NoDotsSlash = string.Concat("(?!", DotsSlash, ")");
     }
 
-    /// <summary>Gets the fragments for paths separated by <c>/</c>.</summary>
-    public static GlobChars Posix { get; } = new("\\/", "/");
-
-    /// <summary>Gets the fragments for paths separated by <c>/</c> or <c>\</c>.</summary>
-    public static GlobChars Windows { get; } = new("[\\\\/]", "\\\\/");
-
-    /// <summary>Gets a literal dot.</summary>
-    public string DotLiteral { get; } = "\\.";
-
-    /// <summary>Gets a literal plus.</summary>
-    public string PlusLiteral { get; } = "\\+";
-
-    /// <summary>Gets a lookahead requiring one more character that is not a line terminator.</summary>
-    public string OneChar { get; } = "(?=" + RegexSyntax.c_AnyNonLineTerminator + ")";
-
-    /// <summary>Gets a lookahead rejecting a dot.</summary>
-    public string NoDot { get; } = "(?!\\.)";
-
-    /// <summary>Gets a path separator.</summary>
-    public string SlashLiteral { get; }
-
-    /// <summary>Gets a single character other than a separator.</summary>
-    public string Qmark { get; }
-
-    /// <summary>Gets a single character other than a dot or separator.</summary>
-    public string QmarkNoDot { get; }
-
-    /// <summary>Gets any characters within a segment, as a greedy run of <see cref="Qmark"/>.</summary>
-    public string Star { get; }
-
-    /// <summary>Gets one or two dots followed by a separator or the end of input.</summary>
-    public string DotsSlash { get; }
-
-    /// <summary>Gets a lookahead rejecting a <c>.</c> or <c>..</c> segment at the start of input or after a separator at this position.</summary>
-    public string NoDots { get; }
-
-    /// <summary>Gets a lookahead rejecting an empty or <c>.</c> remainder of a segment, that is a separator or the end of input, optionally after one dot.</summary>
-    public string NoDotSlash { get; }
-
-    /// <summary>Gets a lookahead rejecting a <c>.</c> or <c>..</c> segment that starts at this position.</summary>
-    public string NoDotsSlash { get; }
-
     /// <summary>
     /// Gets the fragments for the specified path style.
     /// </summary>
@@ -73,4 +31,46 @@ internal sealed class GlobChars
     {
         return windows ? Windows : Posix;
     }
+
+    /// <summary>Gets a literal dot.</summary>
+    public string DotLiteral { get; } = "\\.";
+
+    /// <summary>Gets one or two dots followed by a separator or the end of input.</summary>
+    public string DotsSlash { get; }
+
+    /// <summary>Gets a lookahead rejecting a dot.</summary>
+    public string NoDot { get; } = "(?!\\.)";
+
+    /// <summary>Gets a lookahead rejecting an empty or <c>.</c> remainder of a segment, that is a separator or the end of input, optionally after one dot.</summary>
+    public string NoDotSlash { get; }
+
+    /// <summary>Gets a lookahead rejecting a <c>.</c> or <c>..</c> segment at the start of input or after a separator at this position.</summary>
+    public string NoDots { get; }
+
+    /// <summary>Gets a lookahead rejecting a <c>.</c> or <c>..</c> segment that starts at this position.</summary>
+    public string NoDotsSlash { get; }
+
+    /// <summary>Gets a lookahead requiring one more character that is not a line terminator.</summary>
+    public string OneChar { get; } = "(?=" + RegexSyntax.c_AnyNonLineTerminator + ")";
+
+    /// <summary>Gets a literal plus.</summary>
+    public string PlusLiteral { get; } = "\\+";
+
+    /// <summary>Gets the fragments for paths separated by <c>/</c>.</summary>
+    public static GlobChars Posix { get; } = new("\\/", "/");
+
+    /// <summary>Gets a single character other than a separator.</summary>
+    public string Qmark { get; }
+
+    /// <summary>Gets a single character other than a dot or separator.</summary>
+    public string QmarkNoDot { get; }
+
+    /// <summary>Gets a path separator.</summary>
+    public string SlashLiteral { get; }
+
+    /// <summary>Gets any characters within a segment, as a greedy run of <see cref="Qmark"/>.</summary>
+    public string Star { get; }
+
+    /// <summary>Gets the fragments for paths separated by <c>/</c> or <c>\</c>.</summary>
+    public static GlobChars Windows { get; } = new("[\\\\/]", "\\\\/");
 }

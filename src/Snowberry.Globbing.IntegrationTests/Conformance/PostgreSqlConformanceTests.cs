@@ -7,6 +7,11 @@ namespace Snowberry.Globbing.IntegrationTests.Conformance;
 
 public class PostgreSqlConformanceTests(ConformanceFixture fixture, PostgreSqlFixture postgres) : IAsyncLifetime
 {
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
+
     [Theory]
     [MemberData(nameof(ConformanceData.OptionSets), MemberType = typeof(ConformanceData))]
     public async Task GeneratedRegex_ShouldMatchLikePicomatch_WhenTranslatedByNpgsql(string optionSet)
@@ -43,10 +48,5 @@ public class PostgreSqlConformanceTests(ConformanceFixture fixture, PostgreSqlFi
 
         context.Samples.AddRange(fixture.Inputs.Select((value, id) => new Sample { Id = id, Value = value }));
         await context.SaveChangesAsync();
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        return ValueTask.CompletedTask;
     }
 }

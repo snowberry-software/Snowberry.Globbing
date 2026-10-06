@@ -15,8 +15,8 @@ namespace Snowberry.Globbing.Utilities;
 internal ref struct ValueStringBuilder
 {
     private Span<char> _chars;
-    private char[]? _rented;
     private int _length;
+    private char[]? _rented;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ValueStringBuilder"/> struct over <paramref name="initialBuffer"/>.
@@ -27,16 +27,6 @@ internal ref struct ValueStringBuilder
         _chars = initialBuffer;
         _rented = null;
         _length = 0;
-    }
-
-    /// <summary>
-    /// Gets or sets the number of characters written.
-    /// </summary>
-    /// <remarks>Setting a smaller value truncates the content; the value is not validated and must not exceed the current length.</remarks>
-    public int Length
-    {
-        readonly get => _length;
-        set => _length = value;
     }
 
     /// <summary>
@@ -77,6 +67,17 @@ internal ref struct ValueStringBuilder
     }
 
     /// <summary>
+    /// Returns the rented array, if any, to the pool without creating a string, and resets the builder to empty.
+    /// </summary>
+    public void Dispose()
+    {
+        char[]? rented = _rented;
+        this = default;
+        if (rented != null)
+            ArrayPool<char>.Shared.Return(rented);
+    }
+
+    /// <summary>
     /// Returns the characters written since <paramref name="start"/>.
     /// </summary>
     /// <param name="start">The position to start from.</param>
@@ -103,17 +104,6 @@ internal ref struct ValueStringBuilder
     }
 
     /// <summary>
-    /// Returns the rented array, if any, to the pool without creating a string, and resets the builder to empty.
-    /// </summary>
-    public void Dispose()
-    {
-        char[]? rented = _rented;
-        this = default;
-        if (rented != null)
-            ArrayPool<char>.Shared.Return(rented);
-    }
-
-    /// <summary>
     /// Replaces the buffer with an array rented from the pool of at least twice the capacity or the required length,
     /// whichever is larger, keeping the written characters and returning the previously rented array, if any, to the pool.
     /// </summary>
@@ -127,5 +117,15 @@ internal ref struct ValueStringBuilder
 
         _rented = next;
         _chars = next;
+    }
+
+    /// <summary>
+    /// Gets or sets the number of characters written.
+    /// </summary>
+    /// <remarks>Setting a smaller value truncates the content; the value is not validated and must not exceed the current length.</remarks>
+    public int Length
+    {
+        readonly get => _length;
+        set => _length = value;
     }
 }

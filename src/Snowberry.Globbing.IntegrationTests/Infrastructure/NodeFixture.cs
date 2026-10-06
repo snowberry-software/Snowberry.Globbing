@@ -10,23 +10,29 @@ namespace Snowberry.Globbing.IntegrationTests.Infrastructure;
 public sealed class NodeFixture : IAsyncLifetime
 {
     private const string c_Script = """
-        const fs = require('fs');
-        const { regexes, inputs } = JSON.parse(fs.readFileSync('/work/input.json', 'utf8'));
-        const results = regexes.map(source => {
-          try {
-            const regex = new RegExp(source);
-            return { matches: inputs.flatMap((input, index) => regex.test(input) ? [index] : []) };
-          } catch (e) {
-            return { error: e.message };
-          }
-        });
-        fs.writeFileSync('/work/output.json', JSON.stringify(results));
-        """;
+                                    const fs = require('fs');
+                                    const { regexes, inputs } = JSON.parse(fs.readFileSync('/work/input.json', 'utf8'));
+                                    const results = regexes.map(source => {
+                                      try {
+                                        const regex = new RegExp(source);
+                                        return { matches: inputs.flatMap((input, index) => regex.test(input) ? [index] : []) };
+                                      } catch (e) {
+                                        return { error: e.message };
+                                      }
+                                    });
+                                    fs.writeFileSync('/work/output.json', JSON.stringify(results));
+                                    """;
 
     private readonly IContainer _container = new ContainerBuilder("node:24-alpine")
         .WithEntrypoint("sleep")
         .WithCommand("infinity")
         .Build();
+
+    /// <inheritdoc/>
+    public async ValueTask DisposeAsync()
+    {
+        await _container.DisposeAsync();
+    }
 
     /// <summary>
     /// Evaluates every regex against every input with JavaScript's <c>RegExp</c>, without flags.
@@ -53,11 +59,5 @@ public sealed class NodeFixture : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
-    }
-
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
-    {
-        await _container.DisposeAsync();
     }
 }

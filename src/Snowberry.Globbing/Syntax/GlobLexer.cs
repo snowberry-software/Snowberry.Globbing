@@ -16,10 +16,10 @@ namespace Snowberry.Globbing.Syntax;
 /// </remarks>
 internal ref struct GlobLexer
 {
-    private readonly ReadOnlySpan<char> _pattern;
-    private readonly GlobOptions _options;
-    private readonly string _source;
     private readonly int _offset;
+    private readonly GlobOptions _options;
+    private readonly ReadOnlySpan<char> _pattern;
+    private readonly string _source;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GlobLexer"/> struct.
@@ -34,6 +34,17 @@ internal ref struct GlobLexer
         _options = options;
         _source = source;
         _offset = offset;
+    }
+
+    /// <summary>
+    /// Determines whether the most recently appended token has the given kind.
+    /// </summary>
+    /// <param name="tokens">The tokens lexed so far.</param>
+    /// <param name="kind">The kind to look for.</param>
+    /// <returns><see langword="true"/> if <paramref name="tokens"/> is not empty and its last token is of kind <paramref name="kind"/>; otherwise <see langword="false"/>.</returns>
+    private static bool PreviousIs(ref ValueList<GlobToken> tokens, GlobTokenKind kind)
+    {
+        return tokens.Count > 0 && tokens[tokens.Count - 1].Kind == kind;
     }
 
     /// <summary>
@@ -154,80 +165,26 @@ internal ref struct GlobLexer
     }
 
     /// <summary>
-    /// Lexes the backslash escape at <paramref name="i"/>, appending a literal token for the escaped character, with
-    /// <see cref="LiteralForm.Raw"/> if <see cref="GlobOptions.Unescape"/> is set and <see cref="LiteralForm.Escaped"/> otherwise.
+    /// Reads a pattern character, tolerating positions past the end.
     /// </summary>
-    /// <remarks>
-    /// An escaped separator (unless <see cref="GlobOptions.BashCompatibility"/> is set) or an escaped dot is not
-    /// literal: the backslash is skipped so the next iteration lexes the separator or dot itself. A trailing backslash is
-    /// a <see cref="LiteralForm.Plain"/> literal.
-    /// </remarks>
-    /// <param name="tokens">The list that receives the token.</param>
-    /// <param name="i">The position of the backslash.</param>
-    /// <returns>The index of the next unread character.</returns>
-    private readonly int LexEscape(ref ValueList<GlobToken> tokens, int i)
+    /// <param name="i">The position to read.</param>
+    /// <returns>The character at <paramref name="i"/>, or <c>\0</c> if <paramref name="i"/> is past the end of the pattern.</returns>
+    private readonly char At(int i)
     {
-        if (i + 1 >= _pattern.Length)
-        {
-            tokens.Add(new GlobToken(GlobTokenKind.Literal, '\\', LiteralForm.Plain, i, 1));
-            return i + 1;
-        }
-
-        char next = _pattern[i + 1];
-
-        // An escaped separator is still a separator, and an escaped dot is a dot.
-        if ((next == '/' && !_options.BashCompatibility) || next == '.')
-            return i + 1;
-
-        tokens.Add(new GlobToken(GlobTokenKind.Literal, next, _options.Unescape ? LiteralForm.Raw : LiteralForm.Escaped, i, 2));
-        return i + 2;
+        return i < _pattern.Length ? _pattern[i] : '\0';
     }
 
     /// <summary>
-    /// Lexes the <c>[</c> at <paramref name="i"/>, appending one character class token for the whole bracket expression,
-    /// or a literal <c>[</c> if no closing <c>]</c> exists or <see cref="GlobOptions.BracketExpressions"/> is not set.
+    /// Creates, without throwing, the exception for a missing bracket delimiter.
     /// </summary>
-    /// <param name="tokens">The list that receives the token.</param>
-    /// <param name="i">The position of the <c>[</c>.</param>
-    /// <returns>The index of the next unread character.</returns>
-    /// <exception cref="GlobParseException">The bracket expression is not closed, with <see cref="GlobOptions.BracketExpressions"/> and <see cref="GlobOptions.StrictBrackets"/> set.</exception>
-    private readonly int LexBracket(ref ValueList<GlobToken> tokens, int i)
+    /// <param name="error">The kind of error.</param>
+    /// <param name="index">The position in the lexed pattern where the delimiter is missing.</param>
+    /// <param name="type">The kind of delimiter that is missing, <c>opening</c> or <c>closing</c>.</param>
+    /// <param name="ch">The missing delimiter character.</param>
+    /// <returns>A <see cref="GlobParseException"/> positioned in the original pattern.</returns>
+    private readonly GlobParseException Error(GlobParseError error, int index, string type, char ch)
     {
-        int end = _options.BracketExpressions ? FindBracketEnd(i) : -1;
-        if (end < 0)
-        {
-            if (_options.BracketExpressions && _options.StrictBrackets)
-                throw Error(GlobParseError.MissingClosingBracket, i, "closing", ']');
-
-            tokens.Add(new GlobToken(GlobTokenKind.Literal, '[', LiteralForm.Plain, i, 1));
-            return i + 1;
-        }
-
-        tokens.Add(new GlobToken(GlobTokenKind.CharClass, '[', LiteralForm.Plain, i, end - i + 1));
-        return end + 1;
-    }
-
-    /// <summary>
-    /// Lexes the <c>*</c> at <paramref name="i"/>, appending either an extended glob opener (<c>*(</c>) or a single star
-    /// token that covers the run of consecutive stars, up to a star that opens an extended glob.
-    /// </summary>
-    /// <param name="tokens">The list that receives the token.</param>
-    /// <param name="i">The position of the first <c>*</c>.</param>
-    /// <returns>The index of the next unread character.</returns>
-    private readonly int LexStar(ref ValueList<GlobToken> tokens, int i)
-    {
-        if (IsStarExtglobOpener(i))
-        {
-            tokens.Add(new GlobToken(GlobTokenKind.ExtglobOpen, '*', LiteralForm.Plain, i, 2));
-            return i + 2;
-        }
-
-        int end = i + 1;
-        while (end < _pattern.Length && _pattern[end] == '*' && !IsStarExtglobOpener(end))
-            end++;
-
-        tokens.Add(new GlobToken(GlobTokenKind.Star, '*', LiteralForm.Plain, i, end - i));
-        return end;
+        return GlobParseException.MissingDelimiter(_source, error, _offset + index, type, ch);
     }
 
     /// <summary>
@@ -304,36 +261,79 @@ internal ref struct GlobLexer
     }
 
     /// <summary>
-    /// Reads a pattern character, tolerating positions past the end.
+    /// Lexes the <c>[</c> at <paramref name="i"/>, appending one character class token for the whole bracket expression,
+    /// or a literal <c>[</c> if no closing <c>]</c> exists or <see cref="GlobOptions.BracketExpressions"/> is not set.
     /// </summary>
-    /// <param name="i">The position to read.</param>
-    /// <returns>The character at <paramref name="i"/>, or <c>\0</c> if <paramref name="i"/> is past the end of the pattern.</returns>
-    private readonly char At(int i)
+    /// <param name="tokens">The list that receives the token.</param>
+    /// <param name="i">The position of the <c>[</c>.</param>
+    /// <returns>The index of the next unread character.</returns>
+    /// <exception cref="GlobParseException">The bracket expression is not closed, with <see cref="GlobOptions.BracketExpressions"/> and <see cref="GlobOptions.StrictBrackets"/> set.</exception>
+    private readonly int LexBracket(ref ValueList<GlobToken> tokens, int i)
     {
-        return i < _pattern.Length ? _pattern[i] : '\0';
+        int end = _options.BracketExpressions ? FindBracketEnd(i) : -1;
+        if (end < 0)
+        {
+            if (_options.BracketExpressions && _options.StrictBrackets)
+                throw Error(GlobParseError.MissingClosingBracket, i, "closing", ']');
+
+            tokens.Add(new GlobToken(GlobTokenKind.Literal, '[', LiteralForm.Plain, i, 1));
+            return i + 1;
+        }
+
+        tokens.Add(new GlobToken(GlobTokenKind.CharClass, '[', LiteralForm.Plain, i, end - i + 1));
+        return end + 1;
     }
 
     /// <summary>
-    /// Determines whether the most recently appended token has the given kind.
+    /// Lexes the backslash escape at <paramref name="i"/>, appending a literal token for the escaped character, with
+    /// <see cref="LiteralForm.Raw"/> if <see cref="GlobOptions.Unescape"/> is set and <see cref="LiteralForm.Escaped"/> otherwise.
     /// </summary>
-    /// <param name="tokens">The tokens lexed so far.</param>
-    /// <param name="kind">The kind to look for.</param>
-    /// <returns><see langword="true"/> if <paramref name="tokens"/> is not empty and its last token is of kind <paramref name="kind"/>; otherwise <see langword="false"/>.</returns>
-    private static bool PreviousIs(ref ValueList<GlobToken> tokens, GlobTokenKind kind)
+    /// <remarks>
+    /// An escaped separator (unless <see cref="GlobOptions.BashCompatibility"/> is set) or an escaped dot is not
+    /// literal: the backslash is skipped so the next iteration lexes the separator or dot itself. A trailing backslash is
+    /// a <see cref="LiteralForm.Plain"/> literal.
+    /// </remarks>
+    /// <param name="tokens">The list that receives the token.</param>
+    /// <param name="i">The position of the backslash.</param>
+    /// <returns>The index of the next unread character.</returns>
+    private readonly int LexEscape(ref ValueList<GlobToken> tokens, int i)
     {
-        return tokens.Count > 0 && tokens[tokens.Count - 1].Kind == kind;
+        if (i + 1 >= _pattern.Length)
+        {
+            tokens.Add(new GlobToken(GlobTokenKind.Literal, '\\', LiteralForm.Plain, i, 1));
+            return i + 1;
+        }
+
+        char next = _pattern[i + 1];
+
+        // An escaped separator is still a separator, and an escaped dot is a dot.
+        if ((next == '/' && !_options.BashCompatibility) || next == '.')
+            return i + 1;
+
+        tokens.Add(new GlobToken(GlobTokenKind.Literal, next, _options.Unescape ? LiteralForm.Raw : LiteralForm.Escaped, i, 2));
+        return i + 2;
     }
 
     /// <summary>
-    /// Creates, without throwing, the exception for a missing bracket delimiter.
+    /// Lexes the <c>*</c> at <paramref name="i"/>, appending either an extended glob opener (<c>*(</c>) or a single star
+    /// token that covers the run of consecutive stars, up to a star that opens an extended glob.
     /// </summary>
-    /// <param name="error">The kind of error.</param>
-    /// <param name="index">The position in the lexed pattern where the delimiter is missing.</param>
-    /// <param name="type">The kind of delimiter that is missing, <c>opening</c> or <c>closing</c>.</param>
-    /// <param name="ch">The missing delimiter character.</param>
-    /// <returns>A <see cref="GlobParseException"/> positioned in the original pattern.</returns>
-    private readonly GlobParseException Error(GlobParseError error, int index, string type, char ch)
+    /// <param name="tokens">The list that receives the token.</param>
+    /// <param name="i">The position of the first <c>*</c>.</param>
+    /// <returns>The index of the next unread character.</returns>
+    private readonly int LexStar(ref ValueList<GlobToken> tokens, int i)
     {
-        return GlobParseException.MissingDelimiter(_source, error, _offset + index, type, ch);
+        if (IsStarExtglobOpener(i))
+        {
+            tokens.Add(new GlobToken(GlobTokenKind.ExtglobOpen, '*', LiteralForm.Plain, i, 2));
+            return i + 2;
+        }
+
+        int end = i + 1;
+        while (end < _pattern.Length && _pattern[end] == '*' && !IsStarExtglobOpener(end))
+            end++;
+
+        tokens.Add(new GlobToken(GlobTokenKind.Star, '*', LiteralForm.Plain, i, end - i));
+        return end;
     }
 }

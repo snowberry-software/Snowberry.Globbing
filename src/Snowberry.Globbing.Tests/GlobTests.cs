@@ -17,37 +17,11 @@ public class GlobTests
     }
 
     [Fact]
-    public void Constructor_WithoutOptions_UsesDefault()
+    public void Constructor_WithEmptyIgnorePattern_ThrowsEmptyPattern()
     {
-        new Glob("*.js").Options.Should().BeSameAs(GlobOptions.Default);
-    }
-
-    [Fact]
-    public void Constructor_WithNullPattern_ThrowsArgumentNullException()
-    {
-        var e = FluentActions.Invoking(() => new Glob((string)null!)).Should().ThrowExactly<ArgumentNullException>().Which;
-        e.ParamName.Should().Be("pattern");
-    }
-
-    [Fact]
-    public void Constructor_WithNullPatternList_ThrowsArgumentNullException()
-    {
-        FluentActions.Invoking(() => new Glob((string[])null!)).Should().ThrowExactly<ArgumentNullException>();
-    }
-
-    [Fact]
-    public void Constructor_WithEmptyPattern_ThrowsEmptyPattern()
-    {
-        var e = FluentActions.Invoking(() => new Glob("")).Should().ThrowExactly<GlobParseException>().Which;
+        var e = FluentActions.Invoking(() => new Glob("*.js", new GlobOptions { IgnorePatterns = [""] })).Should().ThrowExactly<GlobParseException>().Which;
         e.Error.Should().Be(GlobParseError.EmptyPattern);
-        e.ParamName.Should().Be("pattern");
-    }
-
-    [Fact]
-    public void Constructor_WithEmptyPatternList_ThrowsArgumentException()
-    {
-        var e = FluentActions.Invoking(() => new Glob(Array.Empty<string>())).Should().ThrowExactly<ArgumentException>().Which;
-        e.ParamName.Should().Be("patterns");
+        e.ParamName.Should().Be(nameof(GlobOptions.IgnorePatterns));
     }
 
     [Fact]
@@ -59,11 +33,31 @@ public class GlobTests
     }
 
     [Fact]
-    public void Constructor_WithEmptyIgnorePattern_ThrowsEmptyPattern()
+    public void Constructor_WithEmptyPatternList_ThrowsArgumentException()
     {
-        var e = FluentActions.Invoking(() => new Glob("*.js", new GlobOptions { IgnorePatterns = [""] })).Should().ThrowExactly<GlobParseException>().Which;
+        var e = FluentActions.Invoking(() => new Glob(Array.Empty<string>())).Should().ThrowExactly<ArgumentException>().Which;
+        e.ParamName.Should().Be("patterns");
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyPattern_ThrowsEmptyPattern()
+    {
+        var e = FluentActions.Invoking(() => new Glob("")).Should().ThrowExactly<GlobParseException>().Which;
         e.Error.Should().Be(GlobParseError.EmptyPattern);
-        e.ParamName.Should().Be(nameof(GlobOptions.IgnorePatterns));
+        e.ParamName.Should().Be("pattern");
+    }
+
+    [Fact]
+    public void Constructor_WithNullPatternList_ThrowsArgumentNullException()
+    {
+        FluentActions.Invoking(() => new Glob((string[])null!)).Should().ThrowExactly<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithNullPattern_ThrowsArgumentNullException()
+    {
+        var e = FluentActions.Invoking(() => new Glob((string)null!)).Should().ThrowExactly<ArgumentNullException>().Which;
+        e.ParamName.Should().Be("pattern");
     }
 
     [Theory]
@@ -78,64 +72,47 @@ public class GlobTests
         glob.IsMatch(input).Should().Be(expected);
     }
 
-    [Theory]
-    [InlineData("*.js", true)]
-    [InlineData("a[b", true)]
-    [InlineData("[z-a]", false)]
-    [InlineData("", false)]
-    [InlineData(null, false)]
-    public void TryCreate_ReturnsWhetherPatternCompiles(string? pattern, bool expected)
+    [Fact]
+    public void Constructor_WithoutOptions_UsesDefault()
     {
-        bool created = Glob.TryCreate(pattern, null, out var glob);
-
-        created.Should().Be(expected);
-        (glob != null).Should().Be(expected);
+        new Glob("*.js").Options.Should().BeSameAs(GlobOptions.Default);
     }
 
     [Fact]
-    public void TryCreate_WithStrictBracketsViolation_ReturnsFalse()
+    public void Filter_ReturnsMatchingInputsInOrder()
     {
-        Glob.TryCreate("a[b", new GlobOptions { StrictBrackets = true }, out _).Should().BeFalse();
+        var glob = new Glob("**/*.cs", s_Posix with { IgnorePatterns = ["**/obj/**"] });
+
+        var result = glob.Filter(["b.cs", "README.md", "obj/x.cs", "a/c.cs"]);
+
+        result.Should().Equal(["b.cs", "a/c.cs"]);
     }
 
     [Fact]
-    public void IsMatch_WithNullInput_ThrowsArgumentNullException()
+    public void Filter_WithNullInputs_ThrowsArgumentNullException()
     {
-        var glob = new Glob("*.js");
-
-        FluentActions.Invoking(() => glob.IsMatch(null!)).Should().ThrowExactly<ArgumentNullException>().WithParameterName("input");
-        FluentActions.Invoking(() => Glob.IsMatch(null!, "*.js")).Should().ThrowExactly<ArgumentNullException>().WithParameterName("input");
+        FluentActions.Invoking(() => new Glob("*").Filter(null!)).Should().ThrowExactly<ArgumentNullException>();
     }
 
     [Fact]
-    public void IsMatch_Static_WithEmptyPattern_ThrowsEmptyPattern()
+    public void IsMatch_Span_AppliesIgnorePatterns()
     {
-        FluentActions.Invoking(() => Glob.IsMatch("a", "")).Should().ThrowExactly<GlobParseException>()
-            .Which.Error.Should().Be(GlobParseError.EmptyPattern);
-    }
+        var glob = new Glob("*.js", s_Posix with { IgnorePatterns = ["a.*"] });
 
-    [Fact]
-    public void IsMatch_WithEmptyInput_ReturnsFalse()
-    {
-        Glob.IsMatch("", "*").Should().BeFalse();
-    }
-
-    [Fact]
-    public void IsMatch_Static_WithEqualOptions_ReturnsSameResult()
-    {
-        Glob.IsMatch("A.JS", "*.js", new GlobOptions { IgnoreCase = true }).Should().BeTrue();
-        Glob.IsMatch("A.JS", "*.js", new GlobOptions { IgnoreCase = true }).Should().BeTrue();
-        Glob.IsMatch("A.JS", "*.js", new GlobOptions { IgnoreCase = false }).Should().BeFalse();
+        glob.IsMatch("a.js".AsSpan()).Should().BeFalse();
+        glob.IsMatch("b.js".AsSpan()).Should().BeTrue();
     }
 
     [Theory]
-    [InlineData("test.js", new[] { "*.js", "*.ts" }, true)]
-    [InlineData("test.ts", new[] { "*.js", "*.ts" }, true)]
-    [InlineData("test.md", new[] { "*.js", "*.ts" }, false)]
-    [InlineData("app.css", new[] { "*.js", "*.ts", "*.css" }, true)]
-    public void IsMatch_Static_WithPatternList_MatchesAny(string input, string[] patterns, bool expected)
+    [InlineData("a.js", true)]
+    [InlineData("src/a.js", false)]
+    [InlineData("a.ts", false)]
+    public void IsMatch_Span_MatchesLikeString(string input, bool expected)
     {
-        Glob.IsMatch(input, patterns).Should().Be(expected);
+        var glob = new Glob("*.js", s_Posix);
+
+        glob.IsMatch(input.AsSpan()).Should().Be(expected);
+        Glob.IsMatch(input.AsSpan(), "*.js", s_Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -160,39 +137,44 @@ public class GlobTests
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
+    [Fact]
+    public void IsMatch_Static_WithEmptyPattern_ThrowsEmptyPattern()
+    {
+        FluentActions.Invoking(() => Glob.IsMatch("a", "")).Should().ThrowExactly<GlobParseException>()
+            .Which.Error.Should().Be(GlobParseError.EmptyPattern);
+    }
+
+    [Fact]
+    public void IsMatch_Static_WithEqualOptions_ReturnsSameResult()
+    {
+        Glob.IsMatch("A.JS", "*.js", new GlobOptions { IgnoreCase = true }).Should().BeTrue();
+        Glob.IsMatch("A.JS", "*.js", new GlobOptions { IgnoreCase = true }).Should().BeTrue();
+        Glob.IsMatch("A.JS", "*.js", new GlobOptions { IgnoreCase = false }).Should().BeFalse();
+    }
+
     [Theory]
-    [InlineData("a.js", true)]
-    [InlineData("src/a.js", false)]
-    [InlineData("a.ts", false)]
-    public void IsMatch_Span_MatchesLikeString(string input, bool expected)
+    [InlineData("test.js", new[] { "*.js", "*.ts" }, true)]
+    [InlineData("test.ts", new[] { "*.js", "*.ts" }, true)]
+    [InlineData("test.md", new[] { "*.js", "*.ts" }, false)]
+    [InlineData("app.css", new[] { "*.js", "*.ts", "*.css" }, true)]
+    public void IsMatch_Static_WithPatternList_MatchesAny(string input, string[] patterns, bool expected)
     {
-        var glob = new Glob("*.js", s_Posix);
-
-        glob.IsMatch(input.AsSpan()).Should().Be(expected);
-        Glob.IsMatch(input.AsSpan(), "*.js", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, patterns).Should().Be(expected);
     }
 
     [Fact]
-    public void IsMatch_Span_AppliesIgnorePatterns()
+    public void IsMatch_WithEmptyInput_ReturnsFalse()
     {
-        var glob = new Glob("*.js", s_Posix with { IgnorePatterns = ["a.*"] });
-
-        glob.IsMatch("a.js".AsSpan()).Should().BeFalse();
-        glob.IsMatch("b.js".AsSpan()).Should().BeTrue();
+        Glob.IsMatch("", "*").Should().BeFalse();
     }
 
     [Fact]
-    public void Match_ReportsMatchedPattern()
+    public void IsMatch_WithNullInput_ThrowsArgumentNullException()
     {
-        var glob = new Glob(new[] { "*.js", "*.ts" }, s_Posix);
+        var glob = new Glob("*.js");
 
-        var result = glob.Match("a.ts");
-
-        result.Success.Should().BeTrue();
-        result.IsIgnored.Should().BeFalse();
-        result.Pattern.Should().Be("*.ts");
-        result.Input.Should().Be("a.ts");
-        result.NormalizedInput.Should().Be("a.ts");
+        FluentActions.Invoking(() => glob.IsMatch(null!)).Should().ThrowExactly<ArgumentNullException>().WithParameterName("input");
+        FluentActions.Invoking(() => Glob.IsMatch(null!, "*.js")).Should().ThrowExactly<ArgumentNullException>().WithParameterName("input");
     }
 
     [Fact]
@@ -214,13 +196,17 @@ public class GlobTests
     }
 
     [Fact]
-    public void Match_WithEmptyInput_Fails()
+    public void Match_ReportsMatchedPattern()
     {
-        var result = new Glob("*.js").Match("");
+        var glob = new Glob(new[] { "*.js", "*.ts" }, s_Posix);
 
-        result.Success.Should().BeFalse();
-        result.Pattern.Should().BeNull();
-        result.NormalizedInput.Should().Be("");
+        var result = glob.Match("a.ts");
+
+        result.Success.Should().BeTrue();
+        result.IsIgnored.Should().BeFalse();
+        result.Pattern.Should().Be("*.ts");
+        result.Input.Should().Be("a.ts");
+        result.NormalizedInput.Should().Be("a.ts");
     }
 
     [Fact]
@@ -235,6 +221,16 @@ public class GlobTests
     }
 
     [Fact]
+    public void Match_WithEmptyInput_Fails()
+    {
+        var result = new Glob("*.js").Match("");
+
+        result.Success.Should().BeFalse();
+        result.Pattern.Should().BeNull();
+        result.NormalizedInput.Should().Be("");
+    }
+
+    [Fact]
     public void Match_WithInputNormalizer_ReportsOriginalAndNormalizedInput()
     {
         var result = new Glob("*.js", new GlobOptions { InputNormalizer = s => s.ToUpper() }).Match("test.js");
@@ -246,36 +242,9 @@ public class GlobTests
     }
 
     [Fact]
-    public void Filter_ReturnsMatchingInputsInOrder()
+    public void ToRegexString_ForSinglePattern_EqualsGeneratedSource()
     {
-        var glob = new Glob("**/*.cs", s_Posix with { IgnorePatterns = ["**/obj/**"] });
-
-        var result = glob.Filter(["b.cs", "README.md", "obj/x.cs", "a/c.cs"]);
-
-        result.Should().Equal(["b.cs", "a/c.cs"]);
-    }
-
-    [Fact]
-    public void Filter_WithNullInputs_ThrowsArgumentNullException()
-    {
-        FluentActions.Invoking(() => new Glob("*").Filter(null!)).Should().ThrowExactly<ArgumentNullException>();
-    }
-
-    [Fact]
-    public void ToRegex_ReturnsSameInstance()
-    {
-        var glob = new Glob("*.js");
-
-        glob.ToRegex().Should().BeSameAs(glob.ToRegex());
-    }
-
-    [Fact]
-    public void ToRegex_ByDefault_IsInterpretedAndCaseSensitive()
-    {
-        var regex = new Glob("*.js").ToRegex();
-
-        regex.Options.HasFlag(RegexOptions.Compiled).Should().BeFalse();
-        regex.Options.HasFlag(RegexOptions.IgnoreCase).Should().BeFalse();
+        new Glob("*.js", s_Posix).ToRegexString().Should().Be(GlobCompiler.CompileRegexSource("*.js", s_Posix));
     }
 
     [Fact]
@@ -286,6 +255,15 @@ public class GlobTests
         regex.Options.HasFlag(RegexOptions.IgnoreCase).Should().BeTrue();
         regex.Options.HasFlag(RegexOptions.Compiled).Should().BeTrue();
         "A.JS".Should().MatchRegex(regex);
+    }
+
+    [Fact]
+    public void ToRegex_ByDefault_IsInterpretedAndCaseSensitive()
+    {
+        var regex = new Glob("*.js").ToRegex();
+
+        regex.Options.HasFlag(RegexOptions.Compiled).Should().BeFalse();
+        regex.Options.HasFlag(RegexOptions.IgnoreCase).Should().BeFalse();
     }
 
     [Theory]
@@ -318,6 +296,14 @@ public class GlobTests
         new Regex(glob.ToRegexString()).IsMatch(input).Should().Be(expected);
     }
 
+    [Fact]
+    public void ToRegex_ReturnsSameInstance()
+    {
+        var glob = new Glob("*.js");
+
+        glob.ToRegex().Should().BeSameAs(glob.ToRegex());
+    }
+
     [Theory]
     [InlineData("a.js", true)]
     [InlineData("a.ts", true)]
@@ -331,44 +317,31 @@ public class GlobTests
         new Regex(glob.ToRegexString()).IsMatch(input).Should().Be(expected);
     }
 
-    [Fact]
-    public void ToRegexString_ForSinglePattern_EqualsGeneratedSource()
+    [Theory]
+    [InlineData("*.js", true)]
+    [InlineData("a[b", true)]
+    [InlineData("[z-a]", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void TryCreate_ReturnsWhetherPatternCompiles(string? pattern, bool expected)
     {
-        new Glob("*.js", s_Posix).ToRegexString().Should().Be(GlobCompiler.CompileRegexSource("*.js", s_Posix));
+        bool created = Glob.TryCreate(pattern, null, out var glob);
+
+        created.Should().Be(expected);
+        (glob != null).Should().Be(expected);
     }
 
     [Theory]
     [InlineData("")]
-    [InlineData(null)]
     [InlineData("[z-a]")]
-    public void TryCreate_WithInvalidIgnorePattern_ReturnsFalse(string? ignorePattern)
+    public void TryCreate_WithError_InvalidIgnorePattern_ReportsIgnorePatterns(string ignorePattern)
     {
-        var options = new GlobOptions { IgnorePatterns = [ignorePattern!] };
+        var options = new GlobOptions { IgnorePatterns = [ignorePattern] };
 
-        Glob.TryCreate("*.js", options, out var glob).Should().BeFalse();
-        glob.Should().BeNull();
-    }
+        Glob.TryCreate("*.js", options, out _, out var error).Should().BeFalse();
 
-    [Fact]
-    public void TryCreate_WithError_OnSuccess_ReturnsGlobAndNoError()
-    {
-        Glob.TryCreate("*.js", null, out var glob, out var error).Should().BeTrue();
-
-        glob.Should().NotBeNull();
-        error.Should().BeNull();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    public void TryCreate_WithError_NullOrEmptyPattern_ReportsEmptyPattern(string? pattern)
-    {
-        Glob.TryCreate(pattern, null, out var glob, out var error).Should().BeFalse();
-
-        glob.Should().BeNull();
-        error!.Error.Should().Be(GlobParseError.EmptyPattern);
-        error.Pattern.Should().BeEmpty();
-        error.ParamName.Should().Be("pattern");
+        error!.ParamName.Should().Be(nameof(GlobOptions.IgnorePatterns));
+        error.Error.Should().Be(ignorePattern.Length == 0 ? GlobParseError.EmptyPattern : GlobParseError.InvalidPattern);
     }
 
     [Theory]
@@ -386,15 +359,42 @@ public class GlobTests
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
-    [InlineData("[z-a]")]
-    public void TryCreate_WithError_InvalidIgnorePattern_ReportsIgnorePatterns(string ignorePattern)
+    public void TryCreate_WithError_NullOrEmptyPattern_ReportsEmptyPattern(string? pattern)
     {
-        var options = new GlobOptions { IgnorePatterns = [ignorePattern] };
+        Glob.TryCreate(pattern, null, out var glob, out var error).Should().BeFalse();
 
-        Glob.TryCreate("*.js", options, out _, out var error).Should().BeFalse();
+        glob.Should().BeNull();
+        error!.Error.Should().Be(GlobParseError.EmptyPattern);
+        error.Pattern.Should().BeEmpty();
+        error.ParamName.Should().Be("pattern");
+    }
 
-        error!.ParamName.Should().Be(nameof(GlobOptions.IgnorePatterns));
-        error.Error.Should().Be(ignorePattern.Length == 0 ? GlobParseError.EmptyPattern : GlobParseError.InvalidPattern);
+    [Fact]
+    public void TryCreate_WithError_OnSuccess_ReturnsGlobAndNoError()
+    {
+        Glob.TryCreate("*.js", null, out var glob, out var error).Should().BeTrue();
+
+        glob.Should().NotBeNull();
+        error.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("[z-a]")]
+    public void TryCreate_WithInvalidIgnorePattern_ReturnsFalse(string? ignorePattern)
+    {
+        var options = new GlobOptions { IgnorePatterns = [ignorePattern!] };
+
+        Glob.TryCreate("*.js", options, out var glob).Should().BeFalse();
+        glob.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryCreate_WithStrictBracketsViolation_ReturnsFalse()
+    {
+        Glob.TryCreate("a[b", new GlobOptions { StrictBrackets = true }, out _).Should().BeFalse();
     }
 }

@@ -14,13 +14,13 @@ namespace Snowberry.Globbing.Compilation;
 /// </remarks>
 internal readonly ref struct RegexEmitter
 {
-    private readonly ReadOnlySpan<SyntaxNode> _nodes;
-    private readonly ReadOnlySpan<char> _pattern;
-    private readonly GlobOptions _options;
     private readonly RegexFragments _f;
-    private readonly string _source;
+    private readonly ReadOnlySpan<SyntaxNode> _nodes;
     private readonly int _offset;
+    private readonly GlobOptions _options;
+    private readonly ReadOnlySpan<char> _pattern;
     private readonly bool _plain;
+    private readonly string _source;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RegexEmitter"/> struct.
@@ -43,6 +43,25 @@ internal readonly ref struct RegexEmitter
     }
 
     /// <summary>
+    /// Determines whether <paramref name="text"/> is a dot followed by at least one character and no backslash, separator or further dot, such as <c>.ts</c>.
+    /// </summary>
+    /// <param name="text">The pattern text that follows a negated extended glob.</param>
+    /// <returns><see langword="true"/> if <paramref name="text"/> is a literal suffix; otherwise, <see langword="false"/>.</returns>
+    private static bool IsLiteralSuffix(ReadOnlySpan<char> text)
+    {
+        if (text.Length < 2 || text[0] != '.')
+            return false;
+
+        foreach (char c in text[1..])
+        {
+            if (c is '\\' or '/' or '.')
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Writes the regex for the root sequence at <paramref name="root"/>, without anchors, followed by an optional trailing separator
     /// when the sequence ends in a single-segment star or a bracket expression, unless the pattern is plain or
     /// <see cref="GlobOptions.StrictSlashes"/> is set.
@@ -58,6 +77,118 @@ internal readonly ref struct RegexEmitter
 
         sb.Append(_f.OptionalSlash);
         return true;
+    }
+
+    /// <summary>
+    /// Writes the child sequences of <paramref name="parent"/> separated by <c>|</c>.
+    /// </summary>
+    /// <param name="parent">The index of the brace, group or extended glob node that owns the alternatives.</param>
+    /// <param name="sb">The builder that receives the regex.</param>
+    private void EmitAlternatives(int parent, ref ValueStringBuilder sb)
+    {
+        for (int alternative = _nodes[parent].FirstChild; alternative >= 0; alternative = _nodes[alternative].Next)
+        {
+            if (alternative != _nodes[parent].FirstChild)
+                sb.Append('|');
+
+            EmitSequence(alternative, ref sb);
+        }
+    }
+
+    /// <summary>
+    /// Writes the regex for an extended glob such as <c>@(a|b)</c>, <c>?(a)</c>, <c>+(a)</c>, <c>*(a)</c> or <c>!(a)</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>@(...)</c> is a group that captures with <see cref="GlobOptions.CaptureGroups"/>. The others are a non-capturing group with
+    /// the matching quantifier, or the negative lookahead of <see cref="EmitNegationClose"/>, wrapped in a capture group with
+    /// <see cref="GlobOptions.CaptureGroups"/>.
+    /// </remarks>
+    /// <param name="node">The extended glob node.</param>
+    /// <param name="index">The index of <paramref name="node"/>, which owns the alternatives.</param>
+    /// <param name="atPatternStart"><see langword="true"/> if the extended glob starts the root sequence; every form except <c>@(...)</c> then requires at least one more character.</param>
+    /// <param name="sb">The builder that receives the regex.</param>
+    private void EmitExtglob(in SyntaxNode node, int index, bool atPatternStart, ref ValueStringBuilder sb)
+    {
+        if (node.Value == '@')
+        {
+            sb.Append('(');
+            sb.Append(_f.Capture);
+            EmitAlternatives(index, ref sb);
+            sb.Append(')');
+            return;
+        }
+
+        if (atPatternStart)
+            sb.Append(_f.Chars.OneChar);
+
+        if (_options.CaptureGroups)
+            sb.Append('(');
+
+        sb.Append(node.Value == '!' ? "(?:(?!(?:" : "(?:");
+        EmitAlternatives(index, ref sb);
+
+        switch (node.Value)
+        {
+            case '?':
+                sb.Append(")?");
+                break;
+            case '+':
+                sb.Append(")+");
+                break;
+            case '*':
+                sb.Append(")*");
+                break;
+            default:
+                EmitNegationClose(in node, ref sb);
+                break;
+        }
+
+        if (_options.CaptureGroups)
+            sb.Append(')');
+    }
+
+    /// <summary>
+    /// Closes a <c>!(...)</c> and writes the text it matches. The negative lookahead must reject the excluded text as a whole, so
+    /// when the alternatives contain <c>*</c> and the rest of the pattern is a literal suffix such as <c>.ts</c> in <c>!(*.d).ts</c>,
+    /// the suffix is compiled into the lookahead; otherwise the lookahead is anchored to the end of input when the alternatives
+    /// span segments or nothing but closing parentheses follows.
+    /// </summary>
+    /// <remarks>
+    /// The text after the lookahead is <see cref="RegexFragments.Globstar"/> when the alternatives contain <c>/</c> and
+    /// <see cref="RegexFragments.Star"/> otherwise, except in the unanchored case, which uses a non-capturing <see cref="GlobChars.Star"/>.
+    /// The rest of the pattern is the remaining pattern text, not only the rest of the enclosing sequence.
+    /// </remarks>
+    /// <param name="node">The negated extended glob node.</param>
+    /// <param name="sb">The builder that receives the regex.</param>
+    private void EmitNegationClose(in SyntaxNode node, ref ValueStringBuilder sb)
+    {
+        var inner = _pattern.Slice(node.Start + 2, node.Length - 3);
+        var remaining = _pattern[node.End..];
+        bool spansSegments = inner.Length > 1 && inner.IndexOf('/') >= 0;
+        string star = spansSegments ? _f.Globstar : _f.Star;
+
+        if (inner.IndexOf('*') >= 0 && IsLiteralSuffix(remaining))
+        {
+            sb.Append(')');
+            GlobCompiler.EmitBody(remaining, _options, _source, _offset + node.End, ref sb, allowShapes: false, allowPlain: false);
+            sb.Append(')');
+            sb.Append(star);
+            sb.Append(')');
+            return;
+        }
+
+        if (spansSegments || remaining.IsEmpty || remaining.Trim(')').IsEmpty)
+        {
+            sb.Append(')');
+            sb.Append(RegexSyntax.c_EndOfInput);
+            sb.Append("))");
+            sb.Append(star);
+            return;
+        }
+
+        sb.Append("))");
+        sb.Append(_f.Chars.Star);
+        sb.Append(')');
     }
 
     /// <summary>
@@ -188,110 +319,6 @@ internal readonly ref struct RegexEmitter
     }
 
     /// <summary>
-    /// Writes the child sequences of <paramref name="parent"/> separated by <c>|</c>.
-    /// </summary>
-    /// <param name="parent">The index of the brace, group or extended glob node that owns the alternatives.</param>
-    /// <param name="sb">The builder that receives the regex.</param>
-    private void EmitAlternatives(int parent, ref ValueStringBuilder sb)
-    {
-        for (int alternative = _nodes[parent].FirstChild; alternative >= 0; alternative = _nodes[alternative].Next)
-        {
-            if (alternative != _nodes[parent].FirstChild)
-                sb.Append('|');
-
-            EmitSequence(alternative, ref sb);
-        }
-    }
-
-    /// <summary>
-    /// Decides how the star run at <paramref name="star"/> is written: as a single-segment wildcard, a quantifier, a bash star, or one
-    /// of the globstar forms when <c>**</c> spans whole path segments.
-    /// </summary>
-    /// <remarks>
-    /// In a plain pattern every star is <see cref="StarForm.Star"/>. Otherwise a run of exactly two stars is a globstar when
-    /// <see cref="GlobOptions.Globstar"/> is set and <see cref="GlobstarAllowed"/> agrees. With <see cref="GlobOptions.BashCompatibility"/>,
-    /// every run is <see cref="StarForm.BashStar"/> except a globstar that starts a segment and ends the pattern or precedes a separator.
-    /// A globstar merges with following <c>/**</c> runs and becomes, in order of precedence, <see cref="StarForm.WholeGlobstar"/>,
-    /// <see cref="StarForm.TrailingGlobstar"/>, <see cref="StarForm.MiddleGlobstar"/>, <see cref="StarForm.LeadingGlobstar"/>,
-    /// <see cref="StarForm.Globstar"/> when it ends the sequence or <see cref="KeepsGlobstar"/> agrees, and <see cref="StarForm.Star"/>
-    /// otherwise. Any other run is <see cref="StarForm.Quantifier"/> after a bracket expression, group or extended glob with
-    /// <see cref="GlobOptions.RegexQuantifiers"/>, and <see cref="StarForm.Star"/> otherwise.
-    /// </remarks>
-    /// <param name="sequence">The index of the sequence that contains the star.</param>
-    /// <param name="star">The index of the star node.</param>
-    /// <param name="prev">The index of the node before the star in the sequence, or a negative value if there is none.</param>
-    /// <param name="prevPrev">The index of the node before <paramref name="prev"/>, or a negative value if there is none.</param>
-    /// <returns>The chosen form and the nodes it consumes, which can extend past <paramref name="star"/> when repeated globstars are merged.</returns>
-    private StarPlan PlanStar(int sequence, int star, int prev, int prevPrev)
-    {
-        ref readonly var seq = ref _nodes[sequence];
-        ref readonly var node = ref _nodes[star];
-        bool atStart = seq.Role == SequenceRole.Root && prev < 0;
-        bool afterSeparator = prev >= 0 && _nodes[prev].Kind == SyntaxKind.Separator;
-        bool segmentStart = atStart || afterSeparator;
-        bool afterLeadingDot = prev >= 0 && _nodes[prev].Kind == SyntaxKind.Dot && _nodes[prev].IsLeadingDot;
-        int next = node.Next;
-        bool rootEnd = seq.Role == SequenceRole.Root && next < 0;
-
-        // A plain pattern has no segments to span; its stars are single-segment wildcards.
-        if (_plain)
-            return new StarPlan(StarForm.Star, star, prev);
-
-        bool globstar = node.Count == 2 && _options.Globstar && GlobstarAllowed(in seq, prev);
-        if (_options.BashCompatibility && !(globstar && segmentStart && (rootEnd || IsKind(next, SyntaxKind.Separator))))
-            return new StarPlan(StarForm.BashStar, star, prev, segmentStart);
-
-        if (globstar)
-        {
-            int last = star;
-            int beforeLast = prev;
-
-            // "a/**/**/b" is the same as "a/**/b".
-            while (IsKind(next, SyntaxKind.Separator) && IsKind(_nodes[next].Next, SyntaxKind.Star) && _nodes[_nodes[next].Next].Count == 2)
-            {
-                int candidate = _nodes[next].Next;
-                int after = _nodes[candidate].Next;
-                if (!(after < 0 ? seq.Role == SequenceRole.Root : _nodes[after].Kind == SyntaxKind.Separator))
-                    break;
-
-                beforeLast = next;
-                last = candidate;
-                next = after;
-            }
-
-            rootEnd = seq.Role == SequenceRole.Root && next < 0;
-            bool separatorNotFirst = afterSeparator && !(seq.Role == SequenceRole.Root && prevPrev < 0);
-            bool afterStar = IsKind(prevPrev, SyntaxKind.Star);
-
-            if (atStart && rootEnd)
-                return new StarPlan(StarForm.WholeGlobstar, last, beforeLast);
-
-            if (separatorNotFirst && !afterStar && rootEnd)
-                return new StarPlan(StarForm.TrailingGlobstar, last, beforeLast, SegmentStart: true);
-
-            if (separatorNotFirst && IsKind(next, SyntaxKind.Separator))
-                return new StarPlan(StarForm.MiddleGlobstar, next, last, SegmentStart: true, MoreAfter: _nodes[next].Next >= 0 || seq.Role != SequenceRole.Root);
-
-            if ((atStart || (seq.Role == SequenceRole.BraceAlternative && prev < 0)) && IsKind(next, SyntaxKind.Separator))
-            {
-                // Only an anchored pattern start can use the optional form; elsewhere "nothing" would match mid-input.
-                return new StarPlan(StarForm.LeadingGlobstar, next, last, SegmentStart: atStart && !_options.MatchSubstring);
-            }
-
-            if (next < 0 || KeepsGlobstar(next))
-                return new StarPlan(StarForm.Globstar, last, beforeLast, segmentStart);
-
-            return new StarPlan(StarForm.Star, last, beforeLast, segmentStart);
-        }
-
-        if (_options.RegexQuantifiers && prev >= 0 && _nodes[prev].Kind is SyntaxKind.CharClass or SyntaxKind.Group or SyntaxKind.Extglob)
-            return new StarPlan(StarForm.Quantifier, star, prev);
-
-        bool oneChar = node.Count == 1 && !(IsKind(next, SyntaxKind.Extglob) && _nodes[next].Value == '*');
-        return new StarPlan(StarForm.Star, star, prev, segmentStart, afterLeadingDot, oneChar, false);
-    }
-
-    /// <summary>
     /// Writes the regex for a star run in the form chosen by <paramref name="plan"/>.
     /// </summary>
     /// <remarks>
@@ -399,137 +426,6 @@ internal readonly ref struct RegexEmitter
     }
 
     /// <summary>
-    /// Determines whether the node after a globstar lets it keep spanning segments instead of acting as a single star.
-    /// </summary>
-    /// <param name="next">The index of the node after the globstar.</param>
-    /// <returns><see langword="true"/> if the node is a separator, group, brace, brace range or <c>@(...)</c>; otherwise, <see langword="false"/>.</returns>
-    private bool KeepsGlobstar(int next)
-    {
-        ref readonly var node = ref _nodes[next];
-        return node.Kind switch
-        {
-            SyntaxKind.Separator or SyntaxKind.Group or SyntaxKind.Brace or SyntaxKind.BraceRange => true,
-            SyntaxKind.Extglob => node.Value == '@',
-            _ => false,
-        };
-    }
-
-    /// <summary>
-    /// Writes the regex for an extended glob such as <c>@(a|b)</c>, <c>?(a)</c>, <c>+(a)</c>, <c>*(a)</c> or <c>!(a)</c>.
-    /// </summary>
-    /// <remarks>
-    /// <c>@(...)</c> is a group that captures with <see cref="GlobOptions.CaptureGroups"/>. The others are a non-capturing group with
-    /// the matching quantifier, or the negative lookahead of <see cref="EmitNegationClose"/>, wrapped in a capture group with
-    /// <see cref="GlobOptions.CaptureGroups"/>.
-    /// </remarks>
-    /// <param name="node">The extended glob node.</param>
-    /// <param name="index">The index of <paramref name="node"/>, which owns the alternatives.</param>
-    /// <param name="atPatternStart"><see langword="true"/> if the extended glob starts the root sequence; every form except <c>@(...)</c> then requires at least one more character.</param>
-    /// <param name="sb">The builder that receives the regex.</param>
-    private void EmitExtglob(in SyntaxNode node, int index, bool atPatternStart, ref ValueStringBuilder sb)
-    {
-        if (node.Value == '@')
-        {
-            sb.Append('(');
-            sb.Append(_f.Capture);
-            EmitAlternatives(index, ref sb);
-            sb.Append(')');
-            return;
-        }
-
-        if (atPatternStart)
-            sb.Append(_f.Chars.OneChar);
-
-        if (_options.CaptureGroups)
-            sb.Append('(');
-
-        sb.Append(node.Value == '!' ? "(?:(?!(?:" : "(?:");
-        EmitAlternatives(index, ref sb);
-
-        switch (node.Value)
-        {
-            case '?':
-                sb.Append(")?");
-                break;
-            case '+':
-                sb.Append(")+");
-                break;
-            case '*':
-                sb.Append(")*");
-                break;
-            default:
-                EmitNegationClose(in node, ref sb);
-                break;
-        }
-
-        if (_options.CaptureGroups)
-            sb.Append(')');
-    }
-
-    /// <summary>
-    /// Closes a <c>!(...)</c> and writes the text it matches. The negative lookahead must reject the excluded text as a whole, so
-    /// when the alternatives contain <c>*</c> and the rest of the pattern is a literal suffix such as <c>.ts</c> in <c>!(*.d).ts</c>,
-    /// the suffix is compiled into the lookahead; otherwise the lookahead is anchored to the end of input when the alternatives
-    /// span segments or nothing but closing parentheses follows.
-    /// </summary>
-    /// <remarks>
-    /// The text after the lookahead is <see cref="RegexFragments.Globstar"/> when the alternatives contain <c>/</c> and
-    /// <see cref="RegexFragments.Star"/> otherwise, except in the unanchored case, which uses a non-capturing <see cref="GlobChars.Star"/>.
-    /// The rest of the pattern is the remaining pattern text, not only the rest of the enclosing sequence.
-    /// </remarks>
-    /// <param name="node">The negated extended glob node.</param>
-    /// <param name="sb">The builder that receives the regex.</param>
-    private void EmitNegationClose(in SyntaxNode node, ref ValueStringBuilder sb)
-    {
-        var inner = _pattern.Slice(node.Start + 2, node.Length - 3);
-        var remaining = _pattern[node.End..];
-        bool spansSegments = inner.Length > 1 && inner.IndexOf('/') >= 0;
-        string star = spansSegments ? _f.Globstar : _f.Star;
-
-        if (inner.IndexOf('*') >= 0 && IsLiteralSuffix(remaining))
-        {
-            sb.Append(')');
-            GlobCompiler.EmitBody(remaining, _options, _source, _offset + node.End, ref sb, allowShapes: false, allowPlain: false);
-            sb.Append(')');
-            sb.Append(star);
-            sb.Append(')');
-            return;
-        }
-
-        if (spansSegments || remaining.IsEmpty || remaining.Trim(')').IsEmpty)
-        {
-            sb.Append(')');
-            sb.Append(RegexSyntax.c_EndOfInput);
-            sb.Append("))");
-            sb.Append(star);
-            return;
-        }
-
-        sb.Append("))");
-        sb.Append(_f.Chars.Star);
-        sb.Append(')');
-    }
-
-    /// <summary>
-    /// Determines whether <paramref name="text"/> is a dot followed by at least one character and no backslash, separator or further dot, such as <c>.ts</c>.
-    /// </summary>
-    /// <param name="text">The pattern text that follows a negated extended glob.</param>
-    /// <returns><see langword="true"/> if <paramref name="text"/> is a literal suffix; otherwise, <see langword="false"/>.</returns>
-    private static bool IsLiteralSuffix(ReadOnlySpan<char> text)
-    {
-        if (text.Length < 2 || text[0] != '.')
-            return false;
-
-        foreach (char c in text[1..])
-        {
-            if (c is '\\' or '/' or '.')
-                return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
     /// Determines whether <paramref name="index"/> refers to a node of kind <paramref name="kind"/>.
     /// </summary>
     /// <param name="index">The node index; a negative value means no node.</param>
@@ -549,17 +445,6 @@ internal readonly ref struct RegexEmitter
     private bool IsPatternStart(int sequence, int prev)
     {
         return prev < 0 && _nodes[sequence].Role == SequenceRole.Root;
-    }
-
-    /// <summary>
-    /// Determines whether a node at the given position starts a path segment.
-    /// </summary>
-    /// <param name="sequence">The index of the containing sequence.</param>
-    /// <param name="prev">The index of the preceding node, or a negative value if there is none.</param>
-    /// <returns><see langword="true"/> if the node starts the pattern or follows a separator; otherwise, <see langword="false"/>.</returns>
-    private bool IsSegmentStart(int sequence, int prev)
-    {
-        return IsPatternStart(sequence, prev) || IsKind(prev, SyntaxKind.Separator);
     }
 
     /// <summary>
@@ -587,5 +472,120 @@ internal readonly ref struct RegexEmitter
             SyntaxKind.CharClass or SyntaxKind.Brace or SyntaxKind.BraceRange => !groupsOnly,
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// Determines whether a node at the given position starts a path segment.
+    /// </summary>
+    /// <param name="sequence">The index of the containing sequence.</param>
+    /// <param name="prev">The index of the preceding node, or a negative value if there is none.</param>
+    /// <returns><see langword="true"/> if the node starts the pattern or follows a separator; otherwise, <see langword="false"/>.</returns>
+    private bool IsSegmentStart(int sequence, int prev)
+    {
+        return IsPatternStart(sequence, prev) || IsKind(prev, SyntaxKind.Separator);
+    }
+
+    /// <summary>
+    /// Determines whether the node after a globstar lets it keep spanning segments instead of acting as a single star.
+    /// </summary>
+    /// <param name="next">The index of the node after the globstar.</param>
+    /// <returns><see langword="true"/> if the node is a separator, group, brace, brace range or <c>@(...)</c>; otherwise, <see langword="false"/>.</returns>
+    private bool KeepsGlobstar(int next)
+    {
+        ref readonly var node = ref _nodes[next];
+        return node.Kind switch
+        {
+            SyntaxKind.Separator or SyntaxKind.Group or SyntaxKind.Brace or SyntaxKind.BraceRange => true,
+            SyntaxKind.Extglob => node.Value == '@',
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// Decides how the star run at <paramref name="star"/> is written: as a single-segment wildcard, a quantifier, a bash star, or one
+    /// of the globstar forms when <c>**</c> spans whole path segments.
+    /// </summary>
+    /// <remarks>
+    /// In a plain pattern every star is <see cref="StarForm.Star"/>. Otherwise a run of exactly two stars is a globstar when
+    /// <see cref="GlobOptions.Globstar"/> is set and <see cref="GlobstarAllowed"/> agrees. With <see cref="GlobOptions.BashCompatibility"/>,
+    /// every run is <see cref="StarForm.BashStar"/> except a globstar that starts a segment and ends the pattern or precedes a separator.
+    /// A globstar merges with following <c>/**</c> runs and becomes, in order of precedence, <see cref="StarForm.WholeGlobstar"/>,
+    /// <see cref="StarForm.TrailingGlobstar"/>, <see cref="StarForm.MiddleGlobstar"/>, <see cref="StarForm.LeadingGlobstar"/>,
+    /// <see cref="StarForm.Globstar"/> when it ends the sequence or <see cref="KeepsGlobstar"/> agrees, and <see cref="StarForm.Star"/>
+    /// otherwise. Any other run is <see cref="StarForm.Quantifier"/> after a bracket expression, group or extended glob with
+    /// <see cref="GlobOptions.RegexQuantifiers"/>, and <see cref="StarForm.Star"/> otherwise.
+    /// </remarks>
+    /// <param name="sequence">The index of the sequence that contains the star.</param>
+    /// <param name="star">The index of the star node.</param>
+    /// <param name="prev">The index of the node before the star in the sequence, or a negative value if there is none.</param>
+    /// <param name="prevPrev">The index of the node before <paramref name="prev"/>, or a negative value if there is none.</param>
+    /// <returns>The chosen form and the nodes it consumes, which can extend past <paramref name="star"/> when repeated globstars are merged.</returns>
+    private StarPlan PlanStar(int sequence, int star, int prev, int prevPrev)
+    {
+        ref readonly var seq = ref _nodes[sequence];
+        ref readonly var node = ref _nodes[star];
+        bool atStart = seq.Role == SequenceRole.Root && prev < 0;
+        bool afterSeparator = prev >= 0 && _nodes[prev].Kind == SyntaxKind.Separator;
+        bool segmentStart = atStart || afterSeparator;
+        bool afterLeadingDot = prev >= 0 && _nodes[prev].Kind == SyntaxKind.Dot && _nodes[prev].IsLeadingDot;
+        int next = node.Next;
+        bool rootEnd = seq.Role == SequenceRole.Root && next < 0;
+
+        // A plain pattern has no segments to span; its stars are single-segment wildcards.
+        if (_plain)
+            return new StarPlan(StarForm.Star, star, prev);
+
+        bool globstar = node.Count == 2 && _options.Globstar && GlobstarAllowed(in seq, prev);
+        if (_options.BashCompatibility && !(globstar && segmentStart && (rootEnd || IsKind(next, SyntaxKind.Separator))))
+            return new StarPlan(StarForm.BashStar, star, prev, segmentStart);
+
+        if (globstar)
+        {
+            int last = star;
+            int beforeLast = prev;
+
+            // "a/**/**/b" is the same as "a/**/b".
+            while (IsKind(next, SyntaxKind.Separator) && IsKind(_nodes[next].Next, SyntaxKind.Star) && _nodes[_nodes[next].Next].Count == 2)
+            {
+                int candidate = _nodes[next].Next;
+                int after = _nodes[candidate].Next;
+                if (!(after < 0 ? seq.Role == SequenceRole.Root : _nodes[after].Kind == SyntaxKind.Separator))
+                    break;
+
+                beforeLast = next;
+                last = candidate;
+                next = after;
+            }
+
+            rootEnd = seq.Role == SequenceRole.Root && next < 0;
+            bool separatorNotFirst = afterSeparator && !(seq.Role == SequenceRole.Root && prevPrev < 0);
+            bool afterStar = IsKind(prevPrev, SyntaxKind.Star);
+
+            if (atStart && rootEnd)
+                return new StarPlan(StarForm.WholeGlobstar, last, beforeLast);
+
+            if (separatorNotFirst && !afterStar && rootEnd)
+                return new StarPlan(StarForm.TrailingGlobstar, last, beforeLast, SegmentStart: true);
+
+            if (separatorNotFirst && IsKind(next, SyntaxKind.Separator))
+                return new StarPlan(StarForm.MiddleGlobstar, next, last, SegmentStart: true, MoreAfter: _nodes[next].Next >= 0 || seq.Role != SequenceRole.Root);
+
+            if ((atStart || (seq.Role == SequenceRole.BraceAlternative && prev < 0)) && IsKind(next, SyntaxKind.Separator))
+            {
+                // Only an anchored pattern start can use the optional form; elsewhere "nothing" would match mid-input.
+                return new StarPlan(StarForm.LeadingGlobstar, next, last, SegmentStart: atStart && !_options.MatchSubstring);
+            }
+
+            if (next < 0 || KeepsGlobstar(next))
+                return new StarPlan(StarForm.Globstar, last, beforeLast, segmentStart);
+
+            return new StarPlan(StarForm.Star, last, beforeLast, segmentStart);
+        }
+
+        if (_options.RegexQuantifiers && prev >= 0 && _nodes[prev].Kind is SyntaxKind.CharClass or SyntaxKind.Group or SyntaxKind.Extglob)
+            return new StarPlan(StarForm.Quantifier, star, prev);
+
+        bool oneChar = node.Count == 1 && !(IsKind(next, SyntaxKind.Extglob) && _nodes[next].Value == '*');
+        return new StarPlan(StarForm.Star, star, prev, segmentStart, afterLeadingDot, oneChar, false);
     }
 }

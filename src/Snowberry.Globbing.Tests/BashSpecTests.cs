@@ -26,6 +26,25 @@ public class BashSpecTests
     }
 
     [Theory]
+    [InlineData("a.a", "[a-d]*.[a-b]", true)]
+    [InlineData("a.a.a", "[a-d]*.[a-b]", true)]
+    [InlineData("a.a.a", "[a-d]*.[a-b]*.[a-b]", true)]
+    public void Glob_CharacterRanges_ShouldMatchCorrectly(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern, s_BashOptions).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("abd", "[a-y]*[^c]", true)]
+    [InlineData("ca", "[a-y]*[^c]", true)]
+    [InlineData("bdir/", "[a-y]*[^c]", true)]
+    [InlineData("abd", "**/*", true)]
+    public void Glob_NegatedCharacterClass_ShouldMatchCorrectly(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern, s_BashOptions).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("a/c/b", "a/*/b", true)]
     [InlineData("a/.d/b", "a/*/b", false)]
     [InlineData("a/./b", "a/*/b", false)]
@@ -42,20 +61,11 @@ public class BashSpecTests
     }
 
     [Theory]
-    [InlineData("a.a", "[a-d]*.[a-b]", true)]
-    [InlineData("a.a.a", "[a-d]*.[a-b]", true)]
-    [InlineData("a.a.a", "[a-d]*.[a-b]*.[a-b]", true)]
-    public void Glob_CharacterRanges_ShouldMatchCorrectly(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern, s_BashOptions).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("a.a", "*.[a-b]", true)]
-    [InlineData("a.a.a", "*.[a-b]", true)]
-    [InlineData("d.a.d", "*.[a-b]", false)]
-    [InlineData("a.bb", "*.[a-b]", false)]
-    public void Glob_StarWithCharacterRange_ShouldMatchCorrectly(string input, string pattern, bool expected)
+    [InlineData("a.a", "*[a-b].[a-b]*", true)]
+    [InlineData("c.a", "*[a-b].[a-b]*", false)]
+    [InlineData("a.bb", "*[a-b].[a-b]*", true)]
+    [InlineData("a.ccc", "*[a-b].[a-b]*", false)]
+    public void Glob_StarCharacterRangePattern_ShouldMatchCorrectly(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern, s_BashOptions).Should().Be(expected);
     }
@@ -73,21 +83,11 @@ public class BashSpecTests
     }
 
     [Theory]
-    [InlineData("a.a", "*[a-b].[a-b]*", true)]
-    [InlineData("c.a", "*[a-b].[a-b]*", false)]
-    [InlineData("a.bb", "*[a-b].[a-b]*", true)]
-    [InlineData("a.ccc", "*[a-b].[a-b]*", false)]
-    public void Glob_StarCharacterRangePattern_ShouldMatchCorrectly(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern, s_BashOptions).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("abd", "[a-y]*[^c]", true)]
-    [InlineData("ca", "[a-y]*[^c]", true)]
-    [InlineData("bdir/", "[a-y]*[^c]", true)]
-    [InlineData("abd", "**/*", true)]
-    public void Glob_NegatedCharacterClass_ShouldMatchCorrectly(string input, string pattern, bool expected)
+    [InlineData("a.a", "*.[a-b]", true)]
+    [InlineData("a.a.a", "*.[a-b]", true)]
+    [InlineData("d.a.d", "*.[a-b]", false)]
+    [InlineData("a.bb", "*.[a-b]", false)]
+    public void Glob_StarWithCharacterRange_ShouldMatchCorrectly(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern, s_BashOptions).Should().Be(expected);
     }
@@ -122,5 +122,4 @@ public class BashSpecTests
     {
         Glob.IsMatch(input, pattern, s_BashOptions).Should().Be(expected);
     }
-
 }

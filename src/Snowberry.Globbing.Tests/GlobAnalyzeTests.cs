@@ -5,12 +5,6 @@ public class GlobAnalyzeTests
     private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
 
     [Fact]
-    public void Analyze_WithNullPattern_ThrowsArgumentNullException()
-    {
-        FluentActions.Invoking(() => Glob.Analyze(null!)).Should().ThrowExactly<ArgumentNullException>();
-    }
-
-    [Fact]
     public void Analyze_DescribesPatternStructure()
     {
         var info = Glob.Analyze("src/lib/**/*.{cs,csproj}");
@@ -27,96 +21,39 @@ public class GlobAnalyzeTests
         info.Segments.Should().Equal(["src", "lib", "**", "*.{cs,csproj}"]);
     }
 
-    [Theory]
-    [InlineData("!./foo/*.js", "!./", "foo", "*.js", "foo|*.js")]
-    [InlineData("./foo/*.js", "./", "foo", "*.js", "foo|*.js")]
-    [InlineData("foo", "", "foo", "", "foo")]
-    [InlineData("/abs/x", "", "/abs/x", "", "|abs|x")]
-    [InlineData("a/", "", "a/", "", "a|")]
-    [InlineData("!(a)/b", "", "", "!(a)/b", "!(a)|b")]
-    public void Analyze_MatchesPicomatchScan(string pattern, string prefix, string basePath, string globPart, string segments)
+    [Fact]
+    public void Analyze_DoubleNegation_IsNotNegated()
     {
-        var info = Glob.Analyze(pattern);
+        var info = Glob.Analyze("!!a/*.js");
 
-        info.Prefix.Should().Be(prefix);
-        info.BasePath.Should().Be(basePath);
-        info.GlobPart.Should().Be(globPart);
-        info.Segments.Should().Equal(segments.Split('|'));
+        info.IsNegated.Should().BeFalse();
+        info.Prefix.Should().Be("!!");
     }
 
     [Theory]
-    [InlineData("foo/bar/baz", "foo|bar|baz")]
-    [InlineData("foo/*/bar", "foo|*|bar")]
-    [InlineData("foo/**/bar", "foo|**|bar")]
-    public void Analyze_Segments_SplitsAtSeparators(string pattern, string segments)
+    [InlineData(@"a/\*/b")]
+    [InlineData("a/(b")]
+    [InlineData("a/{b")]
+    [InlineData("a/[b")]
+    public void Analyze_EscapedOrUnbalancedSyntax_IsNotAGlob(string pattern)
     {
-        Glob.Analyze(pattern).Segments.Should().Equal(segments.Split('|'));
+        var info = Glob.Analyze(pattern, s_Posix);
+
+        info.IsGlob.Should().BeFalse();
+        info.BasePath.Should().Be(pattern);
+        info.GlobPart.Should().Be("");
     }
 
-    [Theory]
-    [InlineData("*")]
-    [InlineData("foo/bar/baz.js")]
-    [InlineData("!./foo/*.js")]
-    [InlineData(@"foo\bar")]
-    [InlineData(@"foo\*")]
-    [InlineData(@"foo\**\bar")]
-    public void Analyze_Pattern_IsOriginalPattern(string pattern)
+    [Fact]
+    public void Analyze_ExtglobWithBraces_ReportsAllFeatures()
     {
-        Glob.Analyze(pattern).Pattern.Should().Be(pattern);
-    }
+        var info = Glob.Analyze("src/!(test)/**/*.{js,ts}");
 
-    [Theory]
-    [InlineData("./foo", "./")]
-    [InlineData("./foo/bar", "./")]
-    [InlineData("/foo", "")]
-    [InlineData("/foo/bar", "")]
-    [InlineData("/foo/bar/*", "")]
-    [InlineData("*", "")]
-    [InlineData("foo/*", "")]
-    [InlineData("foo/bar/*", "")]
-    public void Analyze_Prefix_IsLeadingNegationOrDotSlash(string pattern, string expectedPrefix)
-    {
-        Glob.Analyze(pattern).Prefix.Should().Be(expectedPrefix);
-    }
-
-    [Theory]
-    [InlineData("foo", "foo", "")]
-    [InlineData("foo/bar", "foo/bar", "")]
-    [InlineData("*", "", "*")]
-    [InlineData("**", "", "**")]
-    [InlineData("foo/*", "foo", "*")]
-    [InlineData("foo/**", "foo", "**")]
-    [InlineData("foo/bar/*", "foo/bar", "*")]
-    [InlineData("foo/bar/**", "foo/bar", "**")]
-    [InlineData("foo/bar/*.js", "foo/bar", "*.js")]
-    [InlineData("a/b/c/*.txt", "a/b/c", "*.txt")]
-    [InlineData("a/**/b", "a", "**/b")]
-    [InlineData("a/**/b/*.txt", "a", "**/b/*.txt")]
-    public void Analyze_SplitsBasePathFromGlobPart(string pattern, string expectedBasePath, string expectedGlobPart)
-    {
-        var info = Glob.Analyze(pattern);
-
-        info.BasePath.Should().Be(expectedBasePath);
-        info.GlobPart.Should().Be(expectedGlobPart);
-    }
-
-    [Theory]
-    [InlineData("*", true)]
-    [InlineData("*.js", true)]
-    [InlineData("**/*.js", true)]
-    [InlineData("foo?bar", true)]
-    [InlineData("[abc]", true)]
-    [InlineData("{a,b}", true)]
-    [InlineData("+(a|b)", true)]
-    [InlineData("!*.md", true)]
-    [InlineData("!./foo/*.js", true)]
-    [InlineData("foo", false)]
-    [InlineData("test.js", false)]
-    [InlineData("foo/bar.js", false)]
-    [InlineData("foo/bar/baz.js", false)]
-    public void Analyze_IsGlob_DetectsGlobSyntax(string pattern, bool expected)
-    {
-        Glob.Analyze(pattern).IsGlob.Should().Be(expected);
+        info.IsGlob.Should().BeTrue();
+        info.HasGlobstar.Should().BeTrue();
+        info.HasBraces.Should().BeTrue();
+        info.HasExtglob.Should().BeTrue();
+        info.IsNegatedExtglob.Should().BeFalse();
     }
 
     [Theory]
@@ -150,21 +87,6 @@ public class GlobAnalyzeTests
     }
 
     [Theory]
-    [InlineData("**", true)]
-    [InlineData("a/**", true)]
-    [InlineData("a/**/b", true)]
-    [InlineData("**/*.txt", true)]
-    [InlineData("foo/**/bar/**/baz", true)]
-    [InlineData("*", false)]
-    [InlineData("foo", false)]
-    [InlineData("foo/*", false)]
-    [InlineData("foo/*/bar", false)]
-    public void Analyze_HasGlobstar_DetectsGlobstar(string pattern, bool expected)
-    {
-        Glob.Analyze(pattern).HasGlobstar.Should().Be(expected);
-    }
-
-    [Theory]
     [InlineData("!(foo)", true)]
     [InlineData("@(foo)", true)]
     [InlineData("*(foo)", true)]
@@ -185,40 +107,37 @@ public class GlobAnalyzeTests
     }
 
     [Theory]
-    [InlineData("!foo", true)]
-    [InlineData("!*", true)]
-    [InlineData("!**", true)]
+    [InlineData("**", true)]
+    [InlineData("a/**", true)]
+    [InlineData("a/**/b", true)]
+    [InlineData("**/*.txt", true)]
+    [InlineData("foo/**/bar/**/baz", true)]
+    [InlineData("*", false)]
+    [InlineData("foo", false)]
+    [InlineData("foo/*", false)]
+    [InlineData("foo/*/bar", false)]
+    public void Analyze_HasGlobstar_DetectsGlobstar(string pattern, bool expected)
+    {
+        Glob.Analyze(pattern).HasGlobstar.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("*", true)]
+    [InlineData("*.js", true)]
+    [InlineData("**/*.js", true)]
+    [InlineData("foo?bar", true)]
+    [InlineData("[abc]", true)]
+    [InlineData("{a,b}", true)]
+    [InlineData("+(a|b)", true)]
     [InlineData("!*.md", true)]
-    [InlineData("!foo/bar", true)]
-    [InlineData("!foo/**/bar", true)]
     [InlineData("!./foo/*.js", true)]
     [InlineData("foo", false)]
-    [InlineData("*", false)]
-    [InlineData("**", false)]
-    [InlineData("foo/bar", false)]
-    public void Analyze_IsNegated_DetectsLeadingExclamationMark(string pattern, bool expected)
+    [InlineData("test.js", false)]
+    [InlineData("foo/bar.js", false)]
+    [InlineData("foo/bar/baz.js", false)]
+    public void Analyze_IsGlob_DetectsGlobSyntax(string pattern, bool expected)
     {
-        Glob.Analyze(pattern).IsNegated.Should().Be(expected);
-    }
-
-    [Fact]
-    public void Analyze_DoubleNegation_IsNotNegated()
-    {
-        var info = Glob.Analyze("!!a/*.js");
-
-        info.IsNegated.Should().BeFalse();
-        info.Prefix.Should().Be("!!");
-    }
-
-    [Fact]
-    public void Analyze_NegatedPattern_ReportsBasePathWithoutNegation()
-    {
-        var info = Glob.Analyze("!src/**/*.test.js");
-
-        info.IsGlob.Should().BeTrue();
-        info.HasGlobstar.Should().BeTrue();
-        info.IsNegated.Should().BeTrue();
-        info.BasePath.Should().Be("src");
+        Glob.Analyze(pattern).IsGlob.Should().Be(expected);
     }
 
     [Theory]
@@ -238,16 +157,121 @@ public class GlobAnalyzeTests
         Glob.Analyze(pattern).IsNegatedExtglob.Should().Be(expected);
     }
 
-    [Fact]
-    public void Analyze_ExtglobWithBraces_ReportsAllFeatures()
+    [Theory]
+    [InlineData("!foo", true)]
+    [InlineData("!*", true)]
+    [InlineData("!**", true)]
+    [InlineData("!*.md", true)]
+    [InlineData("!foo/bar", true)]
+    [InlineData("!foo/**/bar", true)]
+    [InlineData("!./foo/*.js", true)]
+    [InlineData("foo", false)]
+    [InlineData("*", false)]
+    [InlineData("**", false)]
+    [InlineData("foo/bar", false)]
+    public void Analyze_IsNegated_DetectsLeadingExclamationMark(string pattern, bool expected)
     {
-        var info = Glob.Analyze("src/!(test)/**/*.{js,ts}");
+        Glob.Analyze(pattern).IsNegated.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("!./foo/*.js", "!./", "foo", "*.js", "foo|*.js")]
+    [InlineData("./foo/*.js", "./", "foo", "*.js", "foo|*.js")]
+    [InlineData("foo", "", "foo", "", "foo")]
+    [InlineData("/abs/x", "", "/abs/x", "", "|abs|x")]
+    [InlineData("a/", "", "a/", "", "a|")]
+    [InlineData("!(a)/b", "", "", "!(a)/b", "!(a)|b")]
+    public void Analyze_MatchesPicomatchScan(string pattern, string prefix, string basePath, string globPart, string segments)
+    {
+        var info = Glob.Analyze(pattern);
+
+        info.Prefix.Should().Be(prefix);
+        info.BasePath.Should().Be(basePath);
+        info.GlobPart.Should().Be(globPart);
+        info.Segments.Should().Equal(segments.Split('|'));
+    }
+
+    [Fact]
+    public void Analyze_NegatedPattern_ReportsBasePathWithoutNegation()
+    {
+        var info = Glob.Analyze("!src/**/*.test.js");
 
         info.IsGlob.Should().BeTrue();
         info.HasGlobstar.Should().BeTrue();
-        info.HasBraces.Should().BeTrue();
-        info.HasExtglob.Should().BeTrue();
-        info.IsNegatedExtglob.Should().BeFalse();
+        info.IsNegated.Should().BeTrue();
+        info.BasePath.Should().Be("src");
+    }
+
+    [Theory]
+    [InlineData("*")]
+    [InlineData("foo/bar/baz.js")]
+    [InlineData("!./foo/*.js")]
+    [InlineData(@"foo\bar")]
+    [InlineData(@"foo\*")]
+    [InlineData(@"foo\**\bar")]
+    public void Analyze_Pattern_IsOriginalPattern(string pattern)
+    {
+        Glob.Analyze(pattern).Pattern.Should().Be(pattern);
+    }
+
+    [Theory]
+    [InlineData("./foo", "./")]
+    [InlineData("./foo/bar", "./")]
+    [InlineData("/foo", "")]
+    [InlineData("/foo/bar", "")]
+    [InlineData("/foo/bar/*", "")]
+    [InlineData("*", "")]
+    [InlineData("foo/*", "")]
+    [InlineData("foo/bar/*", "")]
+    public void Analyze_Prefix_IsLeadingNegationOrDotSlash(string pattern, string expectedPrefix)
+    {
+        Glob.Analyze(pattern).Prefix.Should().Be(expectedPrefix);
+    }
+
+    [Theory]
+    [InlineData("foo/bar/baz", "foo|bar|baz")]
+    [InlineData("foo/*/bar", "foo|*|bar")]
+    [InlineData("foo/**/bar", "foo|**|bar")]
+    public void Analyze_Segments_SplitsAtSeparators(string pattern, string segments)
+    {
+        Glob.Analyze(pattern).Segments.Should().Equal(segments.Split('|'));
+    }
+
+    [Fact]
+    public void Analyze_SeparatorsInsideBraces_DoNotSplitSegments()
+    {
+        var info = Glob.Analyze("src/{a/b,c}/*.cs", s_Posix);
+
+        info.Segments.Should().Equal(["src", "{a/b,c}", "*.cs"]);
+        info.BasePath.Should().Be("src");
+        info.GlobPart.Should().Be("{a/b,c}/*.cs");
+    }
+
+    [Theory]
+    [InlineData("foo", "foo", "")]
+    [InlineData("foo/bar", "foo/bar", "")]
+    [InlineData("*", "", "*")]
+    [InlineData("**", "", "**")]
+    [InlineData("foo/*", "foo", "*")]
+    [InlineData("foo/**", "foo", "**")]
+    [InlineData("foo/bar/*", "foo/bar", "*")]
+    [InlineData("foo/bar/**", "foo/bar", "**")]
+    [InlineData("foo/bar/*.js", "foo/bar", "*.js")]
+    [InlineData("a/b/c/*.txt", "a/b/c", "*.txt")]
+    [InlineData("a/**/b", "a", "**/b")]
+    [InlineData("a/**/b/*.txt", "a", "**/b/*.txt")]
+    public void Analyze_SplitsBasePathFromGlobPart(string pattern, string expectedBasePath, string expectedGlobPart)
+    {
+        var info = Glob.Analyze(pattern);
+
+        info.BasePath.Should().Be(expectedBasePath);
+        info.GlobPart.Should().Be(expectedGlobPart);
+    }
+
+    [Fact]
+    public void Analyze_WithNullPattern_ThrowsArgumentNullException()
+    {
+        FluentActions.Invoking(() => Glob.Analyze(null!)).Should().ThrowExactly<ArgumentNullException>();
     }
 
     [Fact]
@@ -273,29 +297,5 @@ public class GlobAnalyzeTests
         info.HasBraces.Should().BeFalse();
         info.HasBrackets.Should().BeFalse();
         info.HasExtglob.Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData(@"a/\*/b")]
-    [InlineData("a/(b")]
-    [InlineData("a/{b")]
-    [InlineData("a/[b")]
-    public void Analyze_EscapedOrUnbalancedSyntax_IsNotAGlob(string pattern)
-    {
-        var info = Glob.Analyze(pattern, s_Posix);
-
-        info.IsGlob.Should().BeFalse();
-        info.BasePath.Should().Be(pattern);
-        info.GlobPart.Should().Be("");
-    }
-
-    [Fact]
-    public void Analyze_SeparatorsInsideBraces_DoNotSplitSegments()
-    {
-        var info = Glob.Analyze("src/{a/b,c}/*.cs", s_Posix);
-
-        info.Segments.Should().Equal(["src", "{a/b,c}", "*.cs"]);
-        info.BasePath.Should().Be("src");
-        info.GlobPart.Should().Be("{a/b,c}/*.cs");
     }
 }

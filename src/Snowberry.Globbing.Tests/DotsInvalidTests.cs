@@ -7,7 +7,6 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class DotsInvalidTests
 {
-
     [Theory]
     [InlineData("../abc", "*/*")]
     [InlineData("../abc", "*/abc")]
@@ -90,6 +89,37 @@ public class DotsInvalidTests
     [Theory]
     [InlineData("../abc", "*/*")]
     [InlineData("../abc", "*/abc")]
+    [InlineData("../abc", "**")]
+    [InlineData("../abc", "**/abc")]
+    [InlineData("/../abc", "*/*")]
+    [InlineData("abc/../abc", "*/*/*")]
+    [InlineData("/../abc", "**")]
+    [InlineData("abc/../abc", "**/**/**")]
+    [InlineData("abc/..", "*/*")]
+    [InlineData("abc/../", "*/*")]
+    [InlineData("abc/..", "**/**")]
+    [InlineData("abc/../", "**/**")]
+    [InlineData("./abc", "*/*")]
+    [InlineData("./abc", "*/abc")]
+    [InlineData("./abc", "**")]
+    [InlineData("./abc", "**/abc")]
+    [InlineData("/./abc", "*/*")]
+    [InlineData("abc/./abc", "*/*/*")]
+    [InlineData("/./abc", "**")]
+    [InlineData("abc/./abc", "**/**/**")]
+    [InlineData("abc/.", "*/*")]
+    [InlineData("abc/./", "*/*")]
+    [InlineData("abc/.", "**/**")]
+    [InlineData("abc/./", "**/**")]
+    public void ShouldNotMatchInvalidDotsWithBothOptions(string input, string pattern)
+    {
+        var options = new GlobOptions { MatchDotFiles = true, StrictSlashes = true };
+        Glob.IsMatch(input, pattern, options).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("../abc", "*/*")]
+    [InlineData("../abc", "*/abc")]
     [InlineData("../abc", "*/abc/*")]
     [InlineData("../abc", "**")]
     [InlineData("../abc", "**/abc")]
@@ -160,37 +190,6 @@ public class DotsInvalidTests
     public void ShouldNotMatchInvalidDotsWithStrictSlashesOption(string input, string pattern)
     {
         var options = new GlobOptions { StrictSlashes = true };
-        Glob.IsMatch(input, pattern, options).Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData("../abc", "*/*")]
-    [InlineData("../abc", "*/abc")]
-    [InlineData("../abc", "**")]
-    [InlineData("../abc", "**/abc")]
-    [InlineData("/../abc", "*/*")]
-    [InlineData("abc/../abc", "*/*/*")]
-    [InlineData("/../abc", "**")]
-    [InlineData("abc/../abc", "**/**/**")]
-    [InlineData("abc/..", "*/*")]
-    [InlineData("abc/../", "*/*")]
-    [InlineData("abc/..", "**/**")]
-    [InlineData("abc/../", "**/**")]
-    [InlineData("./abc", "*/*")]
-    [InlineData("./abc", "*/abc")]
-    [InlineData("./abc", "**")]
-    [InlineData("./abc", "**/abc")]
-    [InlineData("/./abc", "*/*")]
-    [InlineData("abc/./abc", "*/*/*")]
-    [InlineData("/./abc", "**")]
-    [InlineData("abc/./abc", "**/**/**")]
-    [InlineData("abc/.", "*/*")]
-    [InlineData("abc/./", "*/*")]
-    [InlineData("abc/.", "**/**")]
-    [InlineData("abc/./", "**/**")]
-    public void ShouldNotMatchInvalidDotsWithBothOptions(string input, string pattern)
-    {
-        var options = new GlobOptions { MatchDotFiles = true, StrictSlashes = true };
         Glob.IsMatch(input, pattern, options).Should().BeFalse();
     }
 }

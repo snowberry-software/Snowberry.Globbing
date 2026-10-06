@@ -14,20 +14,21 @@ public class MaliciousTests
     }
 
     [Fact]
-    public void ShouldThrowErrorWhenPatternIsTooLong()
-    {
-        string longPattern = new('*', GlobOptions.Default.MaxPatternLength + 1);
-        var ex = FluentActions.Invoking(() => Glob.IsMatch("foo", longPattern)).Should().ThrowExactly<GlobParseException>().Which;
-        ex.Error.Should().Be(GlobParseError.PatternTooLong);
-    }
-
-    [Fact]
     public void ShouldAllowMaxLengthToBeCustomized()
     {
         var options = new GlobOptions { MaxPatternLength = 499 };
         string longPattern = new string('\\', 500) + "A";
         var ex = FluentActions.Invoking(() => Glob.IsMatch("A", longPattern, options)).Should().ThrowExactly<GlobParseException>().Which;
         ex.Error.Should().Be(GlobParseError.PatternTooLong);
+    }
+
+    [Fact]
+    public void ShouldHandleNegationWithLongEscapeSequences()
+    {
+        string escapeSequence = new string('\\', 100) + "A";
+        // Negation extglob with a long escape sequence must compile and run without throwing.
+        var ex = Record.Exception(() => Glob.IsMatch("A", "!(" + escapeSequence + ")"));
+        ex.Should().BeNull();
     }
 
     [Fact]
@@ -40,11 +41,10 @@ public class MaliciousTests
     }
 
     [Fact]
-    public void ShouldHandleNegationWithLongEscapeSequences()
+    public void ShouldThrowErrorWhenPatternIsTooLong()
     {
-        string escapeSequence = new string('\\', 100) + "A";
-        // Negation extglob with a long escape sequence must compile and run without throwing.
-        var ex = Record.Exception(() => Glob.IsMatch("A", "!(" + escapeSequence + ")"));
-        ex.Should().BeNull();
+        string longPattern = new('*', GlobOptions.Default.MaxPatternLength + 1);
+        var ex = FluentActions.Invoking(() => Glob.IsMatch("foo", longPattern)).Should().ThrowExactly<GlobParseException>().Which;
+        ex.Error.Should().Be(GlobParseError.PatternTooLong);
     }
 }

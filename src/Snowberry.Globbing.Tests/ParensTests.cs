@@ -6,19 +6,19 @@ namespace Snowberry.Globbing.Tests;
 public class ParensTests
 {
     [Theory]
-    [InlineData("a", "(a)*", true)]
-    [InlineData("zz", "(a)*", false)]
-    [InlineData("ab", "(a|b)*", true)]
-    [InlineData("aaabbb", "(a|b)*", true)]
-    public void ShouldSupportStarsFollowingParens(string input, string pattern, bool expected)
+    [InlineData("a/b", "(a)*", false)]
+    [InlineData("a/b", "(a|b)*", false)]
+    public void ShouldNotMatchSlashesWithSingleStars(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
-    [InlineData("a/b", "(a)*", false)]
-    [InlineData("a/b", "(a|b)*", false)]
-    public void ShouldNotMatchSlashesWithSingleStars(string input, string pattern, bool expected)
+    [InlineData("a", "(a)*", true)]
+    [InlineData("zz", "(a)*", false)]
+    [InlineData("ab", "(a|b)*", true)]
+    [InlineData("aaabbb", "(a|b)*", true)]
+    public void ShouldSupportStarsFollowingParens(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }

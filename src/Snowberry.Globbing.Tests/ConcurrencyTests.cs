@@ -5,8 +5,6 @@ namespace Snowberry.Globbing.Tests;
 
 public class ConcurrencyTests
 {
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     private static readonly string[] s_Inputs =
     [
         "app.js",
@@ -22,48 +20,23 @@ public class ConcurrencyTests
         "test-3a.txt"
     ];
 
-    [Theory]
-    [InlineData("!**/*.md")]
-    [InlineData("!(*.md)")]
-    [InlineData("**/*.{js,ts,tsx}")]
-    [InlineData("src/**/!(*.test|*.spec).{js,ts}")]
-    [InlineData("test-[0-9][a-z].txt")]
-    public void SharedGlob_MatchedConcurrently_AgreesWithSequentialResults(string pattern)
-    {
-        AssertConcurrentMatchesAgree(() => new Glob(pattern, s_Posix));
-    }
+    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
 
-    [Fact]
-    public void SharedGlobWithIgnorePatterns_MatchedConcurrently_AgreesWithSequentialResults()
+    private static void AssertConcurrentMatchesAgree(Func<Glob> create)
     {
-        AssertConcurrentMatchesAgree(() => new Glob(
-            ["**/*.js", "!**/*.{js,tsx}"],
-            s_Posix with { IgnorePatterns = ["**/node_modules/**", "!src/**"] }));
-    }
+        var oracle = create();
+        bool[] expected = [.. s_Inputs.Select(input => oracle.IsMatch(input))];
 
-    [Fact]
-    public void StaticIsMatch_PastCacheCapacity_AgreesWithUncachedResults()
-    {
-        GlobOptions[] variants = [s_Posix, s_Posix with { MatchDotFiles = true }];
-        var cases = new List<(string Input, string Pattern, GlobOptions Options, bool Expected)>();
-        for (int i = 0; i < 300; i++)
-        {
-            string pattern = i % 2 == 0 ? $"**/*.{i}.js" : $"!**/*.{i}.md";
-            foreach (var options in variants)
-            {
-                var oracle = new Glob(pattern, options);
-                foreach (string input in new[] { $"src/a.{i}.js", $".hidden/a.{i}.js", $"src/a.{i}.md" })
-                    cases.Add((input, pattern, options, oracle.IsMatch(input)));
-            }
-        }
-
+        // A fresh instance, so its lazily built regexes are first used concurrently.
+        var shared = create();
         var failures = new ConcurrentBag<string>();
-        Parallel.For(0, cases.Count * 2, i =>
+        Parallel.For(0, s_Inputs.Length * 200, i =>
         {
-            var (input, pattern, options, expected) = cases[i % cases.Count];
-            bool actual = Glob.IsMatch(input, pattern, options);
-            if (actual != expected)
-                failures.Add($"'{input}' / '{pattern}': expected {expected}, got {actual}");
+            int index = i % s_Inputs.Length;
+            string input = s_Inputs[index];
+            bool actual = i % 2 == 0 ? shared.IsMatch(input) : shared.IsMatch(input.AsSpan());
+            if (actual != expected[index])
+                failures.Add($"'{input}': expected {expected[index]}, got {actual}");
         });
 
         failures.Should().BeEmpty();
@@ -98,21 +71,48 @@ public class ConcurrencyTests
         failures.Should().BeEmpty();
     }
 
-    private static void AssertConcurrentMatchesAgree(Func<Glob> create)
+    [Fact]
+    public void SharedGlobWithIgnorePatterns_MatchedConcurrently_AgreesWithSequentialResults()
     {
-        var oracle = create();
-        bool[] expected = [.. s_Inputs.Select(input => oracle.IsMatch(input))];
+        AssertConcurrentMatchesAgree(() => new Glob(
+            ["**/*.js", "!**/*.{js,tsx}"],
+            s_Posix with { IgnorePatterns = ["**/node_modules/**", "!src/**"] }));
+    }
 
-        // A fresh instance, so its lazily built regexes are first used concurrently.
-        var shared = create();
-        var failures = new ConcurrentBag<string>();
-        Parallel.For(0, s_Inputs.Length * 200, i =>
+    [Theory]
+    [InlineData("!**/*.md")]
+    [InlineData("!(*.md)")]
+    [InlineData("**/*.{js,ts,tsx}")]
+    [InlineData("src/**/!(*.test|*.spec).{js,ts}")]
+    [InlineData("test-[0-9][a-z].txt")]
+    public void SharedGlob_MatchedConcurrently_AgreesWithSequentialResults(string pattern)
+    {
+        AssertConcurrentMatchesAgree(() => new Glob(pattern, s_Posix));
+    }
+
+    [Fact]
+    public void StaticIsMatch_PastCacheCapacity_AgreesWithUncachedResults()
+    {
+        GlobOptions[] variants = [s_Posix, s_Posix with { MatchDotFiles = true }];
+        var cases = new List<(string Input, string Pattern, GlobOptions Options, bool Expected)>();
+        for (int i = 0; i < 300; i++)
         {
-            int index = i % s_Inputs.Length;
-            string input = s_Inputs[index];
-            bool actual = i % 2 == 0 ? shared.IsMatch(input) : shared.IsMatch(input.AsSpan());
-            if (actual != expected[index])
-                failures.Add($"'{input}': expected {expected[index]}, got {actual}");
+            string pattern = i % 2 == 0 ? $"**/*.{i}.js" : $"!**/*.{i}.md";
+            foreach (var options in variants)
+            {
+                var oracle = new Glob(pattern, options);
+                foreach (string input in new[] { $"src/a.{i}.js", $".hidden/a.{i}.js", $"src/a.{i}.md" })
+                    cases.Add((input, pattern, options, oracle.IsMatch(input)));
+            }
+        }
+
+        var failures = new ConcurrentBag<string>();
+        Parallel.For(0, cases.Count * 2, i =>
+        {
+            var (input, pattern, options, expected) = cases[i % cases.Count];
+            bool actual = Glob.IsMatch(input, pattern, options);
+            if (actual != expected)
+                failures.Add($"'{input}' / '{pattern}': expected {expected}, got {actual}");
         });
 
         failures.Should().BeEmpty();

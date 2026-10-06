@@ -14,9 +14,9 @@ namespace Snowberry.Globbing.Utilities;
 /// </remarks>
 internal ref struct ValueList<T>
 {
-    private Span<T> _span;
-    private T[]? _rented;
     private int _count;
+    private T[]? _rented;
+    private Span<T> _span;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ValueList{T}"/> struct over <paramref name="initialBuffer"/>.
@@ -41,28 +41,6 @@ internal ref struct ValueList<T>
     }
 
     /// <summary>
-    /// Gets the number of elements.
-    /// </summary>
-    public readonly int Count => _count;
-
-    /// <summary>
-    /// Gets a reference to the element at <paramref name="index"/>.
-    /// </summary>
-    /// <remarks>The index is checked against the capacity, not against <see cref="Count"/>.</remarks>
-    /// <param name="index">The zero-based index, which must be less than <see cref="Count"/>.</param>
-    /// <returns>A reference to the element.</returns>
-    public readonly ref T this[int index] => ref _span[index];
-
-    /// <summary>
-    /// Gets the elements as a span.
-    /// </summary>
-    /// <returns>A span over the first <see cref="Count"/> elements.</returns>
-    public readonly Span<T> AsSpan()
-    {
-        return _span[.._count];
-    }
-
-    /// <summary>
     /// Appends <paramref name="item"/>, growing the storage if it is full.
     /// </summary>
     /// <param name="item">The element to append.</param>
@@ -78,12 +56,12 @@ internal ref struct ValueList<T>
     }
 
     /// <summary>
-    /// Removes the elements from <paramref name="count"/> onward.
+    /// Gets the elements as a span.
     /// </summary>
-    /// <param name="count">The number of elements to keep, which must not exceed <see cref="Count"/>; not validated.</param>
-    public void Truncate(int count)
+    /// <returns>A span over the first <see cref="Count"/> elements.</returns>
+    public readonly Span<T> AsSpan()
     {
-        _count = count;
+        return _span[.._count];
     }
 
     /// <summary>
@@ -95,6 +73,15 @@ internal ref struct ValueList<T>
         this = default;
         if (rented != null)
             ArrayPool<T>.Shared.Return(rented);
+    }
+
+    /// <summary>
+    /// Removes the elements from <paramref name="count"/> onward.
+    /// </summary>
+    /// <param name="count">The number of elements to keep, which must not exceed <see cref="Count"/>; not validated.</param>
+    public void Truncate(int count)
+    {
+        _count = count;
     }
 
     /// <summary>
@@ -111,4 +98,17 @@ internal ref struct ValueList<T>
         _rented = next;
         _span = next;
     }
+
+    /// <summary>
+    /// Gets the number of elements.
+    /// </summary>
+    public readonly int Count => _count;
+
+    /// <summary>
+    /// Gets a reference to the element at <paramref name="index"/>.
+    /// </summary>
+    /// <remarks>The index is checked against the capacity, not against <see cref="Count"/>.</remarks>
+    /// <param name="index">The zero-based index, which must be less than <see cref="Count"/>.</param>
+    /// <returns>A reference to the element.</returns>
+    public readonly ref T this[int index] => ref _span[index];
 }

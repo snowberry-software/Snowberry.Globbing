@@ -5,6 +5,18 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class DotfilesTests
 {
+    // Like picomatch, a leading bracket or extglob that can match "." matches a dotfile even without MatchDotFiles.
+    [Theory]
+    [InlineData(false, ".js", "*.@(js)", false)]
+    [InlineData(true, ".js", "*.@(js)", true)]
+    [InlineData(false, ".a", "[.]a", true)]
+    [InlineData(true, ".a", "[.]a", true)]
+    [InlineData(false, ".foo", "@(.foo)", true)]
+    [InlineData(false, ".foo", "!(.)foo", false)]
+    public void MatchDotFiles_WithBracketsAndExtglobs(bool matchDotFiles, string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern, new GlobOptions { MatchDotFiles = matchDotFiles }).Should().Be(expected);
+    }
 
     [Theory]
     [InlineData(".a", "*", false)]
@@ -188,18 +200,5 @@ public class DotfilesTests
     {
         var options = new GlobOptions { MatchDotFiles = false };
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
-    }
-
-    // Like picomatch, a leading bracket or extglob that can match "." matches a dotfile even without MatchDotFiles.
-    [Theory]
-    [InlineData(false, ".js", "*.@(js)", false)]
-    [InlineData(true, ".js", "*.@(js)", true)]
-    [InlineData(false, ".a", "[.]a", true)]
-    [InlineData(true, ".a", "[.]a", true)]
-    [InlineData(false, ".foo", "@(.foo)", true)]
-    [InlineData(false, ".foo", "!(.)foo", false)]
-    public void MatchDotFiles_WithBracketsAndExtglobs(bool matchDotFiles, string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern, new GlobOptions { MatchDotFiles = matchDotFiles }).Should().Be(expected);
     }
 }

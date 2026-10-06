@@ -19,31 +19,6 @@ public class WildmatTests
     }
 
     [Theory]
-    [InlineData("foo", "*", true)]
-    [InlineData("foo", "*oo", true)]
-    [InlineData("foo", "fo*", true)]
-    [InlineData("foo", "f*o", true)]
-    [InlineData("foo", "f**", true)]
-    [InlineData("foo", "**oo", true)]
-    [InlineData("foo", "f**o", true)]
-    public void Wildmat_Stars(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("foo", "?oo", true)]
-    [InlineData("foo", "f?o", true)]
-    [InlineData("foo", "fo?", true)]
-    [InlineData("foo", "???", true)]
-    [InlineData("foo", "????", false)]
-    [InlineData("foo", "??", false)]
-    public void Wildmat_QuestionMarks(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
     [InlineData("foo", "[f]oo", true)]
     [InlineData("foo", "f[o]o", true)]
     [InlineData("foo", "[^b]oo", true)]
@@ -64,10 +39,9 @@ public class WildmatTests
     }
 
     [Theory]
-    [InlineData("a/b", "*/b", true)]
-    [InlineData("a/b/c", "**/c", true)]
-    [InlineData("a/b/c", "a/**/c", true)]
-    public void Wildmat_PathPatterns(string input, string pattern, bool expected)
+    [InlineData("foo", "[abc]oo", false)]
+    [InlineData("aoo", "[abc]oo", true)]
+    public void Wildmat_CharacterClasses(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
@@ -79,22 +53,6 @@ public class WildmatTests
     [InlineData("5", "[0-9]", true)]
     [InlineData("a", "[0-9]", false)]
     public void Wildmat_CharacterRanges(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("foo", "[abc]oo", false)]
-    [InlineData("aoo", "[abc]oo", true)]
-    public void Wildmat_CharacterClasses(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("foo", "!foo", false)]
-    [InlineData("bar", "!foo", true)]
-    public void Wildmat_Negation(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
@@ -113,6 +71,35 @@ public class WildmatTests
     {
         var options = new GlobOptions { MatchDotFiles = true };
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("foo", "!foo", false)]
+    [InlineData("bar", "!foo", true)]
+    public void Wildmat_Negation(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a/b", "*/b", true)]
+    [InlineData("a/b/c", "**/c", true)]
+    [InlineData("a/b/c", "a/**/c", true)]
+    public void Wildmat_PathPatterns(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("foo", "?oo", true)]
+    [InlineData("foo", "f?o", true)]
+    [InlineData("foo", "fo?", true)]
+    [InlineData("foo", "???", true)]
+    [InlineData("foo", "????", false)]
+    [InlineData("foo", "??", false)]
+    public void Wildmat_QuestionMarks(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -141,6 +128,19 @@ public class WildmatTests
     [InlineData("foo/bba/arr", "*/*/*", true)]
     [InlineData("foo/bba/arr", "foo/**", true)]
     public void Wildmat_Recursion(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("foo", "*", true)]
+    [InlineData("foo", "*oo", true)]
+    [InlineData("foo", "fo*", true)]
+    [InlineData("foo", "f*o", true)]
+    [InlineData("foo", "f**", true)]
+    [InlineData("foo", "**oo", true)]
+    [InlineData("foo", "f**o", true)]
+    public void Wildmat_Stars(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }

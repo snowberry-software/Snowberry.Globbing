@@ -7,26 +7,18 @@ namespace Snowberry.Globbing.Tests;
 
 public class ArchitectureTests
 {
-    private const string c_Root = "Snowberry.Globbing";
     private const string c_Compilation = "Snowberry.Globbing.Compilation";
+    private const string c_Root = "Snowberry.Globbing";
     private const string c_Syntax = "Snowberry.Globbing.Syntax";
     private const string c_Utilities = "Snowberry.Globbing.Utilities";
 
     private static readonly Architecture s_Architecture = new ArchLoader().LoadAssemblies(typeof(Glob).Assembly).Build();
 
     [Fact]
-    public void PublicTypes_ResideInTheRootNamespace()
+    public void LibraryTypes_AreNotNested()
     {
-        Types().That().ArePublic()
-            .Should().ResideInNamespace(c_Root)
-            .Check(s_Architecture);
-    }
-
-    [Fact]
-    public void TypesInSubNamespaces_AreInternal()
-    {
-        Types().That().ResideInNamespaceMatching(@"^Snowberry\.Globbing\..+")
-            .Should().BeInternal()
+        Types().That().ResideInNamespaceMatching(@"^Snowberry\.Globbing(\..+)?$").And().DoNotHaveNameMatching("<")
+            .Should().NotBeNested()
             .Check(s_Architecture);
     }
 
@@ -39,18 +31,18 @@ public class ArchitectureTests
     }
 
     [Fact]
-    public void LibraryTypes_AreNotNested()
+    public void PublicTypes_ResideInTheRootNamespace()
     {
-        Types().That().ResideInNamespaceMatching(@"^Snowberry\.Globbing(\..+)?$").And().DoNotHaveNameMatching("<")
-            .Should().NotBeNested()
+        Types().That().ArePublic()
+            .Should().ResideInNamespace(c_Root)
             .Check(s_Architecture);
     }
 
     [Fact]
-    public void Utilities_DependOnNoOtherLibraryNamespace()
+    public void SyntaxAndCompilation_DoNotDependOnTheMatcher()
     {
-        Types().That().ResideInNamespace(c_Utilities)
-            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^Snowberry\.Globbing(\.(Syntax|Compilation))?$")
+        Types().That().ResideInNamespace(c_Syntax).Or().ResideInNamespace(c_Compilation)
+            .Should().NotDependOnAny(typeof(Glob), typeof(CompiledPattern), typeof(GlobMatch))
             .Check(s_Architecture);
     }
 
@@ -63,10 +55,18 @@ public class ArchitectureTests
     }
 
     [Fact]
-    public void SyntaxAndCompilation_DoNotDependOnTheMatcher()
+    public void TypesInSubNamespaces_AreInternal()
     {
-        Types().That().ResideInNamespace(c_Syntax).Or().ResideInNamespace(c_Compilation)
-            .Should().NotDependOnAny(typeof(Glob), typeof(CompiledPattern), typeof(GlobMatch))
+        Types().That().ResideInNamespaceMatching(@"^Snowberry\.Globbing\..+")
+            .Should().BeInternal()
+            .Check(s_Architecture);
+    }
+
+    [Fact]
+    public void Utilities_DependOnNoOtherLibraryNamespace()
+    {
+        Types().That().ResideInNamespace(c_Utilities)
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^Snowberry\.Globbing(\.(Syntax|Compilation))?$")
             .Check(s_Architecture);
     }
 }

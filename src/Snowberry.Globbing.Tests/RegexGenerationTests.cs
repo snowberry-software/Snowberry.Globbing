@@ -7,6 +7,52 @@ public class RegexGenerationTests
     private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
 
     [Theory]
+    [InlineData("test.js", true)]
+    [InlineData("test.md", false)]
+    public void CompileRegexSource_FastPaths_DoNotChangeResults(string input, bool expected)
+    {
+        var withFastPaths = new Regex(GlobCompiler.CompileRegexSource("*.js", GlobOptions.Default, fastPaths: true));
+        var withoutFastPaths = new Regex(GlobCompiler.CompileRegexSource("*.js", GlobOptions.Default, fastPaths: false));
+
+        withFastPaths.IsMatch(input).Should().Be(expected);
+        withoutFastPaths.IsMatch(input).Should().Be(expected);
+    }
+
+    [Fact]
+    public void CompileRegexSource_WithFastPathsDisabled_DoesNotAllowTrailingSlash()
+    {
+        var regex = new Regex(GlobCompiler.CompileRegexSource("*.js", s_Posix, fastPaths: false));
+
+        "a.js/".Should().NotMatchRegex(regex);
+    }
+
+    [Fact]
+    public void CompileRegexSource_WithMatchDotFiles_OmitsDotLookahead()
+    {
+        TestHelpers.Parse("*.js", new GlobOptions { MatchDotFiles = true }).Output.Should().NotContain("(?!\\.)");
+        TestHelpers.Parse("*.js").Output.Should().Contain("(?!\\.)");
+    }
+
+    [Fact]
+    public void ToRegexString_NegatedPattern_WrapsBodyInNegativeLookahead()
+    {
+        string source = new Glob("!*.md").ToRegexString();
+        var regex = new Regex(source);
+
+        source.Should().Contain("(?!");
+        source.Should().EndWith(RegexSyntax.c_AnyNonLineTerminator + "*" + RegexSyntax.c_EndOfInput);
+        "test.js".Should().MatchRegex(regex);
+        "app.txt".Should().MatchRegex(regex);
+        "readme.md".Should().NotMatchRegex(regex);
+    }
+
+    [Fact]
+    public void ToRegexString_StartsWithAnchor()
+    {
+        new Glob("*.js").ToRegexString().Should().StartWith("^");
+    }
+
+    [Theory]
     [InlineData("foo")]
     [InlineData("*.js")]
     [InlineData("**")]
@@ -24,51 +70,12 @@ public class RegexGenerationTests
     }
 
     [Fact]
-    public void ToRegexString_StartsWithAnchor()
-    {
-        new Glob("*.js").ToRegexString().Should().StartWith("^");
-    }
-
-    [Fact]
     public void ToRegexString_WithMatchSubstring_OmitsAnchors()
     {
         string source = new Glob("bar", new GlobOptions { MatchSubstring = true }).ToRegexString();
 
         source.Should().NotContain("^");
         source.Should().NotContain("$");
-    }
-
-    [Fact]
-    public void ToRegexString_NegatedPattern_WrapsBodyInNegativeLookahead()
-    {
-        string source = new Glob("!*.md").ToRegexString();
-        var regex = new Regex(source);
-
-        source.Should().Contain("(?!");
-        source.Should().EndWith(RegexSyntax.c_AnyNonLineTerminator + "*" + RegexSyntax.c_EndOfInput);
-        "test.js".Should().MatchRegex(regex);
-        "app.txt".Should().MatchRegex(regex);
-        "readme.md".Should().NotMatchRegex(regex);
-    }
-
-    [Fact]
-    public void CompileRegexSource_WithMatchDotFiles_OmitsDotLookahead()
-    {
-        TestHelpers.Parse("*.js", new GlobOptions { MatchDotFiles = true }).Output.Should().NotContain("(?!\\.)");
-        TestHelpers.Parse("*.js").Output.Should().Contain("(?!\\.)");
-    }
-
-    [Theory]
-    [InlineData("foo\n", "foo", false)]
-    [InlineData("a.js\n", "*.js", false)]
-    [InlineData("a/b.js\n", "**/*.js", false)]
-    [InlineData("a\n", "[a-z]", false)]
-    [InlineData("a/b\n", "a/**/b", false)]
-    [InlineData("foo", "foo", true)]
-    [InlineData("a.js", "*.js", true)]
-    public void ToRegex_TrailingLineBreak_DoesNotMatch(string input, string pattern, bool expected)
-    {
-        new Glob(pattern, s_Posix).ToRegex().IsMatch(input).Should().Be(expected);
     }
 
     [Theory]
@@ -92,23 +99,16 @@ public class RegexGenerationTests
         "a.js/".Should().NotMatchRegex(regex);
     }
 
-    [Fact]
-    public void CompileRegexSource_WithFastPathsDisabled_DoesNotAllowTrailingSlash()
-    {
-        var regex = new Regex(GlobCompiler.CompileRegexSource("*.js", s_Posix, fastPaths: false));
-
-        "a.js/".Should().NotMatchRegex(regex);
-    }
-
     [Theory]
-    [InlineData("test.js", true)]
-    [InlineData("test.md", false)]
-    public void CompileRegexSource_FastPaths_DoNotChangeResults(string input, bool expected)
+    [InlineData("foo\n", "foo", false)]
+    [InlineData("a.js\n", "*.js", false)]
+    [InlineData("a/b.js\n", "**/*.js", false)]
+    [InlineData("a\n", "[a-z]", false)]
+    [InlineData("a/b\n", "a/**/b", false)]
+    [InlineData("foo", "foo", true)]
+    [InlineData("a.js", "*.js", true)]
+    public void ToRegex_TrailingLineBreak_DoesNotMatch(string input, string pattern, bool expected)
     {
-        var withFastPaths = new Regex(GlobCompiler.CompileRegexSource("*.js", GlobOptions.Default, fastPaths: true));
-        var withoutFastPaths = new Regex(GlobCompiler.CompileRegexSource("*.js", GlobOptions.Default, fastPaths: false));
-
-        withFastPaths.IsMatch(input).Should().Be(expected);
-        withoutFastPaths.IsMatch(input).Should().Be(expected);
+        new Glob(pattern, s_Posix).ToRegex().IsMatch(input).Should().Be(expected);
     }
 }

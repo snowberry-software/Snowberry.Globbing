@@ -38,56 +38,6 @@ internal sealed class RegexFragments
         OptionalSlash = string.Concat(Chars.SlashLiteral, "?");
     }
 
-    /// <summary>Gets the platform-specific fragments.</summary>
-    public GlobChars Chars { get; }
-
-    /// <summary>Gets <c>?:</c>, or an empty string with <see cref="GlobOptions.CaptureGroups"/>, for the start of a group that captures only then.</summary>
-    public string Capture { get; }
-
-    /// <summary>Gets the lookahead that keeps a segment from starting with a dot, or an empty string with <see cref="GlobOptions.MatchDotFiles"/>.</summary>
-    public string NoDot { get; }
-
-    /// <summary>Gets the regex for <c>?</c> at the start of a path segment: any non-separator other than a dot, or any non-separator with <see cref="GlobOptions.MatchDotFiles"/>.</summary>
-    public string SegmentStartQmark { get; }
-
-    /// <summary>
-    /// Gets the regex for <c>**</c>: any number of path segments, none starting with a dot unless <see cref="GlobOptions.MatchDotFiles"/> is set,
-    /// and never <c>.</c> or <c>..</c>. It is a group that captures with <see cref="GlobOptions.CaptureGroups"/>. The first segment is
-    /// checked only at the start of input; elsewhere the caller writes its own dot guard before it.
-    /// </summary>
-    public string Globstar { get; }
-
-    /// <summary>
-    /// Gets the regex for <c>*</c>: any characters within a segment, as a lazy capture group with <see cref="GlobOptions.CaptureGroups"/>.
-    /// With <see cref="GlobOptions.BashCompatibility"/> it is <see cref="Globstar"/>, used only by plain patterns and negated extended globs;
-    /// every other bash star is <see cref="BashStar"/>.
-    /// </summary>
-    public string Star { get; }
-
-    /// <summary>
-    /// Gets the regex for <c>*</c> with <see cref="GlobOptions.BashCompatibility"/>: any characters except line terminators, including
-    /// separators. It is lazy with <see cref="GlobOptions.CaptureGroups"/> but not itself a group.
-    /// </summary>
-    public string BashStar { get; }
-
-    /// <summary>
-    /// Gets the regex for <c>*</c> in the compact forms of common patterns such as <c>*.js</c>: <see cref="BashStar"/> with
-    /// <see cref="GlobOptions.BashCompatibility"/>, otherwise any characters within a segment; a lazy capture group with <see cref="GlobOptions.CaptureGroups"/>.
-    /// </summary>
-    public string ShapeStar { get; }
-
-    /// <summary>Gets the regex for <c>**/</c> at the start of an anchored pattern: nothing, or any segments followed by a separator.</summary>
-    public string LeadingGlobstar { get; }
-
-    /// <summary>
-    /// Gets the regex for <c>**/</c> at the start of a brace alternative, or of the pattern with <see cref="GlobOptions.MatchSubstring"/>:
-    /// the start of input, a separator, or any segments followed by a separator.
-    /// </summary>
-    public string AlternativeLeadingGlobstar { get; }
-
-    /// <summary>Gets an optional separator.</summary>
-    public string OptionalSlash { get; }
-
     /// <summary>
     /// Gets the fragments for <paramref name="options"/>.
     /// </summary>
@@ -99,4 +49,54 @@ internal sealed class RegexFragments
         int key = (windows ? 1 : 0) | (options.MatchDotFiles ? 2 : 0) | (options.CaptureGroups ? 4 : 0) | (options.BashCompatibility ? 8 : 0);
         return s_Cache[key] ??= new RegexFragments(windows, options.MatchDotFiles, options.CaptureGroups, options.BashCompatibility);
     }
+
+    /// <summary>
+    /// Gets the regex for <c>**/</c> at the start of a brace alternative, or of the pattern with <see cref="GlobOptions.MatchSubstring"/>:
+    /// the start of input, a separator, or any segments followed by a separator.
+    /// </summary>
+    public string AlternativeLeadingGlobstar { get; }
+
+    /// <summary>
+    /// Gets the regex for <c>*</c> with <see cref="GlobOptions.BashCompatibility"/>: any characters except line terminators, including
+    /// separators. It is lazy with <see cref="GlobOptions.CaptureGroups"/> but not itself a group.
+    /// </summary>
+    public string BashStar { get; }
+
+    /// <summary>Gets <c>?:</c>, or an empty string with <see cref="GlobOptions.CaptureGroups"/>, for the start of a group that captures only then.</summary>
+    public string Capture { get; }
+
+    /// <summary>Gets the platform-specific fragments.</summary>
+    public GlobChars Chars { get; }
+
+    /// <summary>
+    /// Gets the regex for <c>**</c>: any number of path segments, none starting with a dot unless <see cref="GlobOptions.MatchDotFiles"/> is set,
+    /// and never <c>.</c> or <c>..</c>. It is a group that captures with <see cref="GlobOptions.CaptureGroups"/>. The first segment is
+    /// checked only at the start of input; elsewhere the caller writes its own dot guard before it.
+    /// </summary>
+    public string Globstar { get; }
+
+    /// <summary>Gets the regex for <c>**/</c> at the start of an anchored pattern: nothing, or any segments followed by a separator.</summary>
+    public string LeadingGlobstar { get; }
+
+    /// <summary>Gets the lookahead that keeps a segment from starting with a dot, or an empty string with <see cref="GlobOptions.MatchDotFiles"/>.</summary>
+    public string NoDot { get; }
+
+    /// <summary>Gets an optional separator.</summary>
+    public string OptionalSlash { get; }
+
+    /// <summary>Gets the regex for <c>?</c> at the start of a path segment: any non-separator other than a dot, or any non-separator with <see cref="GlobOptions.MatchDotFiles"/>.</summary>
+    public string SegmentStartQmark { get; }
+
+    /// <summary>
+    /// Gets the regex for <c>*</c> in the compact forms of common patterns such as <c>*.js</c>: <see cref="BashStar"/> with
+    /// <see cref="GlobOptions.BashCompatibility"/>, otherwise any characters within a segment; a lazy capture group with <see cref="GlobOptions.CaptureGroups"/>.
+    /// </summary>
+    public string ShapeStar { get; }
+
+    /// <summary>
+    /// Gets the regex for <c>*</c>: any characters within a segment, as a lazy capture group with <see cref="GlobOptions.CaptureGroups"/>.
+    /// With <see cref="GlobOptions.BashCompatibility"/> it is <see cref="Globstar"/>, used only by plain patterns and negated extended globs;
+    /// every other bash star is <see cref="BashStar"/>.
+    /// </summary>
+    public string Star { get; }
 }

@@ -39,37 +39,6 @@ public sealed class GlobParseException : ArgumentException
     }
 
     /// <summary>
-    /// Gets the pattern that could not be compiled.
-    /// </summary>
-    public string Pattern { get; }
-
-    /// <summary>
-    /// Gets the reason the pattern could not be compiled.
-    /// </summary>
-    public GlobParseError Error { get; }
-
-    /// <summary>
-    /// Gets the zero-based position in <see cref="Pattern"/> where the error was detected, or <c>-1</c> if unknown.
-    /// </summary>
-    /// <remarks>For <see cref="GlobParseError.PatternTooLong"/>, this is <see cref="GlobOptions.MaxPatternLength"/>.</remarks>
-    public int Offset { get; }
-
-    /// <summary>
-    /// Gets the message that describes the error, without the parameter name that <see cref="ArgumentException.Message"/> appends.
-    /// </summary>
-    private string Description { get; }
-
-    /// <summary>
-    /// Returns this exception reported for the argument named <paramref name="paramName"/>.
-    /// </summary>
-    /// <param name="paramName">The name of the argument that supplied <see cref="Pattern"/>.</param>
-    /// <returns>This instance if <see cref="ArgumentException.ParamName"/> is already <paramref name="paramName"/>; otherwise, a copy with that parameter name.</returns>
-    internal GlobParseException ForParameter(string paramName)
-    {
-        return ParamName == paramName ? this : new GlobParseException(Pattern, Error, Offset, Description, paramName, InnerException);
-    }
-
-    /// <summary>
     /// Creates the exception for a <see langword="null"/> or empty pattern.
     /// </summary>
     /// <param name="paramName">The name of the argument that supplied the pattern.</param>
@@ -92,4 +61,35 @@ public sealed class GlobParseException : ArgumentException
     {
         return new GlobParseException(pattern, error, offset, $"Missing {type} \"{ch}\" in pattern \"{pattern}\"; escape it as \"\\{ch}\" to match it literally.");
     }
+
+    /// <summary>
+    /// Returns this exception reported for the argument named <paramref name="paramName"/>.
+    /// </summary>
+    /// <param name="paramName">The name of the argument that supplied <see cref="Pattern"/>.</param>
+    /// <returns>This instance if <see cref="ArgumentException.ParamName"/> is already <paramref name="paramName"/>; otherwise, a copy with that parameter name.</returns>
+    internal GlobParseException ForParameter(string paramName)
+    {
+        return ParamName == paramName ? this : new GlobParseException(Pattern, Error, Offset, Description, paramName, InnerException);
+    }
+
+    /// <summary>
+    /// Gets the reason the pattern could not be compiled.
+    /// </summary>
+    public GlobParseError Error { get; }
+
+    /// <summary>
+    /// Gets the zero-based position in <see cref="Pattern"/> where the error was detected, or <c>-1</c> if unknown.
+    /// </summary>
+    /// <remarks>For <see cref="GlobParseError.PatternTooLong"/>, this is <see cref="GlobOptions.MaxPatternLength"/>.</remarks>
+    public int Offset { get; }
+
+    /// <summary>
+    /// Gets the pattern that could not be compiled.
+    /// </summary>
+    public string Pattern { get; }
+
+    /// <summary>
+    /// Gets the message that describes the error, without the parameter name that <see cref="ArgumentException.Message"/> appends.
+    /// </summary>
+    private string Description { get; }
 }

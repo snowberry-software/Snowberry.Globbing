@@ -6,6 +6,76 @@ namespace Snowberry.Globbing.Tests;
 public class GlobstarsTests
 {
     [Theory]
+    [InlineData("a/../a", "**", false)]
+    [InlineData("../a", "**", false)]
+    [InlineData("../c/d", "**", false)]
+    [InlineData("a/../a", "**/", false)]
+    [InlineData("../a", "**/", false)]
+    [InlineData("../c/d", "**/", false)]
+    [InlineData("a/../a", "**/x", false)]
+    [InlineData("../a", "**/x", false)]
+    [InlineData("../c/d", "**/x", false)]
+    [InlineData("a/../a", "**/x/**", false)]
+    [InlineData("../a", "**/x/**", false)]
+    [InlineData("../c/d", "**/x/**", false)]
+    [InlineData("a/../a", "a/**/*", false)]
+    [InlineData("../a", "a/**/*", false)]
+    [InlineData("../c/d", "a/**/*", false)]
+    [InlineData("a/../a", "b/**", false)]
+    [InlineData("../a", "b/**", false)]
+    [InlineData("../c/d", "b/**", false)]
+    public void DoubleDots(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("foo/bar/baz/one/image.png", "foo/bar/**/one/**/*.*", true)]
+    [InlineData("foo/bar/baz/one/two/three/image.png", "foo/bar/**/one/**/*.*", true)]
+    [InlineData("a/b/c/d/", "a/b/**/f", false)]
+    [InlineData("a", "a{,/**}", true)]
+    [InlineData("a/b/c/d/", "**", true)]
+    [InlineData("a/b/c/d/", "a/b/**", true)]
+    [InlineData("a/b/c/d/", "a/b/**/", true)]
+    [InlineData("a/b/c/d/", "a/b/**/c/**/d/", true)]
+    [InlineData("a/b/c/d/e.f", "a/b/**/*.*", true)]
+    [InlineData("a/b/c/d/e.f", "a/b/**/d/**/*.*", true)]
+    [InlineData("a/b/c/d/g/e.f", "a/b/**/d/**/*.*", true)]
+    [InlineData("a/b-c/z.js", "a/b-*/**/z.js", true)]
+    [InlineData("a/b-c/d/e/z.js", "a/b-*/**/z.js", true)]
+    public void Globstars_BetweenAndAfterSegments_MatchNestedPaths(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a", "**/", false)]
+    [InlineData("a", "**/a/*", false)]
+    [InlineData("a", "*/a/**", false)]
+    [InlineData("a/b", "**/", false)]
+    [InlineData("a/b", "b/**", false)]
+    [InlineData("a/b/c", "**/**/b", false)]
+    [InlineData("a/b/c", "**/b", false)]
+    [InlineData("a/b/c/d", "**/d/*", false)]
+    [InlineData("a", "**/**", true)]
+    [InlineData("a", "**/**/*", true)]
+    [InlineData("a", "**/**/a", true)]
+    [InlineData("a", "**/a/**", true)]
+    [InlineData("a/b", "**/**/b", true)]
+    [InlineData("a/b", "**/b", true)]
+    [InlineData("a/b", "**/b/**", true)]
+    [InlineData("a/b", "*/b/**", true)]
+    [InlineData("a/b/c", "**/b/*", true)]
+    [InlineData("a/b/c/d", "**/**/d", true)]
+    [InlineData("a/b/c/d", "**/b/**", true)]
+    [InlineData("a/b/c/d", "**/b/*/*", true)]
+    [InlineData("a/b/c/d", "**/d", true)]
+    public void ShouldMatch(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("a/b/c/d.js", "**/*.js", true)]
     [InlineData("a/b.js", "**/*.js", true)]
     [InlineData("a/b/c/d/e/f.js", "a/b/**/*.js", true)]
@@ -14,6 +84,45 @@ public class GlobstarsTests
     [InlineData("a/d.js", "a/b/**/*.js", false)]
     [InlineData("d.js", "a/b/**/*.js", false)]
     public void ShouldMatchGlobstars(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(".gitignore", "a/**/z/*.md", false)]
+    [InlineData("a/b/z/.dotfile", "a/**/z/*.md", false)]
+    [InlineData("a/b/z/.dotfile.md", "**/c/.*.md", false)]
+    [InlineData("a/b/z/.dotfile.md", "**/.*.md", true)]
+    [InlineData("a/b/z/.dotfile.md", "a/**/z/.*.md", true)]
+    public void ShouldMatchLeadingDotsWhenDefinedInPattern(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a/b/c/xyz.md", "a/b/**/c{d,e}/**/xyz.md", false)]
+    [InlineData("a/b", "a/**/", false)]
+    [InlineData("a/b/.js/c.txt", "**/*", false)]
+    [InlineData("a/b/c/d", "a/**/", false)]
+    [InlineData("/a/b", "/**", true)]
+    [InlineData("a.b", "**/*", true)]
+    [InlineData("a/", "a/**/", true)]
+    [InlineData("a/a.js", "**/*.js", true)]
+    [InlineData("a/b", "a/**b", true)]
+    [InlineData("a/b/c/d/", "a/**/", true)]
+    [InlineData("a/b/c/d/a.js", "**/*", true)]
+    [InlineData("a/b/z.js", "a/b/**/*.js", true)]
+    [InlineData("ab", "**/*", true)]
+    public void ShouldMatchNestedDirectories(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a/.b", "a/**/z/*.md", false)]
+    [InlineData("a/b/z/.a", "a/**/z/*.a", false)]
+    [InlineData("a/b/z/.a", "a/*/z/*.a", false)]
+    public void ShouldNotMatchDotfilesByDefault(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
@@ -123,115 +232,6 @@ public class GlobstarsTests
     [InlineData(".a/a", "b/**", false)]
     [InlineData("a/.a", "b/**", false)]
     public void SingleDots(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("a/../a", "**", false)]
-    [InlineData("../a", "**", false)]
-    [InlineData("../c/d", "**", false)]
-    [InlineData("a/../a", "**/", false)]
-    [InlineData("../a", "**/", false)]
-    [InlineData("../c/d", "**/", false)]
-    [InlineData("a/../a", "**/x", false)]
-    [InlineData("../a", "**/x", false)]
-    [InlineData("../c/d", "**/x", false)]
-    [InlineData("a/../a", "**/x/**", false)]
-    [InlineData("../a", "**/x/**", false)]
-    [InlineData("../c/d", "**/x/**", false)]
-    [InlineData("a/../a", "a/**/*", false)]
-    [InlineData("../a", "a/**/*", false)]
-    [InlineData("../c/d", "a/**/*", false)]
-    [InlineData("a/../a", "b/**", false)]
-    [InlineData("../a", "b/**", false)]
-    [InlineData("../c/d", "b/**", false)]
-    public void DoubleDots(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("a", "**/", false)]
-    [InlineData("a", "**/a/*", false)]
-    [InlineData("a", "*/a/**", false)]
-    [InlineData("a/b", "**/", false)]
-    [InlineData("a/b", "b/**", false)]
-    [InlineData("a/b/c", "**/**/b", false)]
-    [InlineData("a/b/c", "**/b", false)]
-    [InlineData("a/b/c/d", "**/d/*", false)]
-    [InlineData("a", "**/**", true)]
-    [InlineData("a", "**/**/*", true)]
-    [InlineData("a", "**/**/a", true)]
-    [InlineData("a", "**/a/**", true)]
-    [InlineData("a/b", "**/**/b", true)]
-    [InlineData("a/b", "**/b", true)]
-    [InlineData("a/b", "**/b/**", true)]
-    [InlineData("a/b", "*/b/**", true)]
-    [InlineData("a/b/c", "**/b/*", true)]
-    [InlineData("a/b/c/d", "**/**/d", true)]
-    [InlineData("a/b/c/d", "**/b/**", true)]
-    [InlineData("a/b/c/d", "**/b/*/*", true)]
-    [InlineData("a/b/c/d", "**/d", true)]
-    public void ShouldMatch(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("a/b/c/xyz.md", "a/b/**/c{d,e}/**/xyz.md", false)]
-    [InlineData("a/b", "a/**/", false)]
-    [InlineData("a/b/.js/c.txt", "**/*", false)]
-    [InlineData("a/b/c/d", "a/**/", false)]
-    [InlineData("/a/b", "/**", true)]
-    [InlineData("a.b", "**/*", true)]
-    [InlineData("a/", "a/**/", true)]
-    [InlineData("a/a.js", "**/*.js", true)]
-    [InlineData("a/b", "a/**b", true)]
-    [InlineData("a/b/c/d/", "a/**/", true)]
-    [InlineData("a/b/c/d/a.js", "**/*", true)]
-    [InlineData("a/b/z.js", "a/b/**/*.js", true)]
-    [InlineData("ab", "**/*", true)]
-    public void ShouldMatchNestedDirectories(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("a/.b", "a/**/z/*.md", false)]
-    [InlineData("a/b/z/.a", "a/**/z/*.a", false)]
-    [InlineData("a/b/z/.a", "a/*/z/*.a", false)]
-    public void ShouldNotMatchDotfilesByDefault(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData(".gitignore", "a/**/z/*.md", false)]
-    [InlineData("a/b/z/.dotfile", "a/**/z/*.md", false)]
-    [InlineData("a/b/z/.dotfile.md", "**/c/.*.md", false)]
-    [InlineData("a/b/z/.dotfile.md", "**/.*.md", true)]
-    [InlineData("a/b/z/.dotfile.md", "a/**/z/.*.md", true)]
-    public void ShouldMatchLeadingDotsWhenDefinedInPattern(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("foo/bar/baz/one/image.png", "foo/bar/**/one/**/*.*", true)]
-    [InlineData("foo/bar/baz/one/two/three/image.png", "foo/bar/**/one/**/*.*", true)]
-    [InlineData("a/b/c/d/", "a/b/**/f", false)]
-    [InlineData("a", "a{,/**}", true)]
-    [InlineData("a/b/c/d/", "**", true)]
-    [InlineData("a/b/c/d/", "a/b/**", true)]
-    [InlineData("a/b/c/d/", "a/b/**/", true)]
-    [InlineData("a/b/c/d/", "a/b/**/c/**/d/", true)]
-    [InlineData("a/b/c/d/e.f", "a/b/**/*.*", true)]
-    [InlineData("a/b/c/d/e.f", "a/b/**/d/**/*.*", true)]
-    [InlineData("a/b/c/d/g/e.f", "a/b/**/d/**/*.*", true)]
-    [InlineData("a/b-c/z.js", "a/b-*/**/z.js", true)]
-    [InlineData("a/b-c/d/e/z.js", "a/b-*/**/z.js", true)]
-    public void Globstars_BetweenAndAfterSegments_MatchNestedPaths(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }

@@ -37,63 +37,14 @@ internal static class Program
 /// </summary>
 public static class Workloads
 {
-    public const string c_SimpleWildcard = "*.js";
-    public const string c_Globstar = "**/*.js";
     public const string c_BraceExpansion = "*.{js,ts,jsx,tsx}";
-    public const string c_Extglob = "!(*.test|*.spec).{js,ts}";
-    public const string c_ComplexNested = "src/**/!(*.test|*.spec).{js,jsx,ts,tsx}";
     public const string c_CharacterClass = "test-[0-9][a-z].txt";
-    public const string c_RealWorld = "**/*.{js,jsx}";
+    public const string c_ComplexNested = "src/**/!(*.test|*.spec).{js,jsx,ts,tsx}";
+    public const string c_Extglob = "!(*.test|*.spec).{js,ts}";
+    public const string c_Globstar = "**/*.js";
     public const string c_Negation = "!*.md";
-
-    /// <summary>The single-pattern scenarios exercised by both benchmark classes.</summary>
-    public enum Scenario
-    {
-        SimpleWildcard,
-        Globstar,
-        BraceExpansion,
-        Extglob,
-        ComplexNested,
-        CharacterClass,
-        RealWorld,
-        Negation
-    }
-
-    /// <summary>Maps a scenario to its glob pattern.</summary>
-    public static string PatternFor(Scenario scenario)
-    {
-        return scenario switch
-        {
-            Scenario.SimpleWildcard => c_SimpleWildcard,
-            Scenario.Globstar => c_Globstar,
-            Scenario.BraceExpansion => c_BraceExpansion,
-            Scenario.Extglob => c_Extglob,
-            Scenario.ComplexNested => c_ComplexNested,
-            Scenario.CharacterClass => c_CharacterClass,
-            Scenario.RealWorld => c_RealWorld,
-            Scenario.Negation => c_Negation,
-            _ => c_SimpleWildcard
-        };
-    }
-
-    /// <summary>Maps a scenario to the dataset its pattern is run against.</summary>
-    public static string[] DataFor(Scenario scenario)
-    {
-        return scenario switch
-        {
-            Scenario.SimpleWildcard => s_JsFiles,
-            Scenario.Globstar => s_DeepPaths,
-            Scenario.BraceExpansion => s_MixedExtensions,
-            Scenario.Extglob => s_DeepPaths,
-            Scenario.ComplexNested => s_DeepPaths,
-            Scenario.CharacterClass => s_CharacterClassFiles,
-            Scenario.RealWorld => s_RealWorldPaths,
-            Scenario.Negation => s_MixedExtensions,
-            _ => s_JsFiles
-        };
-    }
-
-    // Datasets are built once and cached; generators stay deterministic so runs are comparable.
+    public const string c_RealWorld = "**/*.{js,jsx}";
+    public const string c_SimpleWildcard = "*.js";
 
     public static readonly string[] s_JsFiles =
         [.. Enumerable.Range(0, 500).Select(i => $"app{i}.js")];
@@ -104,6 +55,9 @@ public static class Workloads
         [.. Enumerable.Range(0, 100).SelectMany(i => new[] { $"test-{i % 10}a.txt", $"test-{i % 10}z.txt", $"test-{i % 10}X.txt" })];
 
     public static readonly string[] s_DeepPaths = BuildDeepPaths();
+
+    // Datasets are built once and cached; generators stay deterministic so runs are comparable.
+
 
     public static readonly string[] s_RealWorldPaths =
     [
@@ -126,10 +80,38 @@ public static class Workloads
         ".github/workflows/ci.yml"
     ];
 
-    private static string[] BuildMixedExtensions()
+    /// <summary>Maps a scenario to the dataset its pattern is run against.</summary>
+    public static string[] DataFor(Scenario scenario)
     {
-        string[] extensions = ["js", "ts", "jsx", "tsx", "css", "scss", "html", "json", "md", "txt"];
-        return [.. Enumerable.Range(0, 1000).Select(i => $"file{i}.{extensions[i % extensions.Length]}")];
+        return scenario switch
+        {
+            Scenario.SimpleWildcard => s_JsFiles,
+            Scenario.Globstar => s_DeepPaths,
+            Scenario.BraceExpansion => s_MixedExtensions,
+            Scenario.Extglob => s_DeepPaths,
+            Scenario.ComplexNested => s_DeepPaths,
+            Scenario.CharacterClass => s_CharacterClassFiles,
+            Scenario.RealWorld => s_RealWorldPaths,
+            Scenario.Negation => s_MixedExtensions,
+            _ => s_JsFiles
+        };
+    }
+
+    /// <summary>Maps a scenario to its glob pattern.</summary>
+    public static string PatternFor(Scenario scenario)
+    {
+        return scenario switch
+        {
+            Scenario.SimpleWildcard => c_SimpleWildcard,
+            Scenario.Globstar => c_Globstar,
+            Scenario.BraceExpansion => c_BraceExpansion,
+            Scenario.Extglob => c_Extglob,
+            Scenario.ComplexNested => c_ComplexNested,
+            Scenario.CharacterClass => c_CharacterClass,
+            Scenario.RealWorld => c_RealWorld,
+            Scenario.Negation => c_Negation,
+            _ => c_SimpleWildcard
+        };
     }
 
     private static string[] BuildDeepPaths()
@@ -148,6 +130,25 @@ public static class Workloads
 
         return [.. paths];
     }
+
+    private static string[] BuildMixedExtensions()
+    {
+        string[] extensions = ["js", "ts", "jsx", "tsx", "css", "scss", "html", "json", "md", "txt"];
+        return [.. Enumerable.Range(0, 1000).Select(i => $"file{i}.{extensions[i % extensions.Length]}")];
+    }
+
+    /// <summary>The single-pattern scenarios exercised by both benchmark classes.</summary>
+    public enum Scenario
+    {
+        SimpleWildcard,
+        Globstar,
+        BraceExpansion,
+        Extglob,
+        ComplexNested,
+        CharacterClass,
+        RealWorld,
+        Negation
+    }
 }
 
 /// <summary>
@@ -159,23 +160,17 @@ public static class Workloads
 [MemoryDiagnoser]
 public class PipelineBenchmarks
 {
-    [ParamsAllValues]
-    public Workloads.Scenario Scenario { get; set; }
-
-    private string _pattern = "";
-    private string _regexSource = "";
     private Regex _compiled = null!;
     private string[] _data = [];
 
-    [GlobalSetup]
-    public void Setup()
-    {
-        _pattern = Workloads.PatternFor(Scenario);
-        _data = Workloads.DataFor(Scenario);
+    private string _pattern = "";
+    private string _regexSource = "";
 
-        // Pre-stage each phase's input so the benchmarked call measures only that phase.
-        _regexSource = GlobCompiler.CompileRegexSource(_pattern, GlobOptions.Default);
-        _compiled = new Glob(_pattern).ToRegex();
+    /// <summary>Structural scan of the pattern (no regex compilation).</summary>
+    [Benchmark]
+    public GlobInfo Analyze()
+    {
+        return Glob.Analyze(_pattern);
     }
 
     /// <summary>Lex, parse and emit the glob pattern as a regex source.</summary>
@@ -183,13 +178,6 @@ public class PipelineBenchmarks
     public string CompileSource()
     {
         return GlobCompiler.CompileRegexSource(_pattern, GlobOptions.Default);
-    }
-
-    /// <summary>Structural scan of the pattern (no regex compilation).</summary>
-    [Benchmark]
-    public GlobInfo Analyze()
-    {
-        return Glob.Analyze(_pattern);
     }
 
     /// <summary>Construct a <see cref="Regex"/> from an already-compiled regex source.</summary>
@@ -219,6 +207,20 @@ public class PipelineBenchmarks
 
         return count;
     }
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        _pattern = Workloads.PatternFor(Scenario);
+        _data = Workloads.DataFor(Scenario);
+
+        // Pre-stage each phase's input so the benchmarked call measures only that phase.
+        _regexSource = GlobCompiler.CompileRegexSource(_pattern, GlobOptions.Default);
+        _compiled = new Glob(_pattern).ToRegex();
+    }
+
+    [ParamsAllValues]
+    public Workloads.Scenario Scenario { get; set; }
 }
 
 /// <summary>
@@ -230,23 +232,21 @@ public class PipelineBenchmarks
 [MemoryDiagnoser]
 public class MatchBenchmarks
 {
-    /// <summary>Pre-compiled matcher + dataset pairings exercised by <see cref="Match"/>.</summary>
-    public enum MatchScenario
-    {
-        SimpleWildcard,
-        Globstar,
-        BraceExpansion,
-        Extglob,
-        ComplexNested,
-        Negation,
-        CharacterClass,
-        MultiplePatterns
-    }
-
     private Dictionary<MatchScenario, (Glob Matcher, string[] Data)> _scenarios = null!;
 
-    [ParamsAllValues]
-    public MatchScenario Scenario { get; set; }
+    [Benchmark]
+    public int Match()
+    {
+        var (matcher, data) = _scenarios[Scenario];
+        int count = 0;
+        foreach (string path in data)
+        {
+            if (matcher.IsMatch(path))
+                count++;
+        }
+
+        return count;
+    }
 
     [GlobalSetup]
     public void Setup()
@@ -264,17 +264,19 @@ public class MatchBenchmarks
         };
     }
 
-    [Benchmark]
-    public int Match()
-    {
-        var (matcher, data) = _scenarios[Scenario];
-        int count = 0;
-        foreach (string path in data)
-        {
-            if (matcher.IsMatch(path))
-                count++;
-        }
+    [ParamsAllValues]
+    public MatchScenario Scenario { get; set; }
 
-        return count;
+    /// <summary>Pre-compiled matcher + dataset pairings exercised by <see cref="Match"/>.</summary>
+    public enum MatchScenario
+    {
+        SimpleWildcard,
+        Globstar,
+        BraceExpansion,
+        Extglob,
+        ComplexNested,
+        Negation,
+        CharacterClass,
+        MultiplePatterns
     }
 }

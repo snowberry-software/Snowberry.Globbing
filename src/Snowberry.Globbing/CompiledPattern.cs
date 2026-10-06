@@ -39,14 +39,15 @@ internal sealed class CompiledPattern
         }
     }
 
-    /// <summary>Gets the glob pattern.</summary>
-    public string Pattern { get; }
-
-    /// <summary>Gets the portable regex source of the pattern.</summary>
-    public string Source { get; }
-
-    /// <summary>Gets the regex of the pattern.</summary>
-    public Regex Regex { get; }
+    /// <summary>
+    /// Determines whether <paramref name="input"/> contains a line terminator: line feed, carriage return, line separator or paragraph separator.
+    /// </summary>
+    /// <param name="input">The input to inspect.</param>
+    /// <returns><see langword="true"/> if <paramref name="input"/> contains a line terminator; otherwise, <see langword="false"/>.</returns>
+    private static bool HasLineTerminator(ReadOnlySpan<char> input)
+    {
+        return input.IndexOfAny("\n\r\u2028\u2029".AsSpan()) >= 0;
+    }
 
     /// <summary>
     /// Determines whether <paramref name="input"/> matches the regex of the pattern.
@@ -76,19 +77,18 @@ internal sealed class CompiledPattern
     }
 #endif
 
+    /// <summary>Gets the glob pattern.</summary>
+    public string Pattern { get; }
+
+    /// <summary>Gets the regex of the pattern.</summary>
+    public Regex Regex { get; }
+
+    /// <summary>Gets the portable regex source of the pattern.</summary>
+    public string Source { get; }
+
     /// <summary>
     /// Gets the regex of the body of a negated pattern, built on first use.
     /// </summary>
     /// <remarks>It is built from a part of the already validated regex, so it cannot fail; a race only builds it twice.</remarks>
     private Regex Positive => _positive ??= new Regex(_positiveSource!, Regex.Options);
-
-    /// <summary>
-    /// Determines whether <paramref name="input"/> contains a line terminator: line feed, carriage return, line separator or paragraph separator.
-    /// </summary>
-    /// <param name="input">The input to inspect.</param>
-    /// <returns><see langword="true"/> if <paramref name="input"/> contains a line terminator; otherwise, <see langword="false"/>.</returns>
-    private static bool HasLineTerminator(ReadOnlySpan<char> input)
-    {
-        return input.IndexOfAny("\n\r\u2028\u2029".AsSpan()) >= 0;
-    }
 }

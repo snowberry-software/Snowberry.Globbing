@@ -4,6 +4,11 @@ public class PerformanceStressTests
 {
     private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
 
+    private static string Nest(string open, string close, int depth)
+    {
+        return string.Concat(Enumerable.Repeat(open, depth)) + "b" + string.Concat(Enumerable.Repeat(close, depth));
+    }
+
     [Theory]
     [InlineData("dir", "file.js", true)]
     [InlineData("dir", "file.ts", false)]
@@ -17,17 +22,6 @@ public class PerformanceStressTests
         new Glob("**/*.js", s_Posix).IsMatch(path).Should().Be(expected);
     }
 
-    [Theory]
-    [InlineData(".js", true)]
-    [InlineData(".ts", false)]
-    [InlineData("/b.js", false)]
-    public void Star_OnVeryLongSegment_Completes(string suffix, bool expected)
-    {
-        string input = new string('a', 100_000) + suffix;
-
-        new Glob("*.js", s_Posix).IsMatch(input).Should().Be(expected);
-    }
-
     [Fact]
     public void ManyPatterns_InOneGlob_ReportTheMatchingPattern()
     {
@@ -35,17 +29,6 @@ public class PerformanceStressTests
 
         glob.Match("src/app.250.js").Pattern.Should().Be("**/*.250.js");
         glob.IsMatch("src/app.500.js").Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData("v{1..4096}", "v4096", true)]
-    [InlineData("v{1..4096}", "v4097", false)]
-    // Past 4096 values a range is not expanded and matches as literal text.
-    [InlineData("*v{1..100000}", "xv{1..100000}", true)]
-    [InlineData("*v{1..100000}", "xv5", false)]
-    public void NumericRange_IsCappedInsteadOfExpanded(string pattern, string input, bool expected)
-    {
-        new Glob(pattern, s_Posix).IsMatch(input).Should().Be(expected);
     }
 
     [Theory]
@@ -60,8 +43,25 @@ public class PerformanceStressTests
         e.Error.Should().Be(GlobParseError.NestingTooDeep);
     }
 
-    private static string Nest(string open, string close, int depth)
+    [Theory]
+    [InlineData("v{1..4096}", "v4096", true)]
+    [InlineData("v{1..4096}", "v4097", false)]
+    // Past 4096 values a range is not expanded and matches as literal text.
+    [InlineData("*v{1..100000}", "xv{1..100000}", true)]
+    [InlineData("*v{1..100000}", "xv5", false)]
+    public void NumericRange_IsCappedInsteadOfExpanded(string pattern, string input, bool expected)
     {
-        return string.Concat(Enumerable.Repeat(open, depth)) + "b" + string.Concat(Enumerable.Repeat(close, depth));
+        new Glob(pattern, s_Posix).IsMatch(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(".js", true)]
+    [InlineData(".ts", false)]
+    [InlineData("/b.js", false)]
+    public void Star_OnVeryLongSegment_Completes(string suffix, bool expected)
+    {
+        string input = new string('a', 100_000) + suffix;
+
+        new Glob("*.js", s_Posix).IsMatch(input).Should().Be(expected);
     }
 }

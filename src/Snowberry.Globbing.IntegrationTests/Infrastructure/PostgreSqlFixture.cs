@@ -25,16 +25,16 @@ public sealed class Sample
 /// <param name="options">The context options.</param>
 public sealed class SampleContext(DbContextOptions<SampleContext> options) : DbContext(options)
 {
-    /// <summary>
-    /// Gets the sample rows.
-    /// </summary>
-    public DbSet<Sample> Samples => Set<Sample>();
-
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Sample>().Property(s => s.Id).ValueGeneratedNever();
     }
+
+    /// <summary>
+    /// Gets the sample rows.
+    /// </summary>
+    public DbSet<Sample> Samples => Set<Sample>();
 }
 
 /// <summary>
@@ -55,14 +55,14 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
     }
 
     /// <inheritdoc/>
-    public async ValueTask InitializeAsync()
-    {
-        await _container.StartAsync();
-    }
-
-    /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
         await _container.DisposeAsync();
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask InitializeAsync()
+    {
+        await _container.StartAsync();
     }
 }

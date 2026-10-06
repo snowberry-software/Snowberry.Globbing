@@ -54,34 +54,24 @@ public sealed class ConformanceFixture
         Cases = cases;
     }
 
-    /// <summary>
-    /// Gets the picomatch commit the expected results were generated from.
-    /// </summary>
-    public string PicomatchCommit { get; }
-
-    /// <summary>
-    /// Gets the inputs every case is matched against.
-    /// </summary>
-    public IReadOnlyList<string> Inputs { get; }
-
-    /// <summary>
-    /// Gets the names of the option sets in the fixture.
-    /// </summary>
-    public IReadOnlyList<string> OptionSets { get; }
-
-    /// <summary>
-    /// Gets every case in the fixture.
-    /// </summary>
-    public IReadOnlyList<ConformanceCase> Cases { get; }
-
-    /// <summary>
-    /// Gets the cases compiled with the specified option set.
-    /// </summary>
-    /// <param name="optionSet">The option set name.</param>
-    /// <returns>The cases of <paramref name="optionSet"/>.</returns>
-    public IReadOnlyList<ConformanceCase> CasesFor(string optionSet)
+    private static GlobOptions ToGlobOptions(JsonElement options)
     {
-        return [.. Cases.Where(c => c.OptionSet == optionSet)];
+        var result = new GlobOptions { PathStyle = GlobPathStyle.Posix };
+        foreach (var option in options.EnumerateObject())
+        {
+            bool value = option.Value.GetBoolean();
+            result = option.Name switch
+            {
+                "dot" => result with { MatchDotFiles = value },
+                "strictSlashes" => result with { StrictSlashes = value },
+                "noglobstar" => result with { Globstar = !value },
+                "noextglob" => result with { Extglobs = !value },
+                "nobrace" => result with { BraceExpansion = !value },
+                _ => throw new NotSupportedException($"Unmapped picomatch option '{option.Name}'."),
+            };
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -113,28 +103,38 @@ public sealed class ConformanceFixture
         failures.Should().BeEmpty($"{failures.Count} case(s) differ from picomatch {PicomatchCommit} on {engine}:{Environment.NewLine}{string.Join(Environment.NewLine, failures.Take(50))}");
     }
 
+    /// <summary>
+    /// Gets the cases compiled with the specified option set.
+    /// </summary>
+    /// <param name="optionSet">The option set name.</param>
+    /// <returns>The cases of <paramref name="optionSet"/>.</returns>
+    public IReadOnlyList<ConformanceCase> CasesFor(string optionSet)
+    {
+        return [.. Cases.Where(c => c.OptionSet == optionSet)];
+    }
+
     private string Describe(int index)
     {
         return JsonSerializer.Serialize(Inputs[index]);
     }
 
-    private static GlobOptions ToGlobOptions(JsonElement options)
-    {
-        var result = new GlobOptions { PathStyle = GlobPathStyle.Posix };
-        foreach (var option in options.EnumerateObject())
-        {
-            bool value = option.Value.GetBoolean();
-            result = option.Name switch
-            {
-                "dot" => result with { MatchDotFiles = value },
-                "strictSlashes" => result with { StrictSlashes = value },
-                "noglobstar" => result with { Globstar = !value },
-                "noextglob" => result with { Extglobs = !value },
-                "nobrace" => result with { BraceExpansion = !value },
-                _ => throw new NotSupportedException($"Unmapped picomatch option '{option.Name}'."),
-            };
-        }
+    /// <summary>
+    /// Gets every case in the fixture.
+    /// </summary>
+    public IReadOnlyList<ConformanceCase> Cases { get; }
 
-        return result;
-    }
+    /// <summary>
+    /// Gets the inputs every case is matched against.
+    /// </summary>
+    public IReadOnlyList<string> Inputs { get; }
+
+    /// <summary>
+    /// Gets the names of the option sets in the fixture.
+    /// </summary>
+    public IReadOnlyList<string> OptionSets { get; }
+
+    /// <summary>
+    /// Gets the picomatch commit the expected results were generated from.
+    /// </summary>
+    public string PicomatchCommit { get; }
 }

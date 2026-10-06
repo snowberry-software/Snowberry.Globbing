@@ -8,14 +8,26 @@ namespace Snowberry.Globbing.Compilation;
 /// </summary>
 internal static class RegexSyntax
 {
-    /// <summary>Matches the end of input without <see cref="System.Text.RegularExpressions.RegexOptions.Multiline"/>. Unlike a bare <c>$</c> in .NET, it does not match before a trailing line feed.</summary>
-    public const string c_EndOfInput = "$(?!\\n)";
-
     /// <summary>Matches any character, including line terminators.</summary>
     public const string c_AnyChar = "[\\s\\S]";
 
     /// <summary>Matches any character except a line terminator, the JavaScript meaning of <c>.</c>, independent of engine and newline mode.</summary>
     public const string c_AnyNonLineTerminator = "[^\\n\\r\\u2028\\u2029]";
+
+    /// <summary>Matches the end of input without <see cref="System.Text.RegularExpressions.RegexOptions.Multiline"/>. Unlike a bare <c>$</c> in .NET, it does not match before a trailing line feed.</summary>
+    public const string c_EndOfInput = "$(?!\\n)";
+
+    /// <summary>
+    /// Writes <paramref name="c"/> as a literal member of a character class, escaping <c>\</c>, <c>]</c>, <c>^</c>, <c>-</c> and <c>[</c>.
+    /// </summary>
+    /// <param name="sb">The builder that receives the text.</param>
+    /// <param name="c">The character.</param>
+    public static void AppendClassMember(ref ValueStringBuilder sb, char c)
+    {
+        if (c is '\\' or ']' or '^' or '-' or '[')
+            sb.Append('\\');
+        sb.Append(c);
+    }
 
     /// <summary>
     /// Writes <paramref name="c"/> as regex text.
@@ -29,18 +41,6 @@ internal static class RegexSyntax
     public static void AppendLiteral(ref ValueStringBuilder sb, char c, LiteralForm form)
     {
         if (form == LiteralForm.Escaped || (form == LiteralForm.Plain && IsSpecial(c)))
-            sb.Append('\\');
-        sb.Append(c);
-    }
-
-    /// <summary>
-    /// Writes <paramref name="c"/> as a literal member of a character class, escaping <c>\</c>, <c>]</c>, <c>^</c>, <c>-</c> and <c>[</c>.
-    /// </summary>
-    /// <param name="sb">The builder that receives the text.</param>
-    /// <param name="c">The character.</param>
-    public static void AppendClassMember(ref ValueStringBuilder sb, char c)
-    {
-        if (c is '\\' or ']' or '^' or '-' or '[')
             sb.Append('\\');
         sb.Append(c);
     }

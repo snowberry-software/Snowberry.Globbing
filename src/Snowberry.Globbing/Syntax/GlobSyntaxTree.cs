@@ -10,33 +10,9 @@ namespace Snowberry.Globbing.Syntax;
 /// <remarks>The tree owns its buffers; call <see cref="Dispose"/> once to return them to the pool.</remarks>
 internal ref struct GlobSyntaxTree
 {
-    private ValueList<GlobToken> _tokens;
-    private ValueList<SyntaxNode> _nodes;
     private int[]? _matches;
-
-    /// <summary>
-    /// Gets the index of the root <see cref="SyntaxKind.Sequence"/> in <see cref="Nodes"/>.
-    /// </summary>
-    public int Root { get; private set; }
-
-    /// <summary>
-    /// Gets the tokens of the pattern.
-    /// </summary>
-    public readonly ReadOnlySpan<GlobToken> Tokens => _tokens.AsSpan();
-
-    /// <summary>
-    /// Gets the syntax nodes, linked by index.
-    /// </summary>
-    public readonly ReadOnlySpan<SyntaxNode> Nodes => _nodes.AsSpan();
-
-    /// <summary>
-    /// Gets, for each token, the index of its paired delimiter token, or -1 if it is not a paired delimiter.
-    /// </summary>
-    /// <remarks>
-    /// For a brace pair that is parsed as literal text, the <c>}</c> is reset to -1 while the <c>{</c> keeps the index of
-    /// its <c>}</c>.
-    /// </remarks>
-    public readonly ReadOnlySpan<int> Matches => _matches.AsSpan(0, _tokens.Count);
+    private ValueList<SyntaxNode> _nodes;
+    private ValueList<GlobToken> _tokens;
 
     /// <summary>
     /// Lexes and parses <paramref name="pattern"/>.
@@ -92,4 +68,28 @@ internal ref struct GlobSyntaxTree
 
         this = default;
     }
+
+    /// <summary>
+    /// Gets, for each token, the index of its paired delimiter token, or -1 if it is not a paired delimiter.
+    /// </summary>
+    /// <remarks>
+    /// For a brace pair that is parsed as literal text, the <c>}</c> is reset to -1 while the <c>{</c> keeps the index of
+    /// its <c>}</c>.
+    /// </remarks>
+    public readonly ReadOnlySpan<int> Matches => _matches.AsSpan(0, _tokens.Count);
+
+    /// <summary>
+    /// Gets the syntax nodes, linked by index.
+    /// </summary>
+    public readonly ReadOnlySpan<SyntaxNode> Nodes => _nodes.AsSpan();
+
+    /// <summary>
+    /// Gets the index of the root <see cref="SyntaxKind.Sequence"/> in <see cref="Nodes"/>.
+    /// </summary>
+    public int Root { get; private set; }
+
+    /// <summary>
+    /// Gets the tokens of the pattern.
+    /// </summary>
+    public readonly ReadOnlySpan<GlobToken> Tokens => _tokens.AsSpan();
 }

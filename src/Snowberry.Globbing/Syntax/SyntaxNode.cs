@@ -5,37 +5,6 @@ namespace Snowberry.Globbing.Syntax;
 /// </summary>
 internal struct SyntaxNode
 {
-    /// <summary>The kind of node.</summary>
-    public SyntaxKind Kind;
-
-    /// <summary>The role of a <see cref="SyntaxKind.Sequence"/>; <see cref="SequenceRole.Root"/> for other kinds.</summary>
-    public SequenceRole Role;
-
-    /// <summary>For a <see cref="SyntaxKind.Dot"/>, the value of <see cref="IsLeadingDot"/>; unused for other kinds.</summary>
-    public bool Flag;
-
-    /// <summary>Whether a <see cref="SyntaxKind.Sequence"/> is inside a group or extended glob, at any depth.</summary>
-    public bool InParens;
-
-    /// <summary>
-    /// Whether a <see cref="SyntaxKind.Sequence"/> is an extended glob alternative or a brace alternative inside one; the
-    /// alternatives of a group are never marked, even inside an extended glob.
-    /// </summary>
-    public bool InExtglob;
-
-    /// <summary>
-    /// The pattern character of the token the node was built from: the character of a <see cref="SyntaxKind.Literal"/>, the
-    /// operator of an <see cref="SyntaxKind.Extglob"/> or <c>(</c> for a <see cref="SyntaxKind.Group"/>; <c>\0</c> for a
-    /// <see cref="SyntaxKind.Sequence"/>, <see cref="SyntaxKind.Brace"/> or <see cref="SyntaxKind.BraceRange"/>.
-    /// </summary>
-    public char Value;
-
-    /// <summary>The position of the node in the lexed pattern; for a <see cref="SyntaxKind.Sequence"/>, the position of its first token.</summary>
-    public int Start;
-
-    /// <summary>The number of pattern characters the node covers; always 0 for a <see cref="SyntaxKind.Sequence"/>.</summary>
-    public int Length;
-
     /// <summary>
     /// Depends on <see cref="Kind"/>: the number of stars of a <see cref="SyntaxKind.Star"/>, the zero-based alternative index
     /// of a <see cref="SyntaxKind.Sequence"/>, the prefix length in characters of a <see cref="SyntaxKind.Group"/>, or the
@@ -46,17 +15,39 @@ internal struct SyntaxNode
     /// <summary>The index of the first child, or -1.</summary>
     public int FirstChild;
 
+    /// <summary>For a <see cref="SyntaxKind.Dot"/>, the value of <see cref="IsLeadingDot"/>; unused for other kinds.</summary>
+    public bool Flag;
+
+    /// <summary>
+    /// Whether a <see cref="SyntaxKind.Sequence"/> is an extended glob alternative or a brace alternative inside one; the
+    /// alternatives of a group are never marked, even inside an extended glob.
+    /// </summary>
+    public bool InExtglob;
+
+    /// <summary>Whether a <see cref="SyntaxKind.Sequence"/> is inside a group or extended glob, at any depth.</summary>
+    public bool InParens;
+
+    /// <summary>The kind of node.</summary>
+    public SyntaxKind Kind;
+
+    /// <summary>The number of pattern characters the node covers; always 0 for a <see cref="SyntaxKind.Sequence"/>.</summary>
+    public int Length;
+
     /// <summary>The index of the next sibling, or -1.</summary>
     public int Next;
 
-    /// <summary>
-    /// Gets a value indicating whether a <see cref="SyntaxKind.Dot"/> can start a path segment: it starts the pattern or
-    /// follows a separator, or it is anywhere inside a group, extended glob or brace alternative. Never set for a plain pattern.
-    /// </summary>
-    public readonly bool IsLeadingDot => Flag;
+    /// <summary>The role of a <see cref="SyntaxKind.Sequence"/>; <see cref="SequenceRole.Root"/> for other kinds.</summary>
+    public SequenceRole Role;
 
-    /// <summary>Gets the position after the node in the lexed pattern.</summary>
-    public readonly int End => Start + Length;
+    /// <summary>The position of the node in the lexed pattern; for a <see cref="SyntaxKind.Sequence"/>, the position of its first token.</summary>
+    public int Start;
+
+    /// <summary>
+    /// The pattern character of the token the node was built from: the character of a <see cref="SyntaxKind.Literal"/>, the
+    /// operator of an <see cref="SyntaxKind.Extglob"/> or <c>(</c> for a <see cref="SyntaxKind.Group"/>; <c>\0</c> for a
+    /// <see cref="SyntaxKind.Sequence"/>, <see cref="SyntaxKind.Brace"/> or <see cref="SyntaxKind.BraceRange"/>.
+    /// </summary>
+    public char Value;
 
     /// <summary>
     /// Creates a node without children or siblings.
@@ -69,4 +60,13 @@ internal struct SyntaxNode
     {
         return new SyntaxNode { Kind = kind, Start = start, Length = length, FirstChild = -1, Next = -1 };
     }
+
+    /// <summary>Gets the position after the node in the lexed pattern.</summary>
+    public readonly int End => Start + Length;
+
+    /// <summary>
+    /// Gets a value indicating whether a <see cref="SyntaxKind.Dot"/> can start a path segment: it starts the pattern or
+    /// follows a separator, or it is anywhere inside a group, extended glob or brace alternative. Never set for a plain pattern.
+    /// </summary>
+    public readonly bool IsLeadingDot => Flag;
 }

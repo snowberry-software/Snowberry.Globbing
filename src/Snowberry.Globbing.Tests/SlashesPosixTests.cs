@@ -5,56 +5,44 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class SlashesPosixTests
 {
-
     [Theory]
-    [InlineData("a/b", "a/b", true)]
-    [InlineData("a/c", "a/b", false)]
-    [InlineData("b/b", "a/b", false)]
-    [InlineData("a/b", "(a/b)", true)]
-    [InlineData("a/a", "(a/b)", false)]
-    [InlineData("b/c", "(a/b)", false)]
-    public void ShouldMatchLiteralString(string input, string pattern, bool expected)
+    [InlineData("/ef", "/*", true)]
+    [InlineData("/foo/bar.txt", "/foo/*", true)]
+    [InlineData("/foo/bar.txt", "/foo/**", true)]
+    [InlineData("/foo/bar.txt", "/foo/**/**/*.txt", true)]
+    [InlineData("/foo/bar.txt", "/foo/**/**/bar.txt", true)]
+    [InlineData("/foo/bar.txt", "/foo/**/*.txt", true)]
+    [InlineData("/foo/bar.txt", "/foo/**/bar.txt", true)]
+    [InlineData("/foo/bar.txt", "/foo/*/bar.txt", false)]
+    [InlineData("/foo/bar/baz.txt", "/foo/*", false)]
+    [InlineData("/foo/bar/baz.txt", "/foo/**", true)]
+    public void ShouldHandleLeadingSlashes(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
-    [InlineData("a/a", "a/(a|c)", true)]
-    [InlineData("a/b", "a/(a|c)", false)]
-    [InlineData("a/c", "a/(a|c)", true)]
-    [InlineData("a/b", "a/(a|b|c)", true)]
-    public void ShouldSupportRegexLogicalOr(string input, string pattern, bool expected)
+    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/*", false)]
+    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/**", true)]
+    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/**/app.min.js", true)]
+    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/*/*/app.min.js", true)]
+    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/*/app.min.js", false)]
+    public void ShouldMatchDoubleSlashesInUrls(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
-    [InlineData("a/a", "a/[b-c]", false)]
-    [InlineData("a/b", "a/[b-c]", true)]
-    [InlineData("a/c", "a/[b-c]", true)]
-    [InlineData("a/x", "a/[a-z]", true)]
-    [InlineData("a/x/y", "a/[a-z]", false)]
-    public void ShouldSupportRegexRanges(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("a/b", "*", false)]
-    [InlineData("x/y", "*", false)]
-    [InlineData("aa", "*", true)]
-    [InlineData("a/c", "*/*", true)]
-    [InlineData("a/a/b", "*/*/*", true)]
-    [InlineData("a/x", "a/*", true)]
-    [InlineData("x/y", "a/*", false)]
-    [InlineData("a/b/a", "a/*/a", true)]
-    [InlineData("a/b/b", "a/*/b", true)]
-    [InlineData("aa", "a*", true)]
-    [InlineData("a/a", "a*", false)]
-    [InlineData("b", "*b", true)]
-    [InlineData("ab", "*b", true)]
-    [InlineData("a", "*b", false)]
-    public void ShouldMatchSingleStarPatterns(string input, string pattern, bool expected)
+    [InlineData(".md", "\\*", false)]
+    [InlineData("*.md", "\\*", false)]
+    [InlineData("*.md", "\\*.md", true)]
+    [InlineData(".md", "\\*.md", false)]
+    [InlineData("**.md", "\\*.md", false)]
+    [InlineData("*.md", "\\**.md", true)]
+    [InlineData("**.md", "\\**.md", true)]
+    [InlineData("**a.md", "\\**.md", true)]
+    [InlineData(".md", "\\**.md", false)]
+    public void ShouldMatchEscapedStar(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
@@ -89,41 +77,33 @@ public class SlashesPosixTests
     }
 
     [Theory]
-    [InlineData("a/a", "!a/b", true)]
-    [InlineData("a/b", "!a/b", false)]
-    [InlineData("b/a", "!a/b", true)]
-    [InlineData("a/b", "!a/(b)", false)]
-    [InlineData("a/c", "!a/(b)", true)]
-    [InlineData("a/b", "!(a/b)", false)]
-    [InlineData("a/c", "!(a/b)", true)]
-    public void ShouldSupportNegationPatterns(string input, string pattern, bool expected)
+    [InlineData("a/b", "a/b", true)]
+    [InlineData("a/c", "a/b", false)]
+    [InlineData("b/b", "a/b", false)]
+    [InlineData("a/b", "(a/b)", true)]
+    [InlineData("a/a", "(a/b)", false)]
+    [InlineData("b/c", "(a/b)", false)]
+    public void ShouldMatchLiteralString(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
-    [InlineData("/ef", "/*", true)]
-    [InlineData("/foo/bar.txt", "/foo/*", true)]
-    [InlineData("/foo/bar.txt", "/foo/**", true)]
-    [InlineData("/foo/bar.txt", "/foo/**/**/*.txt", true)]
-    [InlineData("/foo/bar.txt", "/foo/**/**/bar.txt", true)]
-    [InlineData("/foo/bar.txt", "/foo/**/*.txt", true)]
-    [InlineData("/foo/bar.txt", "/foo/**/bar.txt", true)]
-    [InlineData("/foo/bar.txt", "/foo/*/bar.txt", false)]
-    [InlineData("/foo/bar/baz.txt", "/foo/*", false)]
-    [InlineData("/foo/bar/baz.txt", "/foo/**", true)]
-    public void ShouldHandleLeadingSlashes(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern).Should().Be(expected);
-    }
-
-    [Theory]
-    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/*", false)]
-    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/**", true)]
-    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/**/app.min.js", true)]
-    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/*/*/app.min.js", true)]
-    [InlineData("https://foo.com/bar/baz/app.min.js", "https://foo.com/*/app.min.js", false)]
-    public void ShouldMatchDoubleSlashesInUrls(string input, string pattern, bool expected)
+    [InlineData("a/b", "*", false)]
+    [InlineData("x/y", "*", false)]
+    [InlineData("aa", "*", true)]
+    [InlineData("a/c", "*/*", true)]
+    [InlineData("a/a/b", "*/*/*", true)]
+    [InlineData("a/x", "a/*", true)]
+    [InlineData("x/y", "a/*", false)]
+    [InlineData("a/b/a", "a/*/a", true)]
+    [InlineData("a/b/b", "a/*/b", true)]
+    [InlineData("aa", "a*", true)]
+    [InlineData("a/a", "a*", false)]
+    [InlineData("b", "*b", true)]
+    [InlineData("ab", "*b", true)]
+    [InlineData("a", "*b", false)]
+    public void ShouldMatchSingleStarPatterns(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
@@ -150,16 +130,35 @@ public class SlashesPosixTests
     }
 
     [Theory]
-    [InlineData(".md", "\\*", false)]
-    [InlineData("*.md", "\\*", false)]
-    [InlineData("*.md", "\\*.md", true)]
-    [InlineData(".md", "\\*.md", false)]
-    [InlineData("**.md", "\\*.md", false)]
-    [InlineData("*.md", "\\**.md", true)]
-    [InlineData("**.md", "\\**.md", true)]
-    [InlineData("**a.md", "\\**.md", true)]
-    [InlineData(".md", "\\**.md", false)]
-    public void ShouldMatchEscapedStar(string input, string pattern, bool expected)
+    [InlineData("a/a", "!a/b", true)]
+    [InlineData("a/b", "!a/b", false)]
+    [InlineData("b/a", "!a/b", true)]
+    [InlineData("a/b", "!a/(b)", false)]
+    [InlineData("a/c", "!a/(b)", true)]
+    [InlineData("a/b", "!(a/b)", false)]
+    [InlineData("a/c", "!(a/b)", true)]
+    public void ShouldSupportNegationPatterns(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a/a", "a/(a|c)", true)]
+    [InlineData("a/b", "a/(a|c)", false)]
+    [InlineData("a/c", "a/(a|c)", true)]
+    [InlineData("a/b", "a/(a|b|c)", true)]
+    public void ShouldSupportRegexLogicalOr(string input, string pattern, bool expected)
+    {
+        Glob.IsMatch(input, pattern).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a/a", "a/[b-c]", false)]
+    [InlineData("a/b", "a/[b-c]", true)]
+    [InlineData("a/c", "a/[b-c]", true)]
+    [InlineData("a/x", "a/[a-z]", true)]
+    [InlineData("a/x/y", "a/[a-z]", false)]
+    public void ShouldSupportRegexRanges(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }

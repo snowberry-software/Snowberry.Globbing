@@ -32,11 +32,11 @@ public sealed class Glob
     private const int c_CacheCapacity = 256;
 
     private static readonly ConcurrentDictionary<(string Pattern, GlobOptions Options), Glob> s_Cache = new();
+    private readonly CompiledPattern[] _compiled;
+    private readonly bool _convertSeparators;
+    private readonly Glob? _ignore;
 
     private readonly string[] _patterns;
-    private readonly CompiledPattern[] _compiled;
-    private readonly Glob? _ignore;
-    private readonly bool _convertSeparators;
     private Regex? _combinedRegex;
 
     /// <summary>
@@ -129,14 +129,24 @@ public sealed class Glob
     }
 
     /// <summary>
-    /// Gets the patterns of this glob.
+    /// Describes the structure of <paramref name="pattern"/> without compiling it to a regex.
     /// </summary>
-    public IReadOnlyList<string> Patterns => _patterns;
+    /// <remarks>
+    /// The pattern is read with the same rules as matching, except that unbalanced delimiters are always literal text,
+    /// even with <see cref="GlobOptions.StrictBrackets"/>, and <see cref="GlobOptions.MaxPatternLength"/> is not
+    /// checked. Syntax disabled in <paramref name="options"/> is not reported.
+    /// </remarks>
+    /// <param name="pattern">The glob pattern.</param>
+    /// <param name="options">The options, or <see langword="null"/> for <see cref="GlobOptions.Default"/>.</param>
+    /// <returns>The structure of <paramref name="pattern"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="pattern"/> is <see langword="null"/>.</exception>
+    /// <exception cref="GlobParseException"><paramref name="pattern"/> nests groups, braces or extended globs too deeply.</exception>
+    public static GlobInfo Analyze(string pattern, GlobOptions? options = null)
+    {
+        Guard.NotNull(pattern);
 
-    /// <summary>
-    /// Gets the options this glob was compiled with.
-    /// </summary>
-    public GlobOptions Options { get; }
+        return GlobAnalyzer.Analyze(pattern, options ?? GlobOptions.Default);
+    }
 
     /// <summary>
     /// Determines whether <paramref name="input"/> matches <paramref name="pattern"/>, using <see cref="GlobOptions.Default"/>.
@@ -288,149 +298,6 @@ public sealed class Glob
     }
 
     /// <summary>
-    /// Describes the structure of <paramref name="pattern"/> without compiling it to a regex.
-    /// </summary>
-    /// <remarks>
-    /// The pattern is read with the same rules as matching, except that unbalanced delimiters are always literal text,
-    /// even with <see cref="GlobOptions.StrictBrackets"/>, and <see cref="GlobOptions.MaxPatternLength"/> is not
-    /// checked. Syntax disabled in <paramref name="options"/> is not reported.
-    /// </remarks>
-    /// <param name="pattern">The glob pattern.</param>
-    /// <param name="options">The options, or <see langword="null"/> for <see cref="GlobOptions.Default"/>.</param>
-    /// <returns>The structure of <paramref name="pattern"/>.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="pattern"/> is <see langword="null"/>.</exception>
-    /// <exception cref="GlobParseException"><paramref name="pattern"/> nests groups, braces or extended globs too deeply.</exception>
-    public static GlobInfo Analyze(string pattern, GlobOptions? options = null)
-    {
-        Guard.NotNull(pattern);
-
-        return GlobAnalyzer.Analyze(pattern, options ?? GlobOptions.Default);
-    }
-
-    /// <summary>
-    /// Determines whether <paramref name="input"/> matches this glob.
-    /// </summary>
-    /// <param name="input">The input to match, typically a path.</param>
-    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
-    public bool IsMatch(string input)
-    {
-        Guard.NotNull(input);
-
-        return FindPattern(input, Normalize(input)) != null && !IsIgnored(input);
-    }
-
-    /// <summary>
-    /// Determines whether <paramref name="input"/> matches this glob.
-    /// </summary>
-    /// <param name="input">The input to match, typically a path.</param>
-    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
-    public bool IsMatch(ReadOnlySpan<char> input)
-    {
-#if NET7_0_OR_GREATER
-        if (Options.InputNormalizer == null && !Options.MatchFileNameOnly && _ignore == null
-            && (!_convertSeparators || input.IndexOf('\\') < 0))
-        {
-            if (input.IsEmpty)
-                return false;
-
-            foreach (var compiled in _compiled)
-            {
-                if (input.SequenceEqual(compiled.Pattern.AsSpan()) || compiled.IsMatch(input))
-                    return true;
-            }
-
-            return false;
-        }
-#endif
-
-        return IsMatch(input.ToString());
-    }
-
-    /// <summary>
-    /// Matches <paramref name="input"/> against this glob and describes the outcome.
-    /// </summary>
-    /// <param name="input">The input to match, typically a path.</param>
-    /// <returns>The result of the match, including whether an ignore pattern excluded the input.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
-    public GlobMatch Match(string input)
-    {
-        Guard.NotNull(input);
-
-        string normalized = Normalize(input);
-        string? pattern = FindPattern(input, normalized);
-        if (pattern == null)
-            return new GlobMatch(false, false, input, normalized, null);
-
-        bool ignored = IsIgnored(input);
-        return new GlobMatch(!ignored, ignored, input, normalized, pattern);
-    }
-
-    /// <summary>
-    /// Returns the inputs that match this glob.
-    /// </summary>
-    /// <param name="inputs">The inputs to filter, typically paths.</param>
-    /// <returns>The elements of <paramref name="inputs"/> that match, in their original order, evaluated lazily as the result is enumerated.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="inputs"/> is <see langword="null"/>, or, during enumeration, contains a <see langword="null"/> element.</exception>
-    public IEnumerable<string> Filter(IEnumerable<string> inputs)
-    {
-        Guard.NotNull(inputs);
-
-        return inputs.Where(IsMatch);
-    }
-
-    /// <summary>
-    /// Returns a regex equivalent to the patterns of this glob, with <see cref="GlobOptions.RegexOptions"/> applied and,
-    /// when <see cref="GlobOptions.IgnoreCase"/> is set, <see cref="RegexOptions.IgnoreCase"/> and
-    /// <see cref="RegexOptions.CultureInvariant"/>.
-    /// </summary>
-    /// <remarks>
-    /// The regex does not apply <see cref="GlobOptions.IgnorePatterns"/>, <see cref="GlobOptions.MatchFileNameOnly"/>,
-    /// <see cref="GlobOptions.InputNormalizer"/>, separator normalization or the rule that an input equal to a pattern
-    /// matches; normalize inputs yourself when using it directly.
-    /// </remarks>
-    /// <returns>The regex, created on first use and cached.</returns>
-    public Regex ToRegex()
-    {
-        if (_compiled.Length == 1)
-            return _compiled[0].Regex;
-
-        return _combinedRegex ??= new Regex(ToRegexString(), _compiled[0].Regex.Options);
-    }
-
-    /// <summary>
-    /// Returns the source of a regex equivalent to the patterns of this glob.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The source behaves the same in .NET, JavaScript (<c>new RegExp(source)</c>, without flags) and PostgreSQL 17 or
-    /// later (the <c>~</c> operator). When Npgsql translates
-    /// <see cref="Regex.IsMatch(string, string, RegexOptions)"/> to SQL, pass <see cref="RegexOptions.Singleline"/> so
-    /// that no newline-sensitive flag is added. Fragments returned by <see cref="GlobOptions.BraceRangeExpander"/> and
-    /// regex syntax written into the pattern, such as <c>\d</c>, are emitted as written and are portable only if they
-    /// are portable themselves.
-    /// </para>
-    /// <para>
-    /// The source does not encode <see cref="GlobOptions.RegexOptions"/>, <see cref="GlobOptions.IgnoreCase"/>,
-    /// <see cref="GlobOptions.IgnorePatterns"/>, <see cref="GlobOptions.MatchFileNameOnly"/>,
-    /// <see cref="GlobOptions.InputNormalizer"/>, separator normalization or the rule that an input equal to a pattern
-    /// matches.
-    /// </para>
-    /// </remarks>
-    /// <returns>The regex source.</returns>
-    public string ToRegexString()
-    {
-        return _compiled.Length == 1 ? _compiled[0].Source : string.Join("|", _compiled.Select(c => string.Concat("(?:", c.Source, ")")));
-    }
-
-    /// <inheritdoc/>
-    /// <returns>The pattern of this glob, or its patterns separated by <c>", "</c>.</returns>
-    public override string ToString()
-    {
-        return string.Join(", ", _patterns);
-    }
-
-    /// <summary>
     /// Gets the cached glob for <paramref name="pattern"/> and <paramref name="options"/>, compiling and caching it on a miss.
     /// </summary>
     /// <remarks>The static cache is cleared when it has reached its capacity before a new glob is added.</remarks>
@@ -498,16 +365,126 @@ public sealed class Glob
     }
 
     /// <summary>
-    /// Converts <paramref name="input"/> to the form the patterns are matched against.
+    /// Returns the inputs that match this glob.
     /// </summary>
-    /// <param name="input">The input to normalize.</param>
-    /// <returns>The result of <see cref="GlobOptions.InputNormalizer"/> if set; otherwise, <paramref name="input"/> with backslashes converted to <c>/</c> when separators are converted for this glob.</returns>
-    private string Normalize(string input)
+    /// <param name="inputs">The inputs to filter, typically paths.</param>
+    /// <returns>The elements of <paramref name="inputs"/> that match, in their original order, evaluated lazily as the result is enumerated.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="inputs"/> is <see langword="null"/>, or, during enumeration, contains a <see langword="null"/> element.</exception>
+    public IEnumerable<string> Filter(IEnumerable<string> inputs)
     {
-        if (Options.InputNormalizer != null)
-            return Options.InputNormalizer(input);
+        Guard.NotNull(inputs);
 
-        return _convertSeparators ? PathUtilities.ToPosixSlashes(input) : input;
+        return inputs.Where(IsMatch);
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="input"/> matches this glob.
+    /// </summary>
+    /// <param name="input">The input to match, typically a path.</param>
+    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
+    public bool IsMatch(string input)
+    {
+        Guard.NotNull(input);
+
+        return FindPattern(input, Normalize(input)) != null && !IsIgnored(input);
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="input"/> matches this glob.
+    /// </summary>
+    /// <param name="input">The input to match, typically a path.</param>
+    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
+    public bool IsMatch(ReadOnlySpan<char> input)
+    {
+#if NET7_0_OR_GREATER
+        if (Options.InputNormalizer == null && !Options.MatchFileNameOnly && _ignore == null
+            && (!_convertSeparators || input.IndexOf('\\') < 0))
+        {
+            if (input.IsEmpty)
+                return false;
+
+            foreach (var compiled in _compiled)
+            {
+                if (input.SequenceEqual(compiled.Pattern.AsSpan()) || compiled.IsMatch(input))
+                    return true;
+            }
+
+            return false;
+        }
+#endif
+
+        return IsMatch(input.ToString());
+    }
+
+    /// <summary>
+    /// Matches <paramref name="input"/> against this glob and describes the outcome.
+    /// </summary>
+    /// <param name="input">The input to match, typically a path.</param>
+    /// <returns>The result of the match, including whether an ignore pattern excluded the input.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
+    public GlobMatch Match(string input)
+    {
+        Guard.NotNull(input);
+
+        string normalized = Normalize(input);
+        string? pattern = FindPattern(input, normalized);
+        if (pattern == null)
+            return new GlobMatch(false, false, input, normalized, null);
+
+        bool ignored = IsIgnored(input);
+        return new GlobMatch(!ignored, ignored, input, normalized, pattern);
+    }
+
+    /// <summary>
+    /// Returns a regex equivalent to the patterns of this glob, with <see cref="GlobOptions.RegexOptions"/> applied and,
+    /// when <see cref="GlobOptions.IgnoreCase"/> is set, <see cref="RegexOptions.IgnoreCase"/> and
+    /// <see cref="RegexOptions.CultureInvariant"/>.
+    /// </summary>
+    /// <remarks>
+    /// The regex does not apply <see cref="GlobOptions.IgnorePatterns"/>, <see cref="GlobOptions.MatchFileNameOnly"/>,
+    /// <see cref="GlobOptions.InputNormalizer"/>, separator normalization or the rule that an input equal to a pattern
+    /// matches; normalize inputs yourself when using it directly.
+    /// </remarks>
+    /// <returns>The regex, created on first use and cached.</returns>
+    public Regex ToRegex()
+    {
+        if (_compiled.Length == 1)
+            return _compiled[0].Regex;
+
+        return _combinedRegex ??= new Regex(ToRegexString(), _compiled[0].Regex.Options);
+    }
+
+    /// <summary>
+    /// Returns the source of a regex equivalent to the patterns of this glob.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The source behaves the same in .NET, JavaScript (<c>new RegExp(source)</c>, without flags) and PostgreSQL 17 or
+    /// later (the <c>~</c> operator). When Npgsql translates
+    /// <see cref="Regex.IsMatch(string, string, RegexOptions)"/> to SQL, pass <see cref="RegexOptions.Singleline"/> so
+    /// that no newline-sensitive flag is added. Fragments returned by <see cref="GlobOptions.BraceRangeExpander"/> and
+    /// regex syntax written into the pattern, such as <c>\d</c>, are emitted as written and are portable only if they
+    /// are portable themselves.
+    /// </para>
+    /// <para>
+    /// The source does not encode <see cref="GlobOptions.RegexOptions"/>, <see cref="GlobOptions.IgnoreCase"/>,
+    /// <see cref="GlobOptions.IgnorePatterns"/>, <see cref="GlobOptions.MatchFileNameOnly"/>,
+    /// <see cref="GlobOptions.InputNormalizer"/>, separator normalization or the rule that an input equal to a pattern
+    /// matches.
+    /// </para>
+    /// </remarks>
+    /// <returns>The regex source.</returns>
+    public string ToRegexString()
+    {
+        return _compiled.Length == 1 ? _compiled[0].Source : string.Join("|", _compiled.Select(c => string.Concat("(?:", c.Source, ")")));
+    }
+
+    /// <inheritdoc/>
+    /// <returns>The pattern of this glob, or its patterns separated by <c>", "</c>.</returns>
+    public override string ToString()
+    {
+        return string.Join(", ", _patterns);
     }
 
     /// <summary>
@@ -545,4 +522,27 @@ public sealed class Glob
     {
         return _ignore != null && _ignore.IsMatch(input);
     }
+
+    /// <summary>
+    /// Converts <paramref name="input"/> to the form the patterns are matched against.
+    /// </summary>
+    /// <param name="input">The input to normalize.</param>
+    /// <returns>The result of <see cref="GlobOptions.InputNormalizer"/> if set; otherwise, <paramref name="input"/> with backslashes converted to <c>/</c> when separators are converted for this glob.</returns>
+    private string Normalize(string input)
+    {
+        if (Options.InputNormalizer != null)
+            return Options.InputNormalizer(input);
+
+        return _convertSeparators ? PathUtilities.ToPosixSlashes(input) : input;
+    }
+
+    /// <summary>
+    /// Gets the options this glob was compiled with.
+    /// </summary>
+    public GlobOptions Options { get; }
+
+    /// <summary>
+    /// Gets the patterns of this glob.
+    /// </summary>
+    public IReadOnlyList<string> Patterns => _patterns;
 }
