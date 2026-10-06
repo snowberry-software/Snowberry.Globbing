@@ -35,7 +35,7 @@ public class PrefilterTests
     [Fact]
     public void IgnorePatternWhitespace_IgnoresLiteralSpaces()
     {
-        var options = s_Posix with { RegexOptions = System.Text.RegularExpressions.RegexOptions.IgnorePatternWhitespace };
+        var options = s_Posix with { RegexOptions = RegexOptions.IgnorePatternWhitespace };
 
         Glob.IsMatch("foobar", "foo bar*", options).Should().BeTrue();
     }
@@ -66,7 +66,7 @@ public class PrefilterTests
     [InlineData("a.txt\nb.md", false)]
     public void NegatedPattern_WithMultiline_KeepsRegexSemantics(string input, bool expected)
     {
-        var options = s_Posix with { RegexOptions = System.Text.RegularExpressions.RegexOptions.Multiline };
+        var options = s_Posix with { RegexOptions = RegexOptions.Multiline };
 
         Glob.IsMatch(input, "!*.md", options).Should().Be(expected);
     }
