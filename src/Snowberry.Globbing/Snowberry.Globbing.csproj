@@ -1,12 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0;net9.0;netstandard2.0</TargetFrameworks>
+		<TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
 		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>
+		<AnalysisLevel>latest-recommended</AnalysisLevel>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<IsAotCompatible Condition="'$(TargetFramework)' == 'net10.0'">true</IsAotCompatible>
 
 		<!-- Package -->
-		<Description>Accurate glob pattern matching library for .NET. Support for Regex conversion.</Description>
+		<Description>Fast, accurate glob matching for .NET with picomatch semantics. Compiles globs to regexes that behave the same in .NET, JavaScript and PostgreSQL.</Description>
 
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
@@ -18,11 +21,16 @@
 		</None>
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="Snowberry.Globbing.Tests" Key="002400000480000094000000060200000024000052534131000400000100010051aa7a539ce290f34185e1aa83b01f6bc9e314f3a4b496a559b3bfc86036cc6072d855580a0e50aba37a12293d5abfb12221a8ceffc4d948ca509df2c3973f7a4c6fc0f62b2b7961d9c05d5acc39fe6865c27fa1edbb5e9598250cd1eb58f50c6ef8d41abf66ad660b8599a9bdb7e0215280c6565beed8b75021c1a85a7af1c7" />
+		<InternalsVisibleTo Include="Snowberry.Globbing.Benchmark" Key="002400000480000094000000060200000024000052534131000400000100010051aa7a539ce290f34185e1aa83b01f6bc9e314f3a4b496a559b3bfc86036cc6072d855580a0e50aba37a12293d5abfb12221a8ceffc4d948ca509df2c3973f7a4c6fc0f62b2b7961d9c05d5acc39fe6865c27fa1edbb5e9598250cd1eb58f50c6ef8d41abf66ad660b8599a9bdb7e0215280c6565beed8b75021c1a85a7af1c7" />
+	</ItemGroup>
+
 	<Import Project="../NuGetPackage.props" />
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-		<PackageReference Include="System.Memory" Version="4.6.3" />
-		<PackageReference Include="PolySharp" Version="1.15.0">
+		<PackageReference Include="System.Memory" />
+		<PackageReference Include="PolySharp">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>

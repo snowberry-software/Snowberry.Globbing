@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
-using Snowberry.Globbing.Models;
+using Snowberry.Globbing.Compilation;
 
 namespace Snowberry.Globbing.Benchmark;
 
@@ -16,16 +16,18 @@ namespace Snowberry.Globbing.Benchmark;
 ///
 /// Two complementary views:
 ///   <see cref="PipelineBenchmarks"/> — the per-phase baseline. Decomposes the glob
-///     lifecycle into read/parse -> generate regex source -> compile regex -> run the
-///     final generated regex, plus end-to-end <c>MakeRe</c> (parse+generate+compile).
+///     lifecycle into compile to regex source (lex + parse + emit) -> construct regex -> run the
+///     final generated regex, plus end-to-end <see cref="Glob"/> construction.
 ///   <see cref="MatchBenchmarks"/> — end-to-end match throughput of a pre-compiled
-///     matcher (via <see cref="GlobMatcher.Create(string, GlobbingOptions)"/>) over a
+///     <see cref="Glob"/> over a
 ///     representative dataset, the cost a consumer actually pays per path.
 /// </summary>
 internal static class Program
 {
     private static void Main(string[] args)
-        => BenchmarkRunner.Run(typeof(Program).Assembly, args: args);
+    {
+        BenchmarkRunner.Run(typeof(Program).Assembly, args: args);
+    }
 }
 
 /// <summary>
@@ -35,14 +37,14 @@ internal static class Program
 /// </summary>
 public static class Workloads
 {
-    public const string SimpleWildcard = "*.js";
-    public const string Globstar = "**/*.js";
-    public const string BraceExpansion = "*.{js,ts,jsx,tsx}";
-    public const string Extglob = "!(*.test|*.spec).{js,ts}";
-    public const string ComplexNested = "src/**/!(*.test|*.spec).{js,jsx,ts,tsx}";
-    public const string CharacterClass = "test-[0-9][a-z].txt";
-    public const string RealWorld = "**/*.{js,jsx}";
-    public const string Negation = "!*.md";
+    public const string c_SimpleWildcard = "*.js";
+    public const string c_Globstar = "**/*.js";
+    public const string c_BraceExpansion = "*.{js,ts,jsx,tsx}";
+    public const string c_Extglob = "!(*.test|*.spec).{js,ts}";
+    public const string c_ComplexNested = "src/**/!(*.test|*.spec).{js,jsx,ts,tsx}";
+    public const string c_CharacterClass = "test-[0-9][a-z].txt";
+    public const string c_RealWorld = "**/*.{js,jsx}";
+    public const string c_Negation = "!*.md";
 
     /// <summary>The single-pattern scenarios exercised by both benchmark classes.</summary>
     public enum Scenario
@@ -58,46 +60,52 @@ public static class Workloads
     }
 
     /// <summary>Maps a scenario to its glob pattern.</summary>
-    public static string PatternFor(Scenario scenario) => scenario switch
+    public static string PatternFor(Scenario scenario)
     {
-        Scenario.SimpleWildcard => SimpleWildcard,
-        Scenario.Globstar => Globstar,
-        Scenario.BraceExpansion => BraceExpansion,
-        Scenario.Extglob => Extglob,
-        Scenario.ComplexNested => ComplexNested,
-        Scenario.CharacterClass => CharacterClass,
-        Scenario.RealWorld => RealWorld,
-        Scenario.Negation => Negation,
-        _ => SimpleWildcard
-    };
+        return scenario switch
+        {
+            Scenario.SimpleWildcard => c_SimpleWildcard,
+            Scenario.Globstar => c_Globstar,
+            Scenario.BraceExpansion => c_BraceExpansion,
+            Scenario.Extglob => c_Extglob,
+            Scenario.ComplexNested => c_ComplexNested,
+            Scenario.CharacterClass => c_CharacterClass,
+            Scenario.RealWorld => c_RealWorld,
+            Scenario.Negation => c_Negation,
+            _ => c_SimpleWildcard
+        };
+    }
 
     /// <summary>Maps a scenario to the dataset its pattern is run against.</summary>
-    public static string[] DataFor(Scenario scenario) => scenario switch
+    public static string[] DataFor(Scenario scenario)
     {
-        Scenario.SimpleWildcard => JsFiles,
-        Scenario.Globstar => DeepPaths,
-        Scenario.BraceExpansion => MixedExtensions,
-        Scenario.Extglob => DeepPaths,
-        Scenario.ComplexNested => DeepPaths,
-        Scenario.CharacterClass => CharacterClassFiles,
-        Scenario.RealWorld => RealWorldPaths,
-        Scenario.Negation => MixedExtensions,
-        _ => JsFiles
-    };
+        return scenario switch
+        {
+            Scenario.SimpleWildcard => s_JsFiles,
+            Scenario.Globstar => s_DeepPaths,
+            Scenario.BraceExpansion => s_MixedExtensions,
+            Scenario.Extglob => s_DeepPaths,
+            Scenario.ComplexNested => s_DeepPaths,
+            Scenario.CharacterClass => s_CharacterClassFiles,
+            Scenario.RealWorld => s_RealWorldPaths,
+            Scenario.Negation => s_MixedExtensions,
+            _ => s_JsFiles
+        };
+    }
 
     // Datasets are built once and cached; generators stay deterministic so runs are comparable.
 
-    public static readonly string[] JsFiles =
+    public static readonly string[] s_JsFiles =
         [.. Enumerable.Range(0, 500).Select(i => $"app{i}.js")];
 
-    public static readonly string[] MixedExtensions = BuildMixedExtensions();
+    public static readonly string[] s_MixedExtensions = BuildMixedExtensions();
 
-    public static readonly string[] CharacterClassFiles =
+    public static readonly string[] s_CharacterClassFiles =
         [.. Enumerable.Range(0, 100).SelectMany(i => new[] { $"test-{i % 10}a.txt", $"test-{i % 10}z.txt", $"test-{i % 10}X.txt" })];
 
-    public static readonly string[] DeepPaths = BuildDeepPaths();
+    public static readonly string[] s_DeepPaths = BuildDeepPaths();
 
-    public static readonly string[] RealWorldPaths =
+    public static readonly string[] s_RealWorldPaths =
     [
         "src/components/Button/Button.tsx",
         "src/components/Button/Button.test.tsx",
@@ -144,9 +152,9 @@ public static class Workloads
 
 /// <summary>
 /// Per-phase baseline of the glob compilation lifecycle. Each scenario yields one row per
-/// phase so the cost of read/parse, regex-source generation, regex compilation and running
+/// phase so the cost of regex-source compilation, regex construction and running
 /// the final generated regex can be read independently and summed against the end-to-end
-/// <see cref="MakeRe"/> figure.
+/// <see cref="Create"/> figure.
 /// </summary>
 [MemoryDiagnoser]
 public class PipelineBenchmarks
@@ -155,7 +163,6 @@ public class PipelineBenchmarks
     public Workloads.Scenario Scenario { get; set; }
 
     private string _pattern = "";
-    private ParseState _parsed = null!;
     private string _regexSource = "";
     private Regex _compiled = null!;
     private string[] _data = [];
@@ -167,30 +174,37 @@ public class PipelineBenchmarks
         _data = Workloads.DataFor(Scenario);
 
         // Pre-stage each phase's input so the benchmarked call measures only that phase.
-        _parsed = GlobMatcher.Parse(_pattern);
-        _regexSource = GlobMatcher.GenerateRegex(_parsed);
-        _compiled = GlobMatcher.MakeRe(_pattern);
+        _regexSource = GlobCompiler.CompileRegexSource(_pattern, GlobOptions.Default);
+        _compiled = new Glob(_pattern).ToRegex();
     }
 
-    /// <summary>Read + parse the glob pattern into its <see cref="ParseState"/>.</summary>
+    /// <summary>Lex, parse and emit the glob pattern as a regex source.</summary>
     [Benchmark]
-    public ParseState Parse() => GlobMatcher.Parse(_pattern);
+    public string CompileSource()
+    {
+        return GlobCompiler.CompileRegexSource(_pattern, GlobOptions.Default);
+    }
 
     /// <summary>Structural scan of the pattern (no regex compilation).</summary>
     [Benchmark]
-    public ScanResult Scan() => GlobMatcher.Scan(_pattern);
+    public GlobInfo Analyze()
+    {
+        return Glob.Analyze(_pattern);
+    }
 
-    /// <summary>Generate the regex source string from an already-parsed state.</summary>
+    /// <summary>Construct a <see cref="Regex"/> from an already-compiled regex source.</summary>
     [Benchmark]
-    public string GenerateRegex() => GlobMatcher.GenerateRegex(_parsed);
+    public Regex ConstructRegex()
+    {
+        return new Regex(_regexSource);
+    }
 
-    /// <summary>Compile an already-generated regex source string into a <see cref="Regex"/>.</summary>
+    /// <summary>End-to-end construction of a <see cref="Glob"/> (sum reference for the phases above).</summary>
     [Benchmark]
-    public Regex Compile() => GlobMatcher.ToRegex(_regexSource);
-
-    /// <summary>End-to-end compile: parse + generate + compile (sum reference for the phases above).</summary>
-    [Benchmark]
-    public Regex MakeRe() => GlobMatcher.MakeRe(_pattern);
+    public Glob Create()
+    {
+        return new Glob(_pattern);
+    }
 
     /// <summary>Run the final generated regex over the scenario's dataset.</summary>
     [Benchmark]
@@ -229,7 +243,7 @@ public class MatchBenchmarks
         MultiplePatterns
     }
 
-    private Dictionary<MatchScenario, (MatcherHandler Matcher, string[] Data)> _scenarios = null!;
+    private Dictionary<MatchScenario, (Glob Matcher, string[] Data)> _scenarios = null!;
 
     [ParamsAllValues]
     public MatchScenario Scenario { get; set; }
@@ -237,16 +251,16 @@ public class MatchBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _scenarios = new Dictionary<MatchScenario, (MatcherHandler, string[])>
+        _scenarios = new Dictionary<MatchScenario, (Glob, string[])>
         {
-            [MatchScenario.SimpleWildcard] = (GlobMatcher.Create(Workloads.SimpleWildcard), Workloads.JsFiles),
-            [MatchScenario.Globstar] = (GlobMatcher.Create(Workloads.Globstar), Workloads.DeepPaths),
-            [MatchScenario.BraceExpansion] = (GlobMatcher.Create(Workloads.BraceExpansion), Workloads.MixedExtensions),
-            [MatchScenario.Extglob] = (GlobMatcher.Create(Workloads.Extglob), Workloads.DeepPaths),
-            [MatchScenario.ComplexNested] = (GlobMatcher.Create(Workloads.ComplexNested), Workloads.DeepPaths),
-            [MatchScenario.Negation] = (GlobMatcher.Create(Workloads.Negation), Workloads.MixedExtensions),
-            [MatchScenario.CharacterClass] = (GlobMatcher.Create(Workloads.CharacterClass), Workloads.CharacterClassFiles),
-            [MatchScenario.MultiplePatterns] = (GlobMatcher.Create(["**/*.js", "**/*.ts", "!**/node_modules/**"]), Workloads.RealWorldPaths),
+            [MatchScenario.SimpleWildcard] = (new Glob(Workloads.c_SimpleWildcard), Workloads.s_JsFiles),
+            [MatchScenario.Globstar] = (new Glob(Workloads.c_Globstar), Workloads.s_DeepPaths),
+            [MatchScenario.BraceExpansion] = (new Glob(Workloads.c_BraceExpansion), Workloads.s_MixedExtensions),
+            [MatchScenario.Extglob] = (new Glob(Workloads.c_Extglob), Workloads.s_DeepPaths),
+            [MatchScenario.ComplexNested] = (new Glob(Workloads.c_ComplexNested), Workloads.s_DeepPaths),
+            [MatchScenario.Negation] = (new Glob(Workloads.c_Negation), Workloads.s_MixedExtensions),
+            [MatchScenario.CharacterClass] = (new Glob(Workloads.c_CharacterClass), Workloads.s_CharacterClassFiles),
+            [MatchScenario.MultiplePatterns] = (new Glob(new[] { "**/*.js", "**/*.ts", "!**/node_modules/**" }), Workloads.s_RealWorldPaths),
         };
     }
 
@@ -257,7 +271,7 @@ public class MatchBenchmarks
         int count = 0;
         foreach (string path in data)
         {
-            if (matcher(path))
+            if (matcher.IsMatch(path))
                 count++;
         }
 

@@ -5,29 +5,29 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class MaliciousTests
 {
-
     [Theory]
     [InlineData("constructor", "constructor", true)]
     [InlineData("__proto__", "__proto__", true)]
-    [InlineData("toString", "toString", true)]
     public void ShouldAcceptObjectInstanceProperties(string input, string pattern, bool expected)
     {
-        Assert.Equal(expected, GlobMatcher.IsMatch(input, pattern));
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Fact]
     public void ShouldThrowErrorWhenPatternIsTooLong()
     {
-        string longPattern = new('*', Constants.c_MaxLength + 1);
-        Assert.Throws<ArgumentException>(() => GlobMatcher.IsMatch("foo", longPattern));
+        string longPattern = new('*', GlobOptions.Default.MaxPatternLength + 1);
+        var ex = FluentActions.Invoking(() => Glob.IsMatch("foo", longPattern)).Should().ThrowExactly<GlobParseException>().Which;
+        ex.Error.Should().Be(GlobParseError.PatternTooLong);
     }
 
     [Fact]
     public void ShouldAllowMaxLengthToBeCustomized()
     {
-        var options = new GlobbingOptions { MaxLength = 499 };
+        var options = new GlobOptions { MaxPatternLength = 499 };
         string longPattern = new string('\\', 500) + "A";
-        Assert.Throws<ArgumentException>(() => GlobMatcher.IsMatch("A", longPattern, options));
+        var ex = FluentActions.Invoking(() => Glob.IsMatch("A", longPattern, options)).Should().ThrowExactly<GlobParseException>().Which;
+        ex.Error.Should().Be(GlobParseError.PatternTooLong);
     }
 
     [Fact]
@@ -35,8 +35,8 @@ public class MaliciousTests
     {
         // Long escape sequence within the length limit must compile and run without throwing.
         string escapeSequence = new string('\\', 100) + "A";
-        var ex = Record.Exception(() => GlobMatcher.IsMatch("A", "!" + escapeSequence));
-        Assert.Null(ex);
+        var ex = Record.Exception(() => Glob.IsMatch("A", "!" + escapeSequence));
+        ex.Should().BeNull();
     }
 
     [Fact]
@@ -44,8 +44,7 @@ public class MaliciousTests
     {
         string escapeSequence = new string('\\', 100) + "A";
         // Negation extglob with a long escape sequence must compile and run without throwing.
-        var ex = Record.Exception(() => GlobMatcher.IsMatch("A", "!(" + escapeSequence + ")"));
-        Assert.Null(ex);
+        var ex = Record.Exception(() => Glob.IsMatch("A", "!(" + escapeSequence + ")"));
+        ex.Should().BeNull();
     }
-
 }

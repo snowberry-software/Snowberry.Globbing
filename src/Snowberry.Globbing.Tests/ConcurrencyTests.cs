@@ -1,114 +1,120 @@
 using System.Collections.Concurrent;
-using System.Linq;
-using System.Threading.Tasks;
+using Snowberry.Globbing.Compilation;
 
 namespace Snowberry.Globbing.Tests;
 
-/// <summary>
-/// Stresses the shared <c>Token</c> pool (activated by token recycling in the internal
-/// compile pipeline) under concurrency. If recycling ever cross-contaminated tokens
-/// between parses, concurrently generated regex sources / match results would diverge
-/// from the single-threaded oracle.
-/// </summary>
 public class ConcurrencyTests
 {
-    // Patterns that exercise the full parse path (tokens, not the fast path): globstar,
-    // braces, extglobs, brackets, negation, posix, nested combinations.
-    private static readonly string[] s_Patterns =
+    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
+
+    private static readonly string[] s_Inputs =
     [
-        "*.js",
-        "**/*.{js,ts,jsx,tsx}",
-        "src/**/!(*.test|*.spec).{js,jsx,ts,tsx}",
-        "!(*.md)",
-        "test-[0-9][a-z].txt",
-        "a/**/b/*.@(js|ts)",
-        "+(foo|bar)/baz",
-        "**/node_modules/**",
-        "{a,b,c}/**/*.cs",
-        "[[:alpha:]]*.log",
-        "foo/**/bar/!(qux).js",
-        "?(a|b)c*d.txt"
+        "app.js",
+        "README.md",
+        "docs/guide.md",
+        ".config.js",
+        "src/components/Button.tsx",
+        "src/utils/helper.js",
+        "src/utils/helper.test.js",
+        "src/.cache/chunk.js",
+        "node_modules/pkg/index.js",
+        "a\nb.md",
+        "test-3a.txt"
     ];
 
-    private static readonly (string Input, string Pattern, bool Expected)[] s_MatchCases = BuildMatchCases();
-
-    private static (string Input, string Pattern, bool Expected)[] BuildMatchCases()
+    [Theory]
+    [InlineData("!**/*.md")]
+    [InlineData("!(*.md)")]
+    [InlineData("**/*.{js,ts,tsx}")]
+    [InlineData("src/**/!(*.test|*.spec).{js,ts}")]
+    [InlineData("test-[0-9][a-z].txt")]
+    public void SharedGlob_MatchedConcurrently_AgreesWithSequentialResults(string pattern)
     {
-        string[] inputs =
-        [
-            "app.js",
-            "src/components/Button.tsx",
-            "src/utils/helper.js",
-            "src/utils/helper.test.js",
-            "README.md",
-            "test-3a.txt",
-            "a/x/y/b/main.js",
-            "foo/bar/qux.js",
-            "foo/bar/baz.js",
-            "node_modules/pkg/index.js",
-            "b/deep/nested/file.cs",
-            "alpha.log"
-        ];
-
-        // The expected value is the single-threaded result; the test only asserts the
-        // concurrent result equals this oracle (it does not hardcode true/false).
-        return
-        [
-            .. inputs.SelectMany(input => s_Patterns.Select(pattern =>
-                (input, pattern, GlobMatcher.IsMatch(input, pattern))))
-        ];
+        AssertConcurrentMatchesAgree(() => new Glob(pattern, s_Posix));
     }
 
     [Fact]
-    public void ParallelGenerateRegex_MatchesSequentialSource()
+    public void SharedGlobWithIgnorePatterns_MatchedConcurrently_AgreesWithSequentialResults()
     {
-        // Sequential oracle: the canonical regex source for each pattern.
-        string[] expected = [.. s_Patterns.Select(p => GlobMatcher.GenerateRegex(p))];
+        AssertConcurrentMatchesAgree(() => new Glob(
+            ["**/*.js", "!**/*.{js,tsx}"],
+            s_Posix with { IgnorePatterns = ["**/node_modules/**", "!src/**"] }));
+    }
 
-        var mismatches = new ConcurrentBag<string>();
-
-        Parallel.For(0, 20_000, i =>
+    [Fact]
+    public void StaticIsMatch_PastCacheCapacity_AgreesWithUncachedResults()
+    {
+        GlobOptions[] variants = [s_Posix, s_Posix with { MatchDotFiles = true }];
+        var cases = new List<(string Input, string Pattern, GlobOptions Options, bool Expected)>();
+        for (int i = 0; i < 300; i++)
         {
-            int idx = i % s_Patterns.Length;
-            string actual = GlobMatcher.GenerateRegex(s_Patterns[idx]);
-            if (actual != expected[idx])
-                mismatches.Add($"pattern='{s_Patterns[idx]}' expected='{expected[idx]}' actual='{actual}'");
-        });
+            string pattern = i % 2 == 0 ? $"**/*.{i}.js" : $"!**/*.{i}.md";
+            foreach (var options in variants)
+            {
+                var oracle = new Glob(pattern, options);
+                foreach (string input in new[] { $"src/a.{i}.js", $".hidden/a.{i}.js", $"src/a.{i}.md" })
+                    cases.Add((input, pattern, options, oracle.IsMatch(input)));
+            }
+        }
 
-        Assert.Empty(mismatches);
-    }
-
-    [Fact]
-    public void ParallelMakeRe_MatchesSequentialSource()
-    {
-        string[] expected = [.. s_Patterns.Select(p => GlobMatcher.MakeRe(p).ToString())];
-
-        var mismatches = new ConcurrentBag<string>();
-
-        Parallel.For(0, 20_000, i =>
-        {
-            int idx = i % s_Patterns.Length;
-            string actual = GlobMatcher.MakeRe(s_Patterns[idx]).ToString();
-            if (actual != expected[idx])
-                mismatches.Add($"pattern='{s_Patterns[idx]}' expected='{expected[idx]}' actual='{actual}'");
-        });
-
-        Assert.Empty(mismatches);
-    }
-
-    [Fact]
-    public void ParallelIsMatch_MatchesSequentialResult()
-    {
         var failures = new ConcurrentBag<string>();
-
-        Parallel.For(0, 50_000, i =>
+        Parallel.For(0, cases.Count * 2, i =>
         {
-            var (input, pattern, expected) = s_MatchCases[i % s_MatchCases.Length];
-            bool actual = GlobMatcher.IsMatch(input, pattern);
+            var (input, pattern, options, expected) = cases[i % cases.Count];
+            bool actual = Glob.IsMatch(input, pattern, options);
             if (actual != expected)
-                failures.Add($"input='{input}' pattern='{pattern}' expected={expected} actual={actual}");
+                failures.Add($"'{input}' / '{pattern}': expected {expected}, got {actual}");
         });
 
-        Assert.Empty(failures);
+        failures.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ConcurrentCompilation_ProducesSequentialRegexSources()
+    {
+        string longPattern = string.Join("/", Enumerable.Range(0, 40).Select(i => $"{{a{i},b{i}}}*.@(x|y)"));
+        string[] patterns = ["*.js", "**/*.{js,ts,jsx,tsx}", "src/**/!(*.test|*.spec).{js,ts}", "!(*.md)", "[[:alpha:]]*.log", "{1..300}", longPattern];
+        GlobOptions[] variants =
+        [
+            s_Posix,
+            new() { PathStyle = GlobPathStyle.Windows },
+            s_Posix with { MatchDotFiles = true },
+            s_Posix with { CaptureGroups = true },
+            s_Posix with { BashCompatibility = true }
+        ];
+        var cases = (from pattern in patterns
+                     from options in variants
+                     select (Pattern: pattern, Options: options, Expected: GlobCompiler.Compile(pattern, options).Source)).ToArray();
+
+        var failures = new ConcurrentBag<string>();
+        Parallel.For(0, cases.Length * 300, i =>
+        {
+            var (pattern, options, expected) = cases[i % cases.Length];
+            string actual = GlobCompiler.Compile(pattern, options).Source;
+            if (actual != expected)
+                failures.Add($"'{pattern}': expected '{expected}', got '{actual}'");
+        });
+
+        failures.Should().BeEmpty();
+    }
+
+    private static void AssertConcurrentMatchesAgree(Func<Glob> create)
+    {
+        var oracle = create();
+        bool[] expected = [.. s_Inputs.Select(input => oracle.IsMatch(input))];
+
+        // A fresh instance, so its lazily built regexes are first used concurrently.
+        var shared = create();
+        var failures = new ConcurrentBag<string>();
+        Parallel.For(0, s_Inputs.Length * 200, i =>
+        {
+            int index = i % s_Inputs.Length;
+            string input = s_Inputs[index];
+            bool actual = i % 2 == 0 ? shared.IsMatch(input) : shared.IsMatch(input.AsSpan());
+            if (actual != expected[index])
+                failures.Add($"'{input}': expected {expected[index]}, got {actual}");
+        });
+
+        failures.Should().BeEmpty();
     }
 }

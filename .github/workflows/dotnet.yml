@@ -1,64 +1,98 @@
 name: .NET
 
-# Trigger this workflow on a push, or pull request to the master or develop branch
+# Pushes to main and develop, version tags, and pull requests into main or develop.
 on:
   push:
+    branches: [main, develop]
+    tags: ["v*"]
+    paths-ignore:
+      - "README.md"
   pull_request:
-    branches: [master, develop]
+    branches: [main, develop]
     paths-ignore:
       - "README.md"
 
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, ${{ matrix.framework }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - dotnet: "9.x"
-            framework: "net9.0"
-          - dotnet: "10.x"
+          # Unit and integration tests; the integration tests need Docker, which only the Linux runner has.
+          - os: ubuntu-latest
+            dotnet: "10.0.x"
             framework: "net10.0"
+            project: ""
+          # .NET Framework runs the netstandard2.0 build and only exists on Windows.
+          - os: windows-latest
+            dotnet: "10.0.x"
+            framework: "net48"
+            project: "--project Snowberry.Globbing.Tests"
 
     defaults:
       run:
         working-directory: ./src
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Setup .NET ${{ matrix.dotnet }}
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ matrix.dotnet }}
 
-      - name: Restore dependencies
+      - name: Restore
         run: dotnet restore
 
-      - name: Build
-        run: dotnet build --no-restore
-
-      - name: Test (${{ matrix.framework }})
-        run: dotnet test --no-build --framework ${{ matrix.framework }} --verbosity normal
-
-  deploy:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./src
-    needs: build
-    # Publish for a tag starting with v.
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            10.x
-      - name: Restore dependencies
-        run: dotnet restore
       - name: Build
         run: dotnet build --configuration Release --no-restore
-      - name: Deploy
-        run: dotnet nuget push "Snowberry.Globbing/bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Test (${{ matrix.framework }})
+        run: dotnet test ${{ matrix.project }} --configuration Release --no-build --framework ${{ matrix.framework }}
+
+      # The deploy job publishes exactly this package, so it is only uploaded for the tags the deploy job runs on.
+      - name: Upload package
+        if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: src/Snowberry.Globbing/bin/Release/*.nupkg
+          if-no-files-found: error
+
+  deploy:
+    name: Publish to NuGet
+    runs-on: ubuntu-latest
+    needs: build
+    # Publish for a tag starting with v, after every test passed.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: packages
+          path: packages
+
+      # Refuse to publish when the tag and the package version disagree. The version is read from the package file name,
+      # which NuGet normalizes: AssemblyVersion 2.1.0.0 needs tag v2.1.0, and 2.1.0.1 needs v2.1.0.1.
+      - name: Check version
+        shell: bash
+        run: |
+          expected="${GITHUB_REF_NAME#v}"
+          names=$(cd packages && ls Snowberry.Globbing.*.nupkg)
+          echo "Tag: ${GITHUB_REF_NAME}, packages: ${names}"
+          if [ ! -f "packages/Snowberry.Globbing.${expected}.nupkg" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match the built package (${names})."
+            exit 1
+          fi
+
+      - name: Publish
+        run: dotnet nuget push "packages/*.nupkg" --api-key "${{ secrets.NUGET_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
