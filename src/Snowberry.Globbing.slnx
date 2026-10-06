@@ -1,0 +1,18 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Benchmarks/">
+    <Project Path="Snowberry.Globbing.Benchmark/Snowberry.Globbing.Benchmark.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Snowberry.Globbing.Tests/Snowberry.Globbing.Tests.csproj" />
+  </Folder>
+  <Project Path="Snowberry.Globbing.IntegrationTests/Snowberry.Globbing.IntegrationTests.csproj" />
+  <Project Path="Snowberry.Globbing/Snowberry.Globbing.csproj" />
+</Solution>
