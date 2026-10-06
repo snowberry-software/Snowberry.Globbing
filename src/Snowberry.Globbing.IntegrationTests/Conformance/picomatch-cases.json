@@ -1,0 +1,10040 @@
+{
+  "picomatch": "9fab7bf61913ea334c4203ed321c426cfde44a42",
+  "optionSets": {
+    "default": {},
+    "dot": {
+      "dot": true
+    },
+    "strictSlashes": {
+      "strictSlashes": true
+    },
+    "noglobstar": {
+      "noglobstar": true
+    },
+    "noextglob": {
+      "noextglob": true
+    },
+    "nobrace": {
+      "nobrace": true
+    }
+  },
+  "inputs": [
+    "",
+    "a",
+    "b",
+    "c",
+    "ab",
+    "abc",
+    "acb",
+    "ac",
+    "abbc",
+    "A",
+    "Z",
+    "1",
+    "2",
+    "3",
+    " ",
+    "\t",
+    "a.js",
+    "b.js",
+    ".js",
+    "a.ts",
+    "a.md",
+    "a.min.js",
+    "a.js.map",
+    "a.js/",
+    "a.js//",
+    "a.d.ts",
+    "foo.d.ts",
+    "a/b",
+    "a/b/",
+    "a/c/b",
+    "a/b/c/b",
+    "a/b.js",
+    "a/b/c.js",
+    "a/.b",
+    "a/.b.js",
+    ".a",
+    ".a.js",
+    ".git/config",
+    "src/a.test.js",
+    "src/a.js",
+    "src/b/c.ts",
+    "node_modules/x/a.js",
+    "x/node_modules/y",
+    "/a",
+    "/a/b",
+    "ab/c",
+    "a.b",
+    "a+b",
+    "a$b",
+    "a^b",
+    "(a)",
+    "a|b",
+    "a/./b",
+    "a/../b",
+    "..",
+    ".",
+    "*",
+    "?",
+    "!",
+    "!a",
+    "]",
+    "[",
+    "-",
+    "a]",
+    "\\",
+    "a\\b",
+    "a*b",
+    "a?c",
+    "aXb",
+    "[abc]",
+    "{a,b}",
+    "[a]",
+    "a{b",
+    "a}b",
+    "{}",
+    "a{1}",
+    "foo",
+    "foobar",
+    "foo1bar",
+    "foo3bar",
+    "foo/bar",
+    "foo/",
+    "foo\n",
+    "a.js\n",
+    "a\nb",
+    "x\ny.js",
+    "a/\nb",
+    "a\rb",
+    "\r",
+    "\n",
+    "a b",
+    " ",
+    "a\r\n"
+  ],
+  "cases": [
+    {
+      "pattern": "*",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.js",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": "*.*",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": ".*",
+      "optionSet": "default",
+      "matches": [
+        18,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "*/*",
+      "optionSet": "default",
+      "matches": [
+        24,
+        27,
+        28,
+        31,
+        38,
+        39,
+        43,
+        45,
+        80
+      ]
+    },
+    {
+      "pattern": "**",
+      "optionSet": "default",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*.js",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        31,
+        32,
+        38,
+        39,
+        41,
+        85
+      ]
+    },
+    {
+      "pattern": "**/.*",
+      "optionSet": "default",
+      "matches": [
+        18,
+        33,
+        34,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "**/*.*",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": "./*.js",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": ".*.js",
+      "optionSet": "default",
+      "matches": [
+        36
+      ]
+    },
+    {
+      "pattern": "*.js.map",
+      "optionSet": "default",
+      "matches": [
+        22
+      ]
+    },
+    {
+      "pattern": "**.js",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        21,
+        85
+      ]
+    },
+    {
+      "pattern": "a/*.js",
+      "optionSet": "default",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a/**/b",
+      "optionSet": "default",
+      "matches": [
+        27,
+        29,
+        30
+      ]
+    },
+    {
+      "pattern": "a/**",
+      "optionSet": "default",
+      "matches": [
+        1,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        86
+      ]
+    },
+    {
+      "pattern": "**/b",
+      "optionSet": "default",
+      "matches": [
+        2,
+        27,
+        29,
+        30,
+        44
+      ]
+    },
+    {
+      "pattern": "a/*/b",
+      "optionSet": "default",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "a/**/*.js",
+      "optionSet": "default",
+      "matches": [
+        31,
+        32
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "optionSet": "default",
+      "matches": [
+        41,
+        42
+      ]
+    },
+    {
+      "pattern": "**/*.min.js",
+      "optionSet": "default",
+      "matches": [
+        21
+      ]
+    },
+    {
+      "pattern": "**/.git/**",
+      "optionSet": "default",
+      "matches": [
+        37
+      ]
+    },
+    {
+      "pattern": "a*b",
+      "optionSet": "default",
+      "matches": [
+        4,
+        6,
+        46,
+        47,
+        48,
+        49,
+        51,
+        65,
+        66,
+        68,
+        72,
+        73,
+        84,
+        87,
+        90
+      ]
+    },
+    {
+      "pattern": "*a",
+      "optionSet": "default",
+      "matches": [
+        1,
+        59
+      ]
+    },
+    {
+      "pattern": "a**",
+      "optionSet": "default",
+      "matches": [
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        19,
+        20,
+        21,
+        22,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "/a",
+      "optionSet": "default",
+      "matches": [
+        43
+      ]
+    },
+    {
+      "pattern": "/**",
+      "optionSet": "default",
+      "matches": [
+        43,
+        44
+      ]
+    },
+    {
+      "pattern": "foo/",
+      "optionSet": "default",
+      "matches": [
+        81
+      ]
+    },
+    {
+      "pattern": "*/",
+      "optionSet": "default",
+      "matches": [
+        23,
+        81
+      ]
+    },
+    {
+      "pattern": "**/",
+      "optionSet": "default",
+      "matches": [
+        0,
+        23,
+        24,
+        28,
+        81
+      ]
+    },
+    {
+      "pattern": "?",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "??",
+      "optionSet": "default",
+      "matches": [
+        4,
+        7,
+        59,
+        63,
+        74
+      ]
+    },
+    {
+      "pattern": "a?c",
+      "optionSet": "default",
+      "matches": [
+        5,
+        67
+      ]
+    },
+    {
+      "pattern": "*.?s",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "foo",
+      "optionSet": "default",
+      "matches": [
+        76
+      ]
+    },
+    {
+      "pattern": "a/b",
+      "optionSet": "default",
+      "matches": [
+        27
+      ]
+    },
+    {
+      "pattern": "a.b",
+      "optionSet": "default",
+      "matches": [
+        46
+      ]
+    },
+    {
+      "pattern": "a+b",
+      "optionSet": "default",
+      "matches": [
+        47
+      ]
+    },
+    {
+      "pattern": "a$b",
+      "optionSet": "default",
+      "matches": [
+        48
+      ]
+    },
+    {
+      "pattern": "a^b",
+      "optionSet": "default",
+      "matches": [
+        49
+      ]
+    },
+    {
+      "pattern": "(a)",
+      "optionSet": "default",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "a|b",
+      "optionSet": "default",
+      "matches": [
+        51
+      ]
+    },
+    {
+      "pattern": "a/./b",
+      "optionSet": "default",
+      "matches": [
+        52
+      ]
+    },
+    {
+      "pattern": "a/../b",
+      "optionSet": "default",
+      "matches": [
+        53
+      ]
+    },
+    {
+      "pattern": "..",
+      "optionSet": "default",
+      "matches": [
+        54
+      ]
+    },
+    {
+      "pattern": ".",
+      "optionSet": "default",
+      "matches": [
+        55
+      ]
+    },
+    {
+      "pattern": "*.{js,ts}",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "{a,b}/*.js",
+      "optionSet": "default",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a{,b}c",
+      "optionSet": "default",
+      "matches": [
+        5,
+        7
+      ]
+    },
+    {
+      "pattern": "{1..3}",
+      "optionSet": "default",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "a/{b,c}/b",
+      "optionSet": "default",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "{a,b}",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "foo{1,2}bar",
+      "optionSet": "default",
+      "matches": [
+        78
+      ]
+    },
+    {
+      "pattern": "a}b",
+      "optionSet": "default",
+      "matches": [
+        73
+      ]
+    },
+    {
+      "pattern": "{}",
+      "optionSet": "default",
+      "matches": [
+        74
+      ]
+    },
+    {
+      "pattern": "a{1}",
+      "optionSet": "default",
+      "matches": [
+        75
+      ]
+    },
+    {
+      "pattern": "[abc]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        69
+      ]
+    },
+    {
+      "pattern": "[a-c]*",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "[!abc]",
+      "optionSet": "default",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[^abc]",
+      "optionSet": "default",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[!]",
+      "optionSet": "default",
+      "matches": [
+        58
+      ]
+    },
+    {
+      "pattern": "[]]",
+      "optionSet": "default",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]]",
+      "optionSet": "default",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]a]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        60
+      ]
+    },
+    {
+      "pattern": "a[\\]b]c",
+      "optionSet": "default",
+      "matches": [
+        5
+      ]
+    },
+    {
+      "pattern": "[\\[\\]]",
+      "optionSet": "default",
+      "matches": [
+        60,
+        61
+      ]
+    },
+    {
+      "pattern": "[!\\]]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[a\\-z]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[-a]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[a-]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[*]",
+      "optionSet": "default",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "[?]",
+      "optionSet": "default",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "foo[/]bar",
+      "optionSet": "default",
+      "matches": [
+        80
+      ]
+    },
+    {
+      "pattern": "[[:alpha:]]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "[[:digit:]]*",
+      "optionSet": "default",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[[:alpha:][:digit:]]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[![:alpha:]]",
+      "optionSet": "default",
+      "matches": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:punct:]]",
+      "optionSet": "default",
+      "matches": [
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:space:]]",
+      "optionSet": "default",
+      "matches": [
+        14,
+        15
+      ]
+    },
+    {
+      "pattern": "[[:upper:][:lower:]]",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "!(*.md)",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*(a|b)",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "+(a|b)",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "?(a|b)",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "@(a|b)",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "a!(b)c",
+      "optionSet": "default",
+      "matches": [
+        7,
+        67
+      ]
+    },
+    {
+      "pattern": "!(foo)",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.!(js)",
+      "optionSet": "default",
+      "matches": [
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        46,
+        83
+      ]
+    },
+    {
+      "pattern": "+([[:alpha:].])",
+      "optionSet": "default",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        54,
+        55,
+        68,
+        76,
+        77
+      ]
+    },
+    {
+      "pattern": "!(*.d).ts",
+      "optionSet": "default",
+      "matches": [
+        19
+      ]
+    },
+    {
+      "pattern": "@(*.js|*.ts)",
+      "optionSet": "default",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        21,
+        25,
+        26,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "src/**/!(*.test).{js,ts}",
+      "optionSet": "default",
+      "matches": [
+        39,
+        40
+      ]
+    },
+    {
+      "pattern": "!*.md",
+      "optionSet": "default",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!a/*",
+      "optionSet": "default",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!**/*.js",
+      "optionSet": "default",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        33,
+        34,
+        35,
+        36,
+        37,
+        40,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!!a",
+      "optionSet": "default",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "\\*",
+      "optionSet": "default",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "a\\*b",
+      "optionSet": "default",
+      "matches": [
+        66
+      ]
+    },
+    {
+      "pattern": "\\?",
+      "optionSet": "default",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "\\[a\\]",
+      "optionSet": "default",
+      "matches": [
+        71
+      ]
+    },
+    {
+      "pattern": "a\\\\b",
+      "optionSet": "default",
+      "matches": [
+        65
+      ]
+    },
+    {
+      "pattern": "\\!a",
+      "optionSet": "default",
+      "matches": [
+        59
+      ]
+    },
+    {
+      "pattern": "*",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.js",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        21,
+        23,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "*.*",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        35,
+        36,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": ".*",
+      "optionSet": "dot",
+      "matches": [
+        18,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "*/*",
+      "optionSet": "dot",
+      "matches": [
+        24,
+        27,
+        28,
+        31,
+        33,
+        34,
+        37,
+        38,
+        39,
+        43,
+        45,
+        80
+      ]
+    },
+    {
+      "pattern": "**",
+      "optionSet": "dot",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*.js",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        21,
+        23,
+        31,
+        32,
+        34,
+        36,
+        38,
+        39,
+        41,
+        85
+      ]
+    },
+    {
+      "pattern": "**/.*",
+      "optionSet": "dot",
+      "matches": [
+        18,
+        33,
+        34,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "**/*.*",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        38,
+        39,
+        40,
+        41,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": "./*.js",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        21,
+        23,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": ".*.js",
+      "optionSet": "dot",
+      "matches": [
+        36
+      ]
+    },
+    {
+      "pattern": "*.js.map",
+      "optionSet": "dot",
+      "matches": [
+        22
+      ]
+    },
+    {
+      "pattern": "**.js",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        21,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "a/*.js",
+      "optionSet": "dot",
+      "matches": [
+        31,
+        34
+      ]
+    },
+    {
+      "pattern": "a/**/b",
+      "optionSet": "dot",
+      "matches": [
+        27,
+        29,
+        30
+      ]
+    },
+    {
+      "pattern": "a/**",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        86
+      ]
+    },
+    {
+      "pattern": "**/b",
+      "optionSet": "dot",
+      "matches": [
+        2,
+        27,
+        29,
+        30,
+        44
+      ]
+    },
+    {
+      "pattern": "a/*/b",
+      "optionSet": "dot",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "a/**/*.js",
+      "optionSet": "dot",
+      "matches": [
+        31,
+        32,
+        34
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "optionSet": "dot",
+      "matches": [
+        41,
+        42
+      ]
+    },
+    {
+      "pattern": "**/*.min.js",
+      "optionSet": "dot",
+      "matches": [
+        21
+      ]
+    },
+    {
+      "pattern": "**/.git/**",
+      "optionSet": "dot",
+      "matches": [
+        37
+      ]
+    },
+    {
+      "pattern": "a*b",
+      "optionSet": "dot",
+      "matches": [
+        4,
+        6,
+        46,
+        47,
+        48,
+        49,
+        51,
+        65,
+        66,
+        68,
+        72,
+        73,
+        84,
+        87,
+        90
+      ]
+    },
+    {
+      "pattern": "*a",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        35,
+        59
+      ]
+    },
+    {
+      "pattern": "a**",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        19,
+        20,
+        21,
+        22,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "/a",
+      "optionSet": "dot",
+      "matches": [
+        43
+      ]
+    },
+    {
+      "pattern": "/**",
+      "optionSet": "dot",
+      "matches": [
+        43,
+        44
+      ]
+    },
+    {
+      "pattern": "foo/",
+      "optionSet": "dot",
+      "matches": [
+        81
+      ]
+    },
+    {
+      "pattern": "*/",
+      "optionSet": "dot",
+      "matches": [
+        23,
+        81
+      ]
+    },
+    {
+      "pattern": "**/",
+      "optionSet": "dot",
+      "matches": [
+        0,
+        23,
+        24,
+        28,
+        81
+      ]
+    },
+    {
+      "pattern": "?",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "??",
+      "optionSet": "dot",
+      "matches": [
+        4,
+        7,
+        35,
+        54,
+        59,
+        63,
+        74
+      ]
+    },
+    {
+      "pattern": "a?c",
+      "optionSet": "dot",
+      "matches": [
+        5,
+        67
+      ]
+    },
+    {
+      "pattern": "*.?s",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        21,
+        25,
+        26,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "foo",
+      "optionSet": "dot",
+      "matches": [
+        76
+      ]
+    },
+    {
+      "pattern": "a/b",
+      "optionSet": "dot",
+      "matches": [
+        27
+      ]
+    },
+    {
+      "pattern": "a.b",
+      "optionSet": "dot",
+      "matches": [
+        46
+      ]
+    },
+    {
+      "pattern": "a+b",
+      "optionSet": "dot",
+      "matches": [
+        47
+      ]
+    },
+    {
+      "pattern": "a$b",
+      "optionSet": "dot",
+      "matches": [
+        48
+      ]
+    },
+    {
+      "pattern": "a^b",
+      "optionSet": "dot",
+      "matches": [
+        49
+      ]
+    },
+    {
+      "pattern": "(a)",
+      "optionSet": "dot",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "a|b",
+      "optionSet": "dot",
+      "matches": [
+        51
+      ]
+    },
+    {
+      "pattern": "a/./b",
+      "optionSet": "dot",
+      "matches": [
+        52
+      ]
+    },
+    {
+      "pattern": "a/../b",
+      "optionSet": "dot",
+      "matches": [
+        53
+      ]
+    },
+    {
+      "pattern": "..",
+      "optionSet": "dot",
+      "matches": [
+        54
+      ]
+    },
+    {
+      "pattern": ".",
+      "optionSet": "dot",
+      "matches": [
+        55
+      ]
+    },
+    {
+      "pattern": "*.{js,ts}",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        21,
+        25,
+        26,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "{a,b}/*.js",
+      "optionSet": "dot",
+      "matches": [
+        31,
+        34
+      ]
+    },
+    {
+      "pattern": "a{,b}c",
+      "optionSet": "dot",
+      "matches": [
+        5,
+        7
+      ]
+    },
+    {
+      "pattern": "{1..3}",
+      "optionSet": "dot",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "a/{b,c}/b",
+      "optionSet": "dot",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "{a,b}",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "foo{1,2}bar",
+      "optionSet": "dot",
+      "matches": [
+        78
+      ]
+    },
+    {
+      "pattern": "a}b",
+      "optionSet": "dot",
+      "matches": [
+        73
+      ]
+    },
+    {
+      "pattern": "{}",
+      "optionSet": "dot",
+      "matches": [
+        74
+      ]
+    },
+    {
+      "pattern": "a{1}",
+      "optionSet": "dot",
+      "matches": [
+        75
+      ]
+    },
+    {
+      "pattern": "[abc]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        69
+      ]
+    },
+    {
+      "pattern": "[a-c]*",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "[!abc]",
+      "optionSet": "dot",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[^abc]",
+      "optionSet": "dot",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[!]",
+      "optionSet": "dot",
+      "matches": [
+        58
+      ]
+    },
+    {
+      "pattern": "[]]",
+      "optionSet": "dot",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]]",
+      "optionSet": "dot",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]a]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        60
+      ]
+    },
+    {
+      "pattern": "a[\\]b]c",
+      "optionSet": "dot",
+      "matches": [
+        5
+      ]
+    },
+    {
+      "pattern": "[\\[\\]]",
+      "optionSet": "dot",
+      "matches": [
+        60,
+        61
+      ]
+    },
+    {
+      "pattern": "[!\\]]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[a\\-z]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[-a]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[a-]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[*]",
+      "optionSet": "dot",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "[?]",
+      "optionSet": "dot",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "foo[/]bar",
+      "optionSet": "dot",
+      "matches": [
+        80
+      ]
+    },
+    {
+      "pattern": "[[:alpha:]]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "[[:digit:]]*",
+      "optionSet": "dot",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[[:alpha:][:digit:]]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[![:alpha:]]",
+      "optionSet": "dot",
+      "matches": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:punct:]]",
+      "optionSet": "dot",
+      "matches": [
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:space:]]",
+      "optionSet": "dot",
+      "matches": [
+        14,
+        15
+      ]
+    },
+    {
+      "pattern": "[[:upper:][:lower:]]",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "!(*.md)",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*(a|b)",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "+(a|b)",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "?(a|b)",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "@(a|b)",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "a!(b)c",
+      "optionSet": "dot",
+      "matches": [
+        7,
+        67
+      ]
+    },
+    {
+      "pattern": "!(foo)",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.!(js)",
+      "optionSet": "dot",
+      "matches": [
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        83
+      ]
+    },
+    {
+      "pattern": "+([[:alpha:].])",
+      "optionSet": "dot",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        54,
+        55,
+        68,
+        76,
+        77
+      ]
+    },
+    {
+      "pattern": "!(*.d).ts",
+      "optionSet": "dot",
+      "matches": [
+        19
+      ]
+    },
+    {
+      "pattern": "@(*.js|*.ts)",
+      "optionSet": "dot",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        21,
+        25,
+        26,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "src/**/!(*.test).{js,ts}",
+      "optionSet": "dot",
+      "matches": [
+        39,
+        40
+      ]
+    },
+    {
+      "pattern": "!*.md",
+      "optionSet": "dot",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!a/*",
+      "optionSet": "dot",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        29,
+        30,
+        32,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!**/*.js",
+      "optionSet": "dot",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        33,
+        35,
+        37,
+        40,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!!a",
+      "optionSet": "dot",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "\\*",
+      "optionSet": "dot",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "a\\*b",
+      "optionSet": "dot",
+      "matches": [
+        66
+      ]
+    },
+    {
+      "pattern": "\\?",
+      "optionSet": "dot",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "\\[a\\]",
+      "optionSet": "dot",
+      "matches": [
+        71
+      ]
+    },
+    {
+      "pattern": "a\\\\b",
+      "optionSet": "dot",
+      "matches": [
+        65
+      ]
+    },
+    {
+      "pattern": "\\!a",
+      "optionSet": "dot",
+      "matches": [
+        59
+      ]
+    },
+    {
+      "pattern": "*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        21,
+        85
+      ]
+    },
+    {
+      "pattern": "*.*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": ".*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        18,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "*/*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        27,
+        31,
+        38,
+        39,
+        43,
+        45,
+        80
+      ]
+    },
+    {
+      "pattern": "**",
+      "optionSet": "strictSlashes",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        27,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        21,
+        31,
+        32,
+        38,
+        39,
+        41,
+        85
+      ]
+    },
+    {
+      "pattern": "**/.*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        18,
+        33,
+        34,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "**/*.*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": "./*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        21,
+        85
+      ]
+    },
+    {
+      "pattern": ".*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        36
+      ]
+    },
+    {
+      "pattern": "*.js.map",
+      "optionSet": "strictSlashes",
+      "matches": [
+        22
+      ]
+    },
+    {
+      "pattern": "**.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        21,
+        85
+      ]
+    },
+    {
+      "pattern": "a/*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a/**/b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        27,
+        29,
+        30
+      ]
+    },
+    {
+      "pattern": "a/**",
+      "optionSet": "strictSlashes",
+      "matches": [
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        86
+      ]
+    },
+    {
+      "pattern": "**/b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        2,
+        27,
+        29,
+        30,
+        44
+      ]
+    },
+    {
+      "pattern": "a/*/b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "a/**/*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        31,
+        32
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "optionSet": "strictSlashes",
+      "matches": [
+        41,
+        42
+      ]
+    },
+    {
+      "pattern": "**/*.min.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        21
+      ]
+    },
+    {
+      "pattern": "**/.git/**",
+      "optionSet": "strictSlashes",
+      "matches": [
+        37
+      ]
+    },
+    {
+      "pattern": "a*b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        4,
+        6,
+        46,
+        47,
+        48,
+        49,
+        51,
+        65,
+        66,
+        68,
+        72,
+        73,
+        84,
+        87,
+        90
+      ]
+    },
+    {
+      "pattern": "*a",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        59
+      ]
+    },
+    {
+      "pattern": "a**",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        19,
+        20,
+        21,
+        22,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "/a",
+      "optionSet": "strictSlashes",
+      "matches": [
+        43
+      ]
+    },
+    {
+      "pattern": "/**",
+      "optionSet": "strictSlashes",
+      "matches": [
+        43,
+        44
+      ]
+    },
+    {
+      "pattern": "foo/",
+      "optionSet": "strictSlashes",
+      "matches": [
+        81
+      ]
+    },
+    {
+      "pattern": "*/",
+      "optionSet": "strictSlashes",
+      "matches": [
+        23,
+        81
+      ]
+    },
+    {
+      "pattern": "**/",
+      "optionSet": "strictSlashes",
+      "matches": [
+        0,
+        23,
+        24,
+        28,
+        81
+      ]
+    },
+    {
+      "pattern": "?",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "??",
+      "optionSet": "strictSlashes",
+      "matches": [
+        4,
+        7,
+        59,
+        63,
+        74
+      ]
+    },
+    {
+      "pattern": "a?c",
+      "optionSet": "strictSlashes",
+      "matches": [
+        5,
+        67
+      ]
+    },
+    {
+      "pattern": "*.?s",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "foo",
+      "optionSet": "strictSlashes",
+      "matches": [
+        76
+      ]
+    },
+    {
+      "pattern": "a/b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        27
+      ]
+    },
+    {
+      "pattern": "a.b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        46
+      ]
+    },
+    {
+      "pattern": "a+b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        47
+      ]
+    },
+    {
+      "pattern": "a$b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        48
+      ]
+    },
+    {
+      "pattern": "a^b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        49
+      ]
+    },
+    {
+      "pattern": "(a)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "a|b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        51
+      ]
+    },
+    {
+      "pattern": "a/./b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        52
+      ]
+    },
+    {
+      "pattern": "a/../b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        53
+      ]
+    },
+    {
+      "pattern": "..",
+      "optionSet": "strictSlashes",
+      "matches": [
+        54
+      ]
+    },
+    {
+      "pattern": ".",
+      "optionSet": "strictSlashes",
+      "matches": [
+        55
+      ]
+    },
+    {
+      "pattern": "*.{js,ts}",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "{a,b}/*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a{,b}c",
+      "optionSet": "strictSlashes",
+      "matches": [
+        5,
+        7
+      ]
+    },
+    {
+      "pattern": "{1..3}",
+      "optionSet": "strictSlashes",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "a/{b,c}/b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "{a,b}",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "foo{1,2}bar",
+      "optionSet": "strictSlashes",
+      "matches": [
+        78
+      ]
+    },
+    {
+      "pattern": "a}b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        73
+      ]
+    },
+    {
+      "pattern": "{}",
+      "optionSet": "strictSlashes",
+      "matches": [
+        74
+      ]
+    },
+    {
+      "pattern": "a{1}",
+      "optionSet": "strictSlashes",
+      "matches": [
+        75
+      ]
+    },
+    {
+      "pattern": "[abc]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        69
+      ]
+    },
+    {
+      "pattern": "[a-c]*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "[!abc]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[^abc]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[!]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        58
+      ]
+    },
+    {
+      "pattern": "[]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]a]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        60
+      ]
+    },
+    {
+      "pattern": "a[\\]b]c",
+      "optionSet": "strictSlashes",
+      "matches": [
+        5
+      ]
+    },
+    {
+      "pattern": "[\\[\\]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        60,
+        61
+      ]
+    },
+    {
+      "pattern": "[!\\]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[a\\-z]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[-a]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[a-]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[*]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "[?]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "foo[/]bar",
+      "optionSet": "strictSlashes",
+      "matches": [
+        80
+      ]
+    },
+    {
+      "pattern": "[[:alpha:]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "[[:digit:]]*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[[:alpha:][:digit:]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[![:alpha:]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:punct:]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:space:]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        14,
+        15
+      ]
+    },
+    {
+      "pattern": "[[:upper:][:lower:]]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "!(*.md)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*(a|b)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "+(a|b)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "?(a|b)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "@(a|b)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "a!(b)c",
+      "optionSet": "strictSlashes",
+      "matches": [
+        7,
+        67
+      ]
+    },
+    {
+      "pattern": "!(foo)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.!(js)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        46,
+        83
+      ]
+    },
+    {
+      "pattern": "+([[:alpha:].])",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        54,
+        55,
+        68,
+        76,
+        77
+      ]
+    },
+    {
+      "pattern": "!(*.d).ts",
+      "optionSet": "strictSlashes",
+      "matches": [
+        19
+      ]
+    },
+    {
+      "pattern": "@(*.js|*.ts)",
+      "optionSet": "strictSlashes",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        21,
+        25,
+        26,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "src/**/!(*.test).{js,ts}",
+      "optionSet": "strictSlashes",
+      "matches": [
+        39,
+        40
+      ]
+    },
+    {
+      "pattern": "!*.md",
+      "optionSet": "strictSlashes",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!a/*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        28,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!**/*.js",
+      "optionSet": "strictSlashes",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        33,
+        34,
+        35,
+        36,
+        37,
+        40,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!!a",
+      "optionSet": "strictSlashes",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "\\*",
+      "optionSet": "strictSlashes",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "a\\*b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        66
+      ]
+    },
+    {
+      "pattern": "\\?",
+      "optionSet": "strictSlashes",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "\\[a\\]",
+      "optionSet": "strictSlashes",
+      "matches": [
+        71
+      ]
+    },
+    {
+      "pattern": "a\\\\b",
+      "optionSet": "strictSlashes",
+      "matches": [
+        65
+      ]
+    },
+    {
+      "pattern": "\\!a",
+      "optionSet": "strictSlashes",
+      "matches": [
+        59
+      ]
+    },
+    {
+      "pattern": "*",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": "*.*",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": ".*",
+      "optionSet": "noglobstar",
+      "matches": [
+        18,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "*/*",
+      "optionSet": "noglobstar",
+      "matches": [
+        24,
+        27,
+        28,
+        31,
+        38,
+        39,
+        43,
+        45,
+        80
+      ]
+    },
+    {
+      "pattern": "**",
+      "optionSet": "noglobstar",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        31,
+        38,
+        39,
+        43,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        31,
+        38,
+        39,
+        85
+      ]
+    },
+    {
+      "pattern": "**/.*",
+      "optionSet": "noglobstar",
+      "matches": [
+        18,
+        33,
+        34,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "**/*.*",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        31,
+        38,
+        39,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": "./*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": ".*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        36
+      ]
+    },
+    {
+      "pattern": "*.js.map",
+      "optionSet": "noglobstar",
+      "matches": [
+        22
+      ]
+    },
+    {
+      "pattern": "**.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        21,
+        85
+      ]
+    },
+    {
+      "pattern": "a/*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a/**/b",
+      "optionSet": "noglobstar",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "a/**",
+      "optionSet": "noglobstar",
+      "matches": [
+        27,
+        28,
+        31,
+        86
+      ]
+    },
+    {
+      "pattern": "**/b",
+      "optionSet": "noglobstar",
+      "matches": [
+        27
+      ]
+    },
+    {
+      "pattern": "a/*/b",
+      "optionSet": "noglobstar",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "a/**/*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        32
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "optionSet": "noglobstar",
+      "matches": [
+        42
+      ]
+    },
+    {
+      "pattern": "**/*.min.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        21
+      ]
+    },
+    {
+      "pattern": "**/.git/**",
+      "optionSet": "noglobstar",
+      "matches": []
+    },
+    {
+      "pattern": "a*b",
+      "optionSet": "noglobstar",
+      "matches": [
+        4,
+        6,
+        46,
+        47,
+        48,
+        49,
+        51,
+        65,
+        66,
+        68,
+        72,
+        73,
+        84,
+        87,
+        90
+      ]
+    },
+    {
+      "pattern": "*a",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        59
+      ]
+    },
+    {
+      "pattern": "a**",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        19,
+        20,
+        21,
+        22,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "/a",
+      "optionSet": "noglobstar",
+      "matches": [
+        43
+      ]
+    },
+    {
+      "pattern": "/**",
+      "optionSet": "noglobstar",
+      "matches": [
+        43
+      ]
+    },
+    {
+      "pattern": "foo/",
+      "optionSet": "noglobstar",
+      "matches": [
+        81
+      ]
+    },
+    {
+      "pattern": "*/",
+      "optionSet": "noglobstar",
+      "matches": [
+        23,
+        81
+      ]
+    },
+    {
+      "pattern": "**/",
+      "optionSet": "noglobstar",
+      "matches": [
+        23,
+        81
+      ]
+    },
+    {
+      "pattern": "?",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "??",
+      "optionSet": "noglobstar",
+      "matches": [
+        4,
+        7,
+        59,
+        63,
+        74
+      ]
+    },
+    {
+      "pattern": "a?c",
+      "optionSet": "noglobstar",
+      "matches": [
+        5,
+        67
+      ]
+    },
+    {
+      "pattern": "*.?s",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "foo",
+      "optionSet": "noglobstar",
+      "matches": [
+        76
+      ]
+    },
+    {
+      "pattern": "a/b",
+      "optionSet": "noglobstar",
+      "matches": [
+        27
+      ]
+    },
+    {
+      "pattern": "a.b",
+      "optionSet": "noglobstar",
+      "matches": [
+        46
+      ]
+    },
+    {
+      "pattern": "a+b",
+      "optionSet": "noglobstar",
+      "matches": [
+        47
+      ]
+    },
+    {
+      "pattern": "a$b",
+      "optionSet": "noglobstar",
+      "matches": [
+        48
+      ]
+    },
+    {
+      "pattern": "a^b",
+      "optionSet": "noglobstar",
+      "matches": [
+        49
+      ]
+    },
+    {
+      "pattern": "(a)",
+      "optionSet": "noglobstar",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "a|b",
+      "optionSet": "noglobstar",
+      "matches": [
+        51
+      ]
+    },
+    {
+      "pattern": "a/./b",
+      "optionSet": "noglobstar",
+      "matches": [
+        52
+      ]
+    },
+    {
+      "pattern": "a/../b",
+      "optionSet": "noglobstar",
+      "matches": [
+        53
+      ]
+    },
+    {
+      "pattern": "..",
+      "optionSet": "noglobstar",
+      "matches": [
+        54
+      ]
+    },
+    {
+      "pattern": ".",
+      "optionSet": "noglobstar",
+      "matches": [
+        55
+      ]
+    },
+    {
+      "pattern": "*.{js,ts}",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "{a,b}/*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a{,b}c",
+      "optionSet": "noglobstar",
+      "matches": [
+        5,
+        7
+      ]
+    },
+    {
+      "pattern": "{1..3}",
+      "optionSet": "noglobstar",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "a/{b,c}/b",
+      "optionSet": "noglobstar",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "{a,b}",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "foo{1,2}bar",
+      "optionSet": "noglobstar",
+      "matches": [
+        78
+      ]
+    },
+    {
+      "pattern": "a}b",
+      "optionSet": "noglobstar",
+      "matches": [
+        73
+      ]
+    },
+    {
+      "pattern": "{}",
+      "optionSet": "noglobstar",
+      "matches": [
+        74
+      ]
+    },
+    {
+      "pattern": "a{1}",
+      "optionSet": "noglobstar",
+      "matches": [
+        75
+      ]
+    },
+    {
+      "pattern": "[abc]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        69
+      ]
+    },
+    {
+      "pattern": "[a-c]*",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "[!abc]",
+      "optionSet": "noglobstar",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[^abc]",
+      "optionSet": "noglobstar",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[!]",
+      "optionSet": "noglobstar",
+      "matches": [
+        58
+      ]
+    },
+    {
+      "pattern": "[]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]a]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        60
+      ]
+    },
+    {
+      "pattern": "a[\\]b]c",
+      "optionSet": "noglobstar",
+      "matches": [
+        5
+      ]
+    },
+    {
+      "pattern": "[\\[\\]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        60,
+        61
+      ]
+    },
+    {
+      "pattern": "[!\\]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[a\\-z]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[-a]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[a-]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[*]",
+      "optionSet": "noglobstar",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "[?]",
+      "optionSet": "noglobstar",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "foo[/]bar",
+      "optionSet": "noglobstar",
+      "matches": [
+        80
+      ]
+    },
+    {
+      "pattern": "[[:alpha:]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "[[:digit:]]*",
+      "optionSet": "noglobstar",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[[:alpha:][:digit:]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[![:alpha:]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:punct:]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:space:]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        14,
+        15
+      ]
+    },
+    {
+      "pattern": "[[:upper:][:lower:]]",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "!(*.md)",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*(a|b)",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "+(a|b)",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "?(a|b)",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "@(a|b)",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "a!(b)c",
+      "optionSet": "noglobstar",
+      "matches": [
+        7,
+        67
+      ]
+    },
+    {
+      "pattern": "!(foo)",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.!(js)",
+      "optionSet": "noglobstar",
+      "matches": [
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        46,
+        83
+      ]
+    },
+    {
+      "pattern": "+([[:alpha:].])",
+      "optionSet": "noglobstar",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        54,
+        55,
+        68,
+        76,
+        77
+      ]
+    },
+    {
+      "pattern": "!(*.d).ts",
+      "optionSet": "noglobstar",
+      "matches": [
+        19
+      ]
+    },
+    {
+      "pattern": "@(*.js|*.ts)",
+      "optionSet": "noglobstar",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        21,
+        25,
+        26,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "src/**/!(*.test).{js,ts}",
+      "optionSet": "noglobstar",
+      "matches": [
+        40
+      ]
+    },
+    {
+      "pattern": "!*.md",
+      "optionSet": "noglobstar",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!a/*",
+      "optionSet": "noglobstar",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!**/*.js",
+      "optionSet": "noglobstar",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!!a",
+      "optionSet": "noglobstar",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "\\*",
+      "optionSet": "noglobstar",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "a\\*b",
+      "optionSet": "noglobstar",
+      "matches": [
+        66
+      ]
+    },
+    {
+      "pattern": "\\?",
+      "optionSet": "noglobstar",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "\\[a\\]",
+      "optionSet": "noglobstar",
+      "matches": [
+        71
+      ]
+    },
+    {
+      "pattern": "a\\\\b",
+      "optionSet": "noglobstar",
+      "matches": [
+        65
+      ]
+    },
+    {
+      "pattern": "\\!a",
+      "optionSet": "noglobstar",
+      "matches": [
+        59
+      ]
+    },
+    {
+      "pattern": "*",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": "*.*",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": ".*",
+      "optionSet": "noextglob",
+      "matches": [
+        18,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "*/*",
+      "optionSet": "noextglob",
+      "matches": [
+        24,
+        27,
+        28,
+        31,
+        38,
+        39,
+        43,
+        45,
+        80
+      ]
+    },
+    {
+      "pattern": "**",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        31,
+        32,
+        38,
+        39,
+        41,
+        85
+      ]
+    },
+    {
+      "pattern": "**/.*",
+      "optionSet": "noextglob",
+      "matches": [
+        18,
+        33,
+        34,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "**/*.*",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": "./*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": ".*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        36
+      ]
+    },
+    {
+      "pattern": "*.js.map",
+      "optionSet": "noextglob",
+      "matches": [
+        22
+      ]
+    },
+    {
+      "pattern": "**.js",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        21,
+        85
+      ]
+    },
+    {
+      "pattern": "a/*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a/**/b",
+      "optionSet": "noextglob",
+      "matches": [
+        27,
+        29,
+        30
+      ]
+    },
+    {
+      "pattern": "a/**",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        86
+      ]
+    },
+    {
+      "pattern": "**/b",
+      "optionSet": "noextglob",
+      "matches": [
+        2,
+        27,
+        29,
+        30,
+        44
+      ]
+    },
+    {
+      "pattern": "a/*/b",
+      "optionSet": "noextglob",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "a/**/*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        31,
+        32
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "optionSet": "noextglob",
+      "matches": [
+        41,
+        42
+      ]
+    },
+    {
+      "pattern": "**/*.min.js",
+      "optionSet": "noextglob",
+      "matches": [
+        21
+      ]
+    },
+    {
+      "pattern": "**/.git/**",
+      "optionSet": "noextglob",
+      "matches": [
+        37
+      ]
+    },
+    {
+      "pattern": "a*b",
+      "optionSet": "noextglob",
+      "matches": [
+        4,
+        6,
+        46,
+        47,
+        48,
+        49,
+        51,
+        65,
+        66,
+        68,
+        72,
+        73,
+        84,
+        87,
+        90
+      ]
+    },
+    {
+      "pattern": "*a",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        59
+      ]
+    },
+    {
+      "pattern": "a**",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        19,
+        20,
+        21,
+        22,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "/a",
+      "optionSet": "noextglob",
+      "matches": [
+        43
+      ]
+    },
+    {
+      "pattern": "/**",
+      "optionSet": "noextglob",
+      "matches": [
+        43,
+        44
+      ]
+    },
+    {
+      "pattern": "foo/",
+      "optionSet": "noextglob",
+      "matches": [
+        81
+      ]
+    },
+    {
+      "pattern": "*/",
+      "optionSet": "noextglob",
+      "matches": [
+        23,
+        81
+      ]
+    },
+    {
+      "pattern": "**/",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        23,
+        24,
+        28,
+        81
+      ]
+    },
+    {
+      "pattern": "?",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "??",
+      "optionSet": "noextglob",
+      "matches": [
+        4,
+        7,
+        59,
+        63,
+        74
+      ]
+    },
+    {
+      "pattern": "a?c",
+      "optionSet": "noextglob",
+      "matches": [
+        5,
+        67
+      ]
+    },
+    {
+      "pattern": "*.?s",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "foo",
+      "optionSet": "noextglob",
+      "matches": [
+        76
+      ]
+    },
+    {
+      "pattern": "a/b",
+      "optionSet": "noextglob",
+      "matches": [
+        27
+      ]
+    },
+    {
+      "pattern": "a.b",
+      "optionSet": "noextglob",
+      "matches": [
+        46
+      ]
+    },
+    {
+      "pattern": "a+b",
+      "optionSet": "noextglob",
+      "matches": [
+        47
+      ]
+    },
+    {
+      "pattern": "a$b",
+      "optionSet": "noextglob",
+      "matches": [
+        48
+      ]
+    },
+    {
+      "pattern": "a^b",
+      "optionSet": "noextglob",
+      "matches": [
+        49
+      ]
+    },
+    {
+      "pattern": "(a)",
+      "optionSet": "noextglob",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "a|b",
+      "optionSet": "noextglob",
+      "matches": [
+        51
+      ]
+    },
+    {
+      "pattern": "a/./b",
+      "optionSet": "noextglob",
+      "matches": [
+        52
+      ]
+    },
+    {
+      "pattern": "a/../b",
+      "optionSet": "noextglob",
+      "matches": [
+        53
+      ]
+    },
+    {
+      "pattern": "..",
+      "optionSet": "noextglob",
+      "matches": [
+        54
+      ]
+    },
+    {
+      "pattern": ".",
+      "optionSet": "noextglob",
+      "matches": [
+        55
+      ]
+    },
+    {
+      "pattern": "*.{js,ts}",
+      "optionSet": "noextglob",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "{a,b}/*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a{,b}c",
+      "optionSet": "noextglob",
+      "matches": [
+        5,
+        7
+      ]
+    },
+    {
+      "pattern": "{1..3}",
+      "optionSet": "noextglob",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "a/{b,c}/b",
+      "optionSet": "noextglob",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "{a,b}",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "foo{1,2}bar",
+      "optionSet": "noextglob",
+      "matches": [
+        78
+      ]
+    },
+    {
+      "pattern": "a}b",
+      "optionSet": "noextglob",
+      "matches": [
+        73
+      ]
+    },
+    {
+      "pattern": "{}",
+      "optionSet": "noextglob",
+      "matches": [
+        74
+      ]
+    },
+    {
+      "pattern": "a{1}",
+      "optionSet": "noextglob",
+      "matches": [
+        75
+      ]
+    },
+    {
+      "pattern": "[abc]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        69
+      ]
+    },
+    {
+      "pattern": "[a-c]*",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "[!abc]",
+      "optionSet": "noextglob",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[^abc]",
+      "optionSet": "noextglob",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[!]",
+      "optionSet": "noextglob",
+      "matches": [
+        58
+      ]
+    },
+    {
+      "pattern": "[]]",
+      "optionSet": "noextglob",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]]",
+      "optionSet": "noextglob",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]a]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        60
+      ]
+    },
+    {
+      "pattern": "a[\\]b]c",
+      "optionSet": "noextglob",
+      "matches": [
+        5
+      ]
+    },
+    {
+      "pattern": "[\\[\\]]",
+      "optionSet": "noextglob",
+      "matches": [
+        60,
+        61
+      ]
+    },
+    {
+      "pattern": "[!\\]]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[a\\-z]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[-a]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[a-]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[*]",
+      "optionSet": "noextglob",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "[?]",
+      "optionSet": "noextglob",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "foo[/]bar",
+      "optionSet": "noextglob",
+      "matches": [
+        80
+      ]
+    },
+    {
+      "pattern": "[[:alpha:]]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "[[:digit:]]*",
+      "optionSet": "noextglob",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[[:alpha:][:digit:]]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[![:alpha:]]",
+      "optionSet": "noextglob",
+      "matches": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:punct:]]",
+      "optionSet": "noextglob",
+      "matches": [
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:space:]]",
+      "optionSet": "noextglob",
+      "matches": [
+        14,
+        15
+      ]
+    },
+    {
+      "pattern": "[[:upper:][:lower:]]",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "!(*.md)",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "*(a|b)",
+      "optionSet": "noextglob",
+      "matches": [
+        1,
+        2,
+        4,
+        6,
+        46,
+        47,
+        48,
+        49,
+        51,
+        59,
+        65,
+        66,
+        68,
+        72,
+        73,
+        84,
+        87,
+        90
+      ]
+    },
+    {
+      "pattern": "+(a|b)",
+      "optionSet": "noextglob",
+      "matches": []
+    },
+    {
+      "pattern": "?(a|b)",
+      "optionSet": "noextglob",
+      "matches": [
+        4,
+        59
+      ]
+    },
+    {
+      "pattern": "@(a|b)",
+      "optionSet": "noextglob",
+      "matches": []
+    },
+    {
+      "pattern": "a!(b)c",
+      "optionSet": "noextglob",
+      "matches": []
+    },
+    {
+      "pattern": "!(foo)",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "*.!(js)",
+      "optionSet": "noextglob",
+      "matches": []
+    },
+    {
+      "pattern": "+([[:alpha:].])",
+      "optionSet": "noextglob",
+      "matches": []
+    },
+    {
+      "pattern": "!(*.d).ts",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "@(*.js|*.ts)",
+      "optionSet": "noextglob",
+      "matches": []
+    },
+    {
+      "pattern": "src/**/!(*.test).{js,ts}",
+      "optionSet": "noextglob",
+      "matches": []
+    },
+    {
+      "pattern": "!*.md",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!a/*",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!**/*.js",
+      "optionSet": "noextglob",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        33,
+        34,
+        35,
+        36,
+        37,
+        40,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!!a",
+      "optionSet": "noextglob",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "\\*",
+      "optionSet": "noextglob",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "a\\*b",
+      "optionSet": "noextglob",
+      "matches": [
+        66
+      ]
+    },
+    {
+      "pattern": "\\?",
+      "optionSet": "noextglob",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "\\[a\\]",
+      "optionSet": "noextglob",
+      "matches": [
+        71
+      ]
+    },
+    {
+      "pattern": "a\\\\b",
+      "optionSet": "noextglob",
+      "matches": [
+        65
+      ]
+    },
+    {
+      "pattern": "\\!a",
+      "optionSet": "noextglob",
+      "matches": [
+        59
+      ]
+    },
+    {
+      "pattern": "*",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.js",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": "*.*",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": ".*",
+      "optionSet": "nobrace",
+      "matches": [
+        18,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "*/*",
+      "optionSet": "nobrace",
+      "matches": [
+        24,
+        27,
+        28,
+        31,
+        38,
+        39,
+        43,
+        45,
+        80
+      ]
+    },
+    {
+      "pattern": "**",
+      "optionSet": "nobrace",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "**/*.js",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        31,
+        32,
+        38,
+        39,
+        41,
+        85
+      ]
+    },
+    {
+      "pattern": "**/.*",
+      "optionSet": "nobrace",
+      "matches": [
+        18,
+        33,
+        34,
+        35,
+        36,
+        54
+      ]
+    },
+    {
+      "pattern": "**/*.*",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        31,
+        32,
+        38,
+        39,
+        40,
+        41,
+        46,
+        83,
+        85
+      ]
+    },
+    {
+      "pattern": "./*.js",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        21,
+        23,
+        85
+      ]
+    },
+    {
+      "pattern": ".*.js",
+      "optionSet": "nobrace",
+      "matches": [
+        36
+      ]
+    },
+    {
+      "pattern": "*.js.map",
+      "optionSet": "nobrace",
+      "matches": [
+        22
+      ]
+    },
+    {
+      "pattern": "**.js",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        21,
+        85
+      ]
+    },
+    {
+      "pattern": "a/*.js",
+      "optionSet": "nobrace",
+      "matches": [
+        31
+      ]
+    },
+    {
+      "pattern": "a/**/b",
+      "optionSet": "nobrace",
+      "matches": [
+        27,
+        29,
+        30
+      ]
+    },
+    {
+      "pattern": "a/**",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        86
+      ]
+    },
+    {
+      "pattern": "**/b",
+      "optionSet": "nobrace",
+      "matches": [
+        2,
+        27,
+        29,
+        30,
+        44
+      ]
+    },
+    {
+      "pattern": "a/*/b",
+      "optionSet": "nobrace",
+      "matches": [
+        29
+      ]
+    },
+    {
+      "pattern": "a/**/*.js",
+      "optionSet": "nobrace",
+      "matches": [
+        31,
+        32
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "optionSet": "nobrace",
+      "matches": [
+        41,
+        42
+      ]
+    },
+    {
+      "pattern": "**/*.min.js",
+      "optionSet": "nobrace",
+      "matches": [
+        21
+      ]
+    },
+    {
+      "pattern": "**/.git/**",
+      "optionSet": "nobrace",
+      "matches": [
+        37
+      ]
+    },
+    {
+      "pattern": "a*b",
+      "optionSet": "nobrace",
+      "matches": [
+        4,
+        6,
+        46,
+        47,
+        48,
+        49,
+        51,
+        65,
+        66,
+        68,
+        72,
+        73,
+        84,
+        87,
+        90
+      ]
+    },
+    {
+      "pattern": "*a",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        59
+      ]
+    },
+    {
+      "pattern": "a**",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        19,
+        20,
+        21,
+        22,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "/a",
+      "optionSet": "nobrace",
+      "matches": [
+        43
+      ]
+    },
+    {
+      "pattern": "/**",
+      "optionSet": "nobrace",
+      "matches": [
+        43,
+        44
+      ]
+    },
+    {
+      "pattern": "foo/",
+      "optionSet": "nobrace",
+      "matches": [
+        81
+      ]
+    },
+    {
+      "pattern": "*/",
+      "optionSet": "nobrace",
+      "matches": [
+        23,
+        81
+      ]
+    },
+    {
+      "pattern": "**/",
+      "optionSet": "nobrace",
+      "matches": [
+        0,
+        23,
+        24,
+        28,
+        81
+      ]
+    },
+    {
+      "pattern": "?",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "??",
+      "optionSet": "nobrace",
+      "matches": [
+        4,
+        7,
+        59,
+        63,
+        74
+      ]
+    },
+    {
+      "pattern": "a?c",
+      "optionSet": "nobrace",
+      "matches": [
+        5,
+        67
+      ]
+    },
+    {
+      "pattern": "*.?s",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        19,
+        21,
+        25,
+        26,
+        85
+      ]
+    },
+    {
+      "pattern": "foo",
+      "optionSet": "nobrace",
+      "matches": [
+        76
+      ]
+    },
+    {
+      "pattern": "a/b",
+      "optionSet": "nobrace",
+      "matches": [
+        27
+      ]
+    },
+    {
+      "pattern": "a.b",
+      "optionSet": "nobrace",
+      "matches": [
+        46
+      ]
+    },
+    {
+      "pattern": "a+b",
+      "optionSet": "nobrace",
+      "matches": [
+        47
+      ]
+    },
+    {
+      "pattern": "a$b",
+      "optionSet": "nobrace",
+      "matches": [
+        48
+      ]
+    },
+    {
+      "pattern": "a^b",
+      "optionSet": "nobrace",
+      "matches": [
+        49
+      ]
+    },
+    {
+      "pattern": "(a)",
+      "optionSet": "nobrace",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "a|b",
+      "optionSet": "nobrace",
+      "matches": [
+        51
+      ]
+    },
+    {
+      "pattern": "a/./b",
+      "optionSet": "nobrace",
+      "matches": [
+        52
+      ]
+    },
+    {
+      "pattern": "a/../b",
+      "optionSet": "nobrace",
+      "matches": [
+        53
+      ]
+    },
+    {
+      "pattern": "..",
+      "optionSet": "nobrace",
+      "matches": [
+        54
+      ]
+    },
+    {
+      "pattern": ".",
+      "optionSet": "nobrace",
+      "matches": [
+        55
+      ]
+    },
+    {
+      "pattern": "*.{js,ts}",
+      "optionSet": "nobrace",
+      "matches": []
+    },
+    {
+      "pattern": "{a,b}/*.js",
+      "optionSet": "nobrace",
+      "matches": []
+    },
+    {
+      "pattern": "a{,b}c",
+      "optionSet": "nobrace",
+      "matches": []
+    },
+    {
+      "pattern": "{1..3}",
+      "optionSet": "nobrace",
+      "matches": []
+    },
+    {
+      "pattern": "a/{b,c}/b",
+      "optionSet": "nobrace",
+      "matches": []
+    },
+    {
+      "pattern": "{a,b}",
+      "optionSet": "nobrace",
+      "matches": [
+        70
+      ]
+    },
+    {
+      "pattern": "foo{1,2}bar",
+      "optionSet": "nobrace",
+      "matches": [
+        77
+      ]
+    },
+    {
+      "pattern": "a{b",
+      "optionSet": "nobrace",
+      "matches": [
+        72
+      ]
+    },
+    {
+      "pattern": "a}b",
+      "optionSet": "nobrace",
+      "matches": [
+        73
+      ]
+    },
+    {
+      "pattern": "{}",
+      "optionSet": "nobrace",
+      "matches": [
+        74
+      ]
+    },
+    {
+      "pattern": "a{1}",
+      "optionSet": "nobrace",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "[abc]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        69
+      ]
+    },
+    {
+      "pattern": "[a-c]*",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        46,
+        47,
+        48,
+        49,
+        51,
+        63,
+        65,
+        66,
+        67,
+        68,
+        72,
+        73,
+        75,
+        83,
+        84,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "[!abc]",
+      "optionSet": "nobrace",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[^abc]",
+      "optionSet": "nobrace",
+      "matches": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[!]",
+      "optionSet": "nobrace",
+      "matches": [
+        58
+      ]
+    },
+    {
+      "pattern": "[]]",
+      "optionSet": "nobrace",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]]",
+      "optionSet": "nobrace",
+      "matches": [
+        60
+      ]
+    },
+    {
+      "pattern": "[\\]a]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        60
+      ]
+    },
+    {
+      "pattern": "a[\\]b]c",
+      "optionSet": "nobrace",
+      "matches": [
+        5
+      ]
+    },
+    {
+      "pattern": "[\\[\\]]",
+      "optionSet": "nobrace",
+      "matches": [
+        60,
+        61
+      ]
+    },
+    {
+      "pattern": "[!\\]]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        61,
+        62,
+        64,
+        88,
+        89,
+        91
+      ]
+    },
+    {
+      "pattern": "[a\\-z]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[-a]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[a-]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        62
+      ]
+    },
+    {
+      "pattern": "[*]",
+      "optionSet": "nobrace",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "[?]",
+      "optionSet": "nobrace",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "foo[/]bar",
+      "optionSet": "nobrace",
+      "matches": [
+        80
+      ]
+    },
+    {
+      "pattern": "[[:alpha:]]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "[[:digit:]]*",
+      "optionSet": "nobrace",
+      "matches": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[[:alpha:][:digit:]]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "pattern": "[![:alpha:]]",
+      "optionSet": "nobrace",
+      "matches": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:punct:]]",
+      "optionSet": "nobrace",
+      "matches": [
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        64
+      ]
+    },
+    {
+      "pattern": "[[:space:]]",
+      "optionSet": "nobrace",
+      "matches": [
+        14,
+        15
+      ]
+    },
+    {
+      "pattern": "[[:upper:][:lower:]]",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        9,
+        10
+      ]
+    },
+    {
+      "pattern": "!(*.md)",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*(a|b)",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "+(a|b)",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "pattern": "?(a|b)",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "@(a|b)",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2
+      ]
+    },
+    {
+      "pattern": "a!(b)c",
+      "optionSet": "nobrace",
+      "matches": [
+        7,
+        67
+      ]
+    },
+    {
+      "pattern": "!(foo)",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        77,
+        78,
+        79,
+        82,
+        83,
+        84,
+        85,
+        87,
+        90,
+        92
+      ]
+    },
+    {
+      "pattern": "*.!(js)",
+      "optionSet": "nobrace",
+      "matches": [
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        46,
+        83
+      ]
+    },
+    {
+      "pattern": "+([[:alpha:].])",
+      "optionSet": "nobrace",
+      "matches": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        25,
+        26,
+        35,
+        36,
+        46,
+        54,
+        55,
+        68,
+        76,
+        77
+      ]
+    },
+    {
+      "pattern": "!(*.d).ts",
+      "optionSet": "nobrace",
+      "matches": [
+        19
+      ]
+    },
+    {
+      "pattern": "@(*.js|*.ts)",
+      "optionSet": "nobrace",
+      "matches": [
+        16,
+        17,
+        18,
+        19,
+        21,
+        25,
+        26,
+        36,
+        85
+      ]
+    },
+    {
+      "pattern": "src/**/!(*.test).{js,ts}",
+      "optionSet": "nobrace",
+      "matches": []
+    },
+    {
+      "pattern": "!*.md",
+      "optionSet": "nobrace",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!a/*",
+      "optionSet": "nobrace",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!**/*.js",
+      "optionSet": "nobrace",
+      "matches": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        33,
+        34,
+        35,
+        36,
+        37,
+        40,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "pattern": "!!a",
+      "optionSet": "nobrace",
+      "matches": [
+        1
+      ]
+    },
+    {
+      "pattern": "\\*",
+      "optionSet": "nobrace",
+      "matches": [
+        56
+      ]
+    },
+    {
+      "pattern": "a\\*b",
+      "optionSet": "nobrace",
+      "matches": [
+        66
+      ]
+    },
+    {
+      "pattern": "\\?",
+      "optionSet": "nobrace",
+      "matches": [
+        57
+      ]
+    },
+    {
+      "pattern": "\\[a\\]",
+      "optionSet": "nobrace",
+      "matches": [
+        71
+      ]
+    },
+    {
+      "pattern": "a\\\\b",
+      "optionSet": "nobrace",
+      "matches": [
+        65
+      ]
+    },
+    {
+      "pattern": "\\!a",
+      "optionSet": "nobrace",
+      "matches": [
+        59
+      ]
+    }
+  ]
+}
