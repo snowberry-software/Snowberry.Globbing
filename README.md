@@ -72,7 +72,7 @@ string regex = new Glob("src/**/*.cs").ToRegexString();
   // info.BasePath == "src/lib", info.GlobPart == "**/*.cs", info.HasGlobstar == true
   ```
 
-- **Fast matching.** Literal text a pattern requires, such as the `.js` of `**/*.js`, is checked with ordinal string comparisons before the regex runs, so most non-matching inputs never reach the regex engine. Matching with an existing `Glob` does not allocate on .NET 10 unless `InputNormalizer` is set.
+- **Fast matching.** Common shapes such as `*.js`, `**/*.cs` and `src/**` are matched with string operations, without a regex. For other patterns, literal text the pattern requires, such as the `.ts` of `src/*/*.ts`, is checked with ordinal string comparisons first, so most non-matching inputs never reach the regex engine. `IsMatch` on an existing `Glob` does not allocate on .NET 10 unless `InputNormalizer` is set.
 
 ## How It Works
 
@@ -106,7 +106,7 @@ flowchart TD
 
 With several patterns, the checks before the ignore patterns run for each pattern in order, and the first one that matches wins. When a glob has many patterns, an index of required three-character substrings skips the patterns an input cannot match.
 
-Common shapes such as `*.js`, `**/*.cs`, `src/**` and plain names are matched with string operations, without running a regex. Most chains of wildcards, such as `*a*b*c`, compile to regexes that do not backtrack between the wildcards. A negated pattern such as `!**/node_modules/**` is matched by running the regex of its body and inverting the result, which lets the literal check skip most inputs there too. Only the regex source is public through `ToRegexString()`; the other steps are applied by `Glob` itself.
+Common shapes such as `*.js`, `**/*.cs`, `src/**` and plain names are matched with string operations, without running a regex. Most chains of wildcards, such as `*a*b*c`, compile to regexes that do not backtrack between the wildcards. A negated pattern such as `!**/node_modules/**` is matched by testing its body and inverting the result, so the string-operation and literal checks apply there too. Only the regex source is public through `ToRegexString()`; the other steps are applied by `Glob` itself.
 
 ## Pattern Syntax
 
@@ -125,7 +125,7 @@ Common shapes such as `*.js`, `**/*.cs`, `src/**` and plain names are matched wi
 | `!(a\|b)` | Anything except the alternatives |
 | `\*` | A literal `*` (any character can be escaped) |
 
-Wildcards do not match a leading `.` in a segment unless `MatchDotFiles` is set. An input that is exactly equal to the pattern always matches.
+Wildcards do not match a leading `.` in a segment unless `MatchDotFiles` is set. An input that is exactly equal to the pattern always matches that pattern; ignore patterns still apply.
 
 ## Options
 
@@ -211,10 +211,10 @@ if (!Glob.TryCreate(userPattern, options, out var glob, out var error))
 
 - **Reuse `Glob` instances.** Construction parses and compiles the pattern; matching does not. The static `Glob.IsMatch(input, pattern)` caches compiled patterns, but a long-lived instance is cheaper still.
 - **The pattern-list overload is not cached.** `Glob.IsMatch(input, patterns)` compiles all patterns on every call; create a `Glob` from the list instead.
-- **Interpreted regex by default.** `RegexOptions.Compiled` pays a large one-time IL-generation cost (hundreds of microseconds to milliseconds per pattern). Set `RegexOptions = RegexOptions.Compiled` only for a glob reused across tens of thousands of inputs or more.
-- **A match timeout has a small cost.** With `MatchTimeout` set, the regex engine checks the clock while matching, which made matching up to about 20% slower in benchmarks. The default `null` adds nothing.
-- **Many patterns.** A glob with dozens to thousands of patterns, such as a `.gitignore`, is indexed when it is created, which makes matching 4 to 30 times faster at 50 to 1,000 patterns and construction up to about 1.4 times slower.
-- **No allocations.** On .NET 10, `IsMatch` allocates nothing, including with ignore patterns, file-name matching and Windows separators, unless `InputNormalizer` is set. On .NET Framework, the `ReadOnlySpan<char>` overload avoids a string only when every pattern has a common shape.
+- **Interpreted regex by default.** `RegexOptions.Compiled` pays a large one-time IL-generation cost (hundreds of microseconds to milliseconds per pattern). Set `RegexOptions = RegexOptions.Compiled` only for a glob reused across tens of thousands of inputs or more. Patterns matched without a regex never build one, so the option only affects the others.
+- **A match timeout has a small cost.** With `MatchTimeout` set, the regex engine checks the clock while matching, which made patterns that run a regex up to about 20% slower in benchmarks. Patterns matched without a regex, and the default `null`, add nothing.
+- **Many patterns.** A glob with dozens to thousands of patterns, such as a `.gitignore`, is indexed when it is created, which makes matching 4 to 30 times faster at 24 to 1,000 patterns for a small extra construction cost.
+- **No allocations.** On .NET 10, `IsMatch` allocates nothing, including with ignore patterns, file-name matching and Windows separators, unless `InputNormalizer` is set. `Match` allocates only the normalized input when separators are converted. On .NET Framework, the `ReadOnlySpan<char>` overload avoids a string only when every pattern has a common shape.
 
 ## Pitfalls
 
