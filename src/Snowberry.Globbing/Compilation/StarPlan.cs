@@ -13,6 +13,7 @@ namespace Snowberry.Globbing.Compilation;
 /// <param name="AfterLeadingDot">Whether the star follows a dot that starts a path segment, so it may not match an empty or <c>.</c> remainder.</param>
 /// <param name="OneChar">Whether a single <c>*</c> that starts a segment or follows a leading dot requires one more character, as a lookahead.</param>
 /// <param name="MoreAfter">Whether a <see cref="StarForm.MiddleGlobstar"/> is followed by more nodes or sits in a nested sequence, which adds an end-of-input alternative.</param>
+/// <param name="BeforeDot">Whether a <see cref="StarForm.Star"/> is directly followed by a node written as a literal dot.</param>
 internal readonly record struct StarPlan(
     StarForm Form,
     int Last,
@@ -20,4 +21,5 @@ internal readonly record struct StarPlan(
     bool SegmentStart = false,
     bool AfterLeadingDot = false,
     bool OneChar = false,
-    bool MoreAfter = false);
+    bool MoreAfter = false,
+    bool BeforeDot = false);

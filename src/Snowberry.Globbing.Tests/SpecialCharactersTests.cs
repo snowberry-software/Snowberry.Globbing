@@ -601,4 +601,31 @@ public class SpecialCharactersTests
     {
         Glob.IsMatch(input, pattern).Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData("_", @"\_")]
+    [InlineData("é", @"\é")]
+    [InlineData("_", @"[\_]")]
+    [InlineData("é", @"[\é]")]
+    [InlineData("a_bc", @"a\_b*")]
+    public void EscapedNonAsciiOrUnderscoreLetter_MatchesItself(string input, string pattern)
+    {
+        var glob = new Glob(pattern);
+
+        glob.IsMatch(input).Should().BeTrue();
+        glob.ToRegexString().Should().NotContain(@"\_").And.NotContain(@"\é");
+    }
+
+    [Theory]
+    [InlineData(0x200C)]
+    [InlineData(0x200D)]
+    [InlineData(0x00E9)]
+    public void EscapedNonAsciiCharacter_CompilesToAValidRegex(int code)
+    {
+        string c = ((char)code).ToString();
+        var glob = new Glob(@"\" + c);
+
+        glob.IsMatch(c).Should().BeTrue();
+        glob.ToRegex().IsMatch(c).Should().BeTrue();
+    }
 }

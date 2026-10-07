@@ -40,6 +40,18 @@ public class MaliciousTests
         ex.Should().BeNull();
     }
 
+    // A "?" after an extended glob used to make its quantifier lazy, which hangs the .NET interpreter on these inputs.
+    [Theory(Timeout = 15_000)]
+    [InlineData("a/b", false)]
+    [InlineData("/b", false)]
+    [InlineData("b1", false)]
+    [InlineData("aab", true)]
+    [InlineData("b", true)]
+    public Task QuantifiedExtglobFollowedByQuestion_MatchesWithoutHanging(string input, bool expected)
+    {
+        return Task.Run(() => Glob.IsMatch(input, "?(+(*)?)b", new GlobOptions { PathStyle = GlobPathStyle.Posix }).Should().Be(expected), TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public void ShouldThrowErrorWhenPatternIsTooLong()
     {

@@ -12,6 +12,19 @@ public class PrefilterTests
         Glob.IsMatch(input, "*.js", s_Posix with { IgnoreCase = true }).Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData("xyzabc{1..2}def", "1|2", "2def")]
+    [InlineData("*xyzabc{1..2}def*", "?", "xyzabdef")]
+    public void BraceRangeExpander_Output_IsNotTreatedAsLiteralText(string pattern, string fragment, string input)
+    {
+        var options = s_Posix with { BraceRangeExpander = _ => fragment };
+        bool expected = new Glob(pattern, options).ToRegex().IsMatch(input);
+
+        expected.Should().BeTrue();
+        new Glob(pattern, options).IsMatch(input).Should().BeTrue();
+        new Glob([pattern, "**/a.b", "**/c.d", "e*/**"], options).IsMatch(input).Should().BeTrue();
+    }
+
     [Fact]
     public void IgnorePatternWhitespace_IgnoresLiteralSpaces()
     {
@@ -31,6 +44,20 @@ public class PrefilterTests
     public void LiteralText_DecidesWithoutChangingResults(string pattern, string input, bool expected)
     {
         Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(64)]
+    [InlineData(65)]
+    [InlineData(500)]
+    public void LongLiteralText_DecidesWithoutChangingResults(int length)
+    {
+        string literal = string.Concat(Enumerable.Repeat("ab", length)).Substring(0, length) + "z";
+        var glob = new Glob("*/" + literal + "/*", s_Posix);
+
+        glob.IsMatch("x/" + literal + "/y").Should().BeTrue();
+        glob.IsMatch("x/" + literal.Substring(0, length) + "/y").Should().BeFalse();
+        glob.IsMatch("x/" + literal.Substring(0, 64) + "/y").Should().BeFalse();
     }
 
     [Theory]
@@ -91,5 +118,34 @@ public class PrefilterTests
     public void WindowsStyle_AcceptsTrailingBackslash()
     {
         Glob.IsMatch("b.js\\", "*.js", new GlobOptions { PathStyle = GlobPathStyle.Windows }).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("*b*c*d", "bcd", true)]
+    [InlineData("*b*c*d", "cbd", false)]
+    [InlineData("*ab*b", "abb", true)]
+    [InlineData("*ab*b", "ab", false)]
+    [InlineData("a*a*a", "aaa", true)]
+    [InlineData("a*a*a", "aa", false)]
+    [InlineData("a/**/b/**/c/**/d", "a/b/c/d", true)]
+    [InlineData("a/**/b/**/c/**/d", "a/b/x/c/y/d", true)]
+    [InlineData("a/**/b/**/c/**/d", "a/c/b/d", false)]
+    [InlineData("x*.min*.js", "x.min.js/", false)]
+    [InlineData("**/x*.min*", "a/x.min/", true)]
+    public void LiteralRuns_InOrder_DecideWithoutChangingResults(string pattern, string input, bool expected)
+    {
+        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input.AsSpan(), pattern, s_Posix).Should().Be(expected);
+        new Glob(pattern, s_Posix).ToRegex().IsMatch(input).Should().Be(expected);
+    }
+
+    [Fact]
+    public void LiteralRuns_MissingMiddleRun_RejectsWithoutRunningTheRegex()
+    {
+        // Each globstar may stop at any "/b" segment, so the regex alone backtracks polynomially; the run "c" is missing.
+        var glob = new Glob("a/**/b/**/b/**/c/**/d", s_Posix with { MatchTimeout = TimeSpan.FromMilliseconds(200) });
+        string input = "a" + string.Concat(Enumerable.Repeat("/b", 2000)) + "/x/d";
+
+        glob.IsMatch(input).Should().BeFalse();
     }
 }

@@ -221,6 +221,17 @@ public class GlobTests
     }
 
     [Fact]
+    public void IsMatch_InputEqualToPatternAfterSeparatorConversion_ReturnsTrue()
+    {
+        // "[ab]c" does not match its own text; only the equal-input rule does.
+        var glob = new Glob("x/[ab]c", new GlobOptions { PathStyle = GlobPathStyle.Windows, BracketMode = GlobBracketMode.CharacterClass });
+
+        glob.IsMatch(@"x\[ab]c").Should().BeTrue();
+        glob.IsMatch(@"x\[ab]c".AsSpan()).Should().BeTrue();
+        glob.IsMatch(@"x\[ab]d").Should().BeFalse();
+    }
+
+    [Fact]
     public void Match_WithEmptyInput_Fails()
     {
         var result = new Glob("*.js").Match("");
@@ -245,6 +256,19 @@ public class GlobTests
     public void ToRegexString_ForSinglePattern_EqualsGeneratedSource()
     {
         new Glob("*.js", s_Posix).ToRegexString().Should().Be(GlobCompiler.CompileRegexSource("*.js", s_Posix));
+    }
+
+    [Fact]
+    public void IsMatch_Static_PastCacheCapacity_KeepsMatching()
+    {
+        for (int round = 0; round < 2; round++)
+        {
+            for (int i = 0; i < 600; i++)
+            {
+                Glob.IsMatch($"cache{i}.js", $"cache{i}*.js").Should().BeTrue();
+                Glob.IsMatch($"cache{i}.ts", $"cache{i}*.js").Should().BeFalse();
+            }
+        }
     }
 
     [Fact]
@@ -302,6 +326,31 @@ public class GlobTests
         var glob = new Glob("*.js");
 
         glob.ToRegex().Should().BeSameAs(glob.ToRegex());
+    }
+
+    [Fact]
+    public void ToRegex_NegatedPattern_IsBuiltOnceWithTheOptionsOfTheGlob()
+    {
+        var glob = new Glob("!*.md", new GlobOptions { IgnoreCase = true, MatchTimeout = TimeSpan.FromSeconds(3) });
+        glob.IsMatch("a.js").Should().BeTrue();
+
+        var regex = glob.ToRegex();
+
+        regex.Should().BeSameAs(glob.ToRegex());
+        regex.ToString().Should().Be(glob.ToRegexString());
+        regex.Options.HasFlag(RegexOptions.IgnoreCase).Should().BeTrue();
+        regex.MatchTimeout.Should().Be(TimeSpan.FromSeconds(3));
+        regex.IsMatch("A.MD").Should().BeFalse();
+        regex.IsMatch("a.js").Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToRegex_MultiplePatternsStartingWithNegation_UsesTheOptionsOfTheGlob()
+    {
+        var regex = new Glob(["!*.md", "*.js"], new GlobOptions { IgnoreCase = true, MatchTimeout = TimeSpan.FromSeconds(3) }).ToRegex();
+
+        regex.Options.HasFlag(RegexOptions.IgnoreCase).Should().BeTrue();
+        regex.MatchTimeout.Should().Be(TimeSpan.FromSeconds(3));
     }
 
     [Theory]

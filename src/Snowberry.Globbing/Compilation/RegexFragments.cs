@@ -23,17 +23,21 @@ internal sealed class RegexFragments
         NoDot = matchDotFiles ? "" : Chars.NoDot;
         SegmentStartQmark = matchDotFiles ? Chars.Qmark : Chars.QmarkNoDot;
         // Any number of segments, none starting with an excluded dot: a dot at the start of input or after a
-        // separator, or a "." or ".." segment when dot files match. Separators delimit the runs, so matching is linear.
+        // separator, or a "." or ".." segment when dot files match.
         string excluded = matchDotFiles ? Chars.DotsSlash : Chars.DotLiteral;
+        // It also matches nothing at a leading dot, so a negation of it excludes dot files.
         Globstar = string.Concat(
-            "(", Capture, "(?!^", excluded, ")", Chars.Qmark, "*(?:", Chars.SlashLiteral, "(?!", excluded, ")", Chars.Qmark, "*)*)");
+            "(", Capture, "(?:(?!^", excluded, ")", Chars.Qmark, "*(?:", Chars.SlashLiteral, "(?!", excluded, ")", Chars.Qmark, "*)*|^(?=", excluded, ")))");
         // Greedy and lazy stars accept the same inputs; lazy ones only decide what a capture group holds.
         string lazy = captureGroups ? "?" : "";
         BashStar = string.Concat(RegexSyntax.c_AnyNonLineTerminator, "*", lazy);
         Star = bash ? Globstar : captureGroups ? string.Concat("(", Chars.Star, lazy, ")") : Chars.Star;
         string shapeStar = bash ? BashStar : Chars.Star + lazy;
         ShapeStar = captureGroups ? string.Concat("(", shapeStar, ")") : shapeStar;
-        LeadingGlobstar = string.Concat("(?:", Globstar, Chars.SlashLiteral, ")?");
+        SegmentLoops = !captureGroups && !matchDotFiles;
+        Segment = string.Concat(Chars.NoDot, Chars.Star);
+        LeadingSegments = string.Concat("(?:", Segment, Chars.SlashLiteral, ")*");
+        LeadingGlobstar = SegmentLoops ? LeadingSegments : string.Concat("(?:", Globstar, Chars.SlashLiteral, ")?");
         AlternativeLeadingGlobstar = string.Concat("(?:^|", Chars.SlashLiteral, "|", Globstar, Chars.SlashLiteral, ")");
         OptionalSlash = string.Concat(Chars.SlashLiteral, "?");
     }
@@ -77,6 +81,21 @@ internal sealed class RegexFragments
 
     /// <summary>Gets the regex for <c>**/</c> at the start of an anchored pattern: nothing, or any segments followed by a separator.</summary>
     public string LeadingGlobstar { get; }
+
+    /// <summary>
+    /// Gets any number of <see cref="Segment"/>s, each followed by a separator: the regex for a dot-guarded <c>**/</c> when
+    /// <see cref="SegmentLoops"/> is set.
+    /// </summary>
+    public string LeadingSegments { get; }
+
+    /// <summary>Gets one path segment that does not start with a dot, possibly empty: the repeated part of <see cref="LeadingSegments"/>.</summary>
+    public string Segment { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether a dot-guarded globstar is written as a loop of <see cref="Segment"/>s: without
+    /// <see cref="GlobOptions.CaptureGroups"/> and <see cref="GlobOptions.MatchDotFiles"/>.
+    /// </summary>
+    public bool SegmentLoops { get; }
 
     /// <summary>Gets the lookahead that keeps a segment from starting with a dot, or an empty string with <see cref="GlobOptions.MatchDotFiles"/>.</summary>
     public string NoDot { get; }

@@ -15,6 +15,7 @@ internal sealed class GlobChars
         SlashLiteral = slash;
         Qmark = string.Concat("[^", separators, "]");
         QmarkNoDot = string.Concat("[^.", separators, "]");
+        SegmentFirstChar = string.Concat("[^.", separators, "\\n\\r\\u2028\\u2029]");
         Star = Qmark + "*";
         DotsSlash = string.Concat("\\.{1,2}(?:", slash, "|", RegexSyntax.c_EndOfInput, ")");
         NoDots = string.Concat("(?!(?:^|", slash, ")", DotsSlash, ")");
@@ -53,6 +54,9 @@ internal sealed class GlobChars
     /// <summary>Gets a lookahead requiring one more character that is not a line terminator.</summary>
     public string OneChar { get; } = "(?=" + RegexSyntax.c_AnyNonLineTerminator + ")";
 
+    /// <summary>Gets a lookahead requiring one more character that is neither a dot nor a line terminator.</summary>
+    public string OneCharNoDot { get; } = "(?=[^.\\n\\r\\u2028\\u2029])";
+
     /// <summary>Gets a literal plus.</summary>
     public string PlusLiteral { get; } = "\\+";
 
@@ -64,6 +68,9 @@ internal sealed class GlobChars
 
     /// <summary>Gets a single character other than a dot or separator.</summary>
     public string QmarkNoDot { get; }
+
+    /// <summary>Gets a single character other than a dot, separator or line terminator.</summary>
+    public string SegmentFirstChar { get; }
 
     /// <summary>Gets a path separator.</summary>
     public string SlashLiteral { get; }

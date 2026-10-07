@@ -141,20 +141,21 @@ internal ref struct GlobSyntaxParser
     /// <returns>The number of prefix tokens, or 0 if the group has no regex prefix.</returns>
     private readonly int GroupPrefixLength(int start, int end)
     {
-        if (start + 1 >= end || _tokens[start].Kind != GlobTokenKind.Question || _tokens[start + 1].Kind != GlobTokenKind.Literal)
+        // Only unescaped characters form a prefix, so (?\!a) stays literal.
+        if (start + 1 >= end || _tokens[start].Kind != GlobTokenKind.Question || !IsPlainLiteral(start + 1))
             return 0;
 
         char c = _tokens[start + 1].Value;
         if (c is ':' or '=' or '!')
             return 2;
 
-        if (c != '<' || start + 2 >= end || _tokens[start + 2].Kind != GlobTokenKind.Literal)
+        if (c != '<' || start + 2 >= end || !IsPlainLiteral(start + 2))
             return 0;
 
         if (_tokens[start + 2].Value is '=' or '!')
             return 3;
 
-        for (int i = start + 2; i < end && _tokens[i].Kind == GlobTokenKind.Literal; i++)
+        for (int i = start + 2; i < end && IsPlainLiteral(i); i++)
         {
             char n = _tokens[i].Value;
             if (n == '>')
@@ -165,6 +166,16 @@ internal ref struct GlobSyntaxParser
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Determines whether the token at <paramref name="index"/> is a literal written without an escape.
+    /// </summary>
+    /// <param name="index">The token index.</param>
+    /// <returns><see langword="true"/> if the token is a <see cref="LiteralForm.Plain"/> literal; otherwise, <see langword="false"/>.</returns>
+    private readonly bool IsPlainLiteral(int index)
+    {
+        return _tokens[index].Kind == GlobTokenKind.Literal && _tokens[index].Form == LiteralForm.Plain;
     }
 
     /// <summary>

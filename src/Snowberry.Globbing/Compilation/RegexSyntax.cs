@@ -40,9 +40,20 @@ internal static class RegexSyntax
     /// </param>
     public static void AppendLiteral(ref ValueStringBuilder sb, char c, LiteralForm form)
     {
-        if (form == LiteralForm.Escaped || (form == LiteralForm.Plain && IsSpecial(c)))
+        if (form == LiteralForm.Escaped ? KeepsEscape(c) : form == LiteralForm.Plain && IsSpecial(c))
             sb.Append('\\');
         sb.Append(c);
+    }
+
+    /// <summary>
+    /// Determines whether an escaped <paramref name="c"/> is written with its backslash.
+    /// </summary>
+    /// <remarks>An ASCII character other than <c>_</c> keeps it, so <c>\d</c> stays regex syntax; <c>_</c> and non-ASCII characters are written as themselves.</remarks>
+    /// <param name="c">The escaped character.</param>
+    /// <returns><see langword="true"/> if the backslash is written; otherwise, <see langword="false"/>.</returns>
+    public static bool KeepsEscape(char c)
+    {
+        return c < 0x80 && c != '_';
     }
 
     /// <summary>

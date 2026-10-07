@@ -407,4 +407,25 @@ public class NegationTests
         var options = new GlobOptions { Negation = false };
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
+
+    // A globstar matches nothing at a leading dot too, so a negation of it excludes dot files as well.
+    [Theory]
+    [InlineData("!(**)a", ".a", false)]
+    [InlineData("!(**)a", ".ba", false)]
+    [InlineData("!(**)a", "ba", false)]
+    [InlineData("!(**)", ".a", true)]
+    [InlineData("!(foo)a", ".a", true)]
+    public void NegatedGlobstarExtglob_FollowedByText_NeverMatches(string pattern, string input, bool expected)
+    {
+        Glob.IsMatch(input, pattern, new GlobOptions { PathStyle = GlobPathStyle.Posix }).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData(".a")]
+    [InlineData("a")]
+    public void NegatedGlobstar_WithMatchSubstring_NeverMatches(string input)
+    {
+        Glob.IsMatch(input, "!**", new GlobOptions { PathStyle = GlobPathStyle.Posix, MatchSubstring = true }).Should().BeFalse();
+    }
 }
