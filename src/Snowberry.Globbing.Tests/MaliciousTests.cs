@@ -49,7 +49,7 @@ public class MaliciousTests
     [InlineData("b", true)]
     public Task QuantifiedExtglobFollowedByQuestion_MatchesWithoutHanging(string input, bool expected)
     {
-        return Task.Run(() => Glob.IsMatch(input, "?(+(*)?)b", new GlobOptions { PathStyle = GlobPathStyle.Posix }).Should().Be(expected), TestContext.Current.CancellationToken);
+        return Task.Run(() => Glob.IsMatch(input, "?(+(*)?)b", TestOptions.Posix).Should().Be(expected), TestContext.Current.CancellationToken);
     }
 
     [Fact]

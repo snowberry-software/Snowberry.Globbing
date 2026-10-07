@@ -18,13 +18,17 @@ internal static class GlobCompiler
     /// <param name="pattern">The non-empty glob pattern.</param>
     /// <param name="options">The options.</param>
     /// <param name="findKeys"><see langword="true"/> to also find the key sets of a pattern that is not negated, for <see cref="PatternIndex"/>.</param>
+    /// <param name="deferShapeHint">
+    /// <see langword="true"/> to leave out the hint of a compact shape that starts with <c>*</c>, which never has a prefix, and set
+    /// <see cref="GlobCompilation.HintDeferred"/> instead; <see cref="FindDeferredHint"/> finds it.
+    /// </param>
     /// <returns>
     /// The compilation. <see cref="GlobCompilation.PositiveSource"/> is set only for a negated pattern when neither
     /// <see cref="GlobOptions.MatchSubstring"/> nor <see cref="RegexOptions.Multiline"/> or <see cref="RegexOptions.RightToLeft"/> is set;
     /// the hint is then computed for that positive source, and is <see langword="null"/> for a negated pattern under those options.
     /// </returns>
     /// <exception cref="GlobParseException"><paramref name="pattern"/> is too long, too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
-    public static GlobCompilation Compile(string pattern, GlobOptions options, bool findKeys = false)
+    public static GlobCompilation Compile(string pattern, GlobOptions options, bool findKeys = false, bool deferShapeHint = false)
     {
         pattern = Prepare(pattern, options);
         int offset = PatternPrefix.BodyStart(pattern.AsSpan(), options, out bool negated);
@@ -32,8 +36,21 @@ internal static class GlobCompiler
         // A negated whole-input match is "no line terminator and the body does not match", which lets the matcher run
         // the plain body, with its hint, instead of a lookahead. Under these options the outer anchors mean something else.
         bool positive = negated && !options.MatchSubstring && (options.RegexOptions & (RegexOptions.Multiline | RegexOptions.RightToLeft)) == 0;
-        string source = EmitSource(pattern, offset, negated, options, fastPaths: true, analyze: !negated || positive, findKeys, out var hint, out string? positiveSource, out ulong[][]? keyWindows);
-        return new GlobCompilation(source, positiveSource, hint, keyWindows);
+        string source = EmitSource(pattern, offset, negated, options, fastPaths: true, analyze: !negated || positive, findKeys, deferShapeHint, out var hint, out bool hintDeferred, out string? positiveSource, out ulong[][]? keyWindows);
+        return new GlobCompilation(source, positiveSource, hint, keyWindows, hintDeferred);
+    }
+
+    /// <summary>
+    /// Finds the hint that <see cref="Compile"/> left out because <see cref="GlobCompilation.HintDeferred"/> is set.
+    /// </summary>
+    /// <param name="pattern">The glob pattern passed to <see cref="Compile"/>.</param>
+    /// <param name="options">The options passed to <see cref="Compile"/>.</param>
+    /// <returns>The hint, or <see langword="null"/> if there is none.</returns>
+    public static LiteralHint? FindDeferredHint(string pattern, GlobOptions options)
+    {
+        pattern = Prepare(pattern, options);
+        int offset = PatternPrefix.BodyStart(pattern.AsSpan(), options, out _);
+        return LiteralHint.Find(pattern.AsSpan(offset), options, pattern, offset, plain: false);
     }
 
     /// <summary>
@@ -48,7 +65,7 @@ internal static class GlobCompiler
     {
         pattern = Prepare(pattern, options);
         int offset = PatternPrefix.BodyStart(pattern.AsSpan(), options, out bool negated);
-        return EmitSource(pattern, offset, negated, options, fastPaths, analyze: false, findKeys: false, out _, out _, out _);
+        return EmitSource(pattern, offset, negated, options, fastPaths, analyze: false, findKeys: false, deferShapeHint: false, out _, out _, out _, out _);
     }
 
     /// <summary>
@@ -64,7 +81,7 @@ internal static class GlobCompiler
     /// <exception cref="GlobParseException">The pattern is too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
     public static void EmitBody(ReadOnlySpan<char> pattern, GlobOptions options, string source, int offset, ref ValueStringBuilder sb, bool allowShapes, bool allowPlain)
     {
-        EmitBody(pattern, options, source, offset, ref sb, allowShapes, allowPlain, findHint: false, findKeys: false, out _);
+        EmitBody(pattern, options, source, offset, ref sb, allowShapes, allowPlain, findHint: false, findKeys: false, deferShapeHint: false, out _, out _);
     }
 
     /// <summary>
@@ -80,16 +97,22 @@ internal static class GlobCompiler
     /// <param name="allowPlain"><see langword="true"/> to treat a pattern without structural syntax as plain text with wildcards.</param>
     /// <param name="findHint"><see langword="true"/> to find the literal hint of <paramref name="pattern"/>.</param>
     /// <param name="findKeys"><see langword="true"/> to find the key sets of <paramref name="pattern"/>.</param>
+    /// <param name="deferShapeHint"><see langword="true"/> to leave out the hint of a compact shape that starts with <c>*</c>.</param>
+    /// <param name="hintDeferred">Whether the hint was left out because of <paramref name="deferShapeHint"/>.</param>
     /// <param name="keyWindows">The key sets, or <see langword="null"/> if none were requested or found.</param>
     /// <returns>The hint, or <see langword="null"/> if none was requested or found.</returns>
     /// <exception cref="GlobParseException">The pattern is too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
-    private static LiteralHint? EmitBody(ReadOnlySpan<char> pattern, GlobOptions options, string source, int offset, ref ValueStringBuilder sb, bool allowShapes, bool allowPlain, bool findHint, bool findKeys, out ulong[][]? keyWindows)
+    private static LiteralHint? EmitBody(ReadOnlySpan<char> pattern, GlobOptions options, string source, int offset, ref ValueStringBuilder sb, bool allowShapes, bool allowPlain, bool findHint, bool findKeys, bool deferShapeHint, out bool hintDeferred, out ulong[][]? keyWindows)
     {
         keyWindows = null;
+        hintDeferred = false;
         bool plain = allowPlain && IsPlain(pattern);
         bool shape = allowShapes && TryEmitShape(pattern, options, ref sb);
         if (shape && !findKeys)
-            return findHint ? LiteralHint.Find(pattern, options, source, offset, plain) : null;
+        {
+            hintDeferred = findHint && deferShapeHint && pattern[0] == '*';
+            return findHint && !hintDeferred ? LiteralHint.Find(pattern, options, source, offset, plain) : null;
+        }
 
         var tree = GlobSyntaxTree.Parse(pattern, options, source, offset, plain);
         try
@@ -126,12 +149,14 @@ internal static class GlobCompiler
     /// <see cref="GlobOptions.MatchSubstring"/>, the positive source <c>^(?:body)</c> plus <see cref="RegexSyntax.c_EndOfInput"/>, which the
     /// negated source contains verbatim.</param>
     /// <param name="findKeys"><see langword="true"/> to find the key sets when <paramref name="analyze"/> is set.</param>
+    /// <param name="deferShapeHint"><see langword="true"/> to leave out the hint of a compact shape that starts with <c>*</c>.</param>
     /// <param name="hint">The literal hint, or <see langword="null"/> if <paramref name="analyze"/> is <see langword="false"/> or none is found.</param>
+    /// <param name="hintDeferred">Whether the hint was left out because of <paramref name="deferShapeHint"/>.</param>
     /// <param name="positiveSource">The positive source of a negated pattern, or <see langword="null"/>.</param>
     /// <param name="keyWindows">The key sets of a pattern that is not negated when <paramref name="findKeys"/> is set, or <see langword="null"/>.</param>
     /// <returns>The regex source.</returns>
     /// <exception cref="GlobParseException">The pattern is too deeply nested, or has unbalanced delimiters with <see cref="GlobOptions.StrictBrackets"/>.</exception>
-    private static string EmitSource(string pattern, int offset, bool negated, GlobOptions options, bool fastPaths, bool analyze, bool findKeys, out LiteralHint? hint, out string? positiveSource, out ulong[][]? keyWindows)
+    private static string EmitSource(string pattern, int offset, bool negated, GlobOptions options, bool fastPaths, bool analyze, bool findKeys, bool deferShapeHint, out LiteralHint? hint, out bool hintDeferred, out string? positiveSource, out ulong[][]? keyWindows)
     {
         bool shapeCandidate = fastPaths && pattern[0] is '.' or '*';
         var body = pattern.AsSpan(offset);
@@ -146,7 +171,7 @@ internal static class GlobCompiler
             sb.Append('^');
         sb.Append("(?:");
 
-        hint = EmitBody(body, options, pattern, offset, ref sb, allowShapes: shapeCandidate && !negated, allowPlain: fastPaths && !negated, findHint: analyze, findKeys: findKeys && analyze && !negated, out keyWindows);
+        hint = EmitBody(body, options, pattern, offset, ref sb, allowShapes: shapeCandidate && !negated, allowPlain: fastPaths && !negated, findHint: analyze, findKeys: findKeys && analyze && !negated, deferShapeHint, out hintDeferred, out keyWindows);
 
         sb.Append(')');
         if (!options.MatchSubstring)
@@ -212,14 +237,15 @@ internal static class GlobCompiler
     private static bool TryEmitShape(ReadOnlySpan<char> pattern, GlobOptions options, ref ValueStringBuilder sb)
     {
         int start = sb.Length;
-        if (!TryEmitShapeCore(pattern, options, RegexFragments.For(options), beforeDot: false, ref sb))
+        var f = RegexFragments.For(options);
+        if (!TryEmitShapeCore(pattern, options, f, beforeDot: false, ref sb))
         {
             sb.Length = start;
             return false;
         }
 
         if (!options.StrictSlashes)
-            sb.Append(RegexFragments.For(options).OptionalSlash);
+            sb.Append(f.OptionalSlash);
         return true;
     }
 
@@ -240,15 +266,11 @@ internal static class GlobCompiler
     private static bool TryEmitShapeCore(ReadOnlySpan<char> pattern, GlobOptions options, RegexFragments f, bool beforeDot, ref ValueStringBuilder sb)
     {
         var chars = f.Chars;
-        string nodot = options.MatchDotFiles ? chars.NoDots : chars.NoDot;
-        string slashDot = options.MatchDotFiles ? chars.NoDotsSlash : chars.NoDot;
+        string nodot = f.ShapeStartGuard;
+        string slashDot = f.SegmentGuard;
         string star = f.ShapeStar;
         string globstar = options.Globstar ? f.Globstar : star;
-
-        // A dot-guarded star that must match a character.
-        string guardedStar = options.MatchDotFiles ? ""
-            : beforeDot && !options.CaptureGroups && !options.BashCompatibility ? chars.SegmentFirstChar + star
-            : chars.OneCharNoDot + star;
+        string guardedStar = beforeDot ? f.GuardedShapeStarBeforeDot : f.GuardedShapeStar;
 
         switch (pattern)
         {

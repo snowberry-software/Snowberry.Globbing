@@ -112,7 +112,7 @@ public class RegexFeaturesTests
     [InlineData("a1", "[[:alpha:]]+", false)]
     public void Regex_PosixClassWithPlusQuantifier(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, new GlobOptions { PosixClasses = true }).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]

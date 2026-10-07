@@ -2,6 +2,7 @@ using System;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Snowberry.Globbing.Compilation;
+using Snowberry.Globbing.Utilities;
 
 namespace Snowberry.Globbing;
 
@@ -17,7 +18,12 @@ internal sealed class CompiledPattern
 
     private const string c_Escape = @"\";
 
-    private static readonly char[] s_LineTerminators = [(char)0x0A, (char)0x0D, (char)0x2028, (char)0x2029];
+#if NET
+    // Without a prefix, the hint of a regex-free pattern is never used, so it is found only for the regex.
+    private const bool c_DeferShapeHint = true;
+#else
+    private const bool c_DeferShapeHint = false;
+#endif
 
     private readonly RegexFreeMatcher? _fast;
     private readonly RegexFreeMatcher? _fastPositive;
@@ -38,7 +44,7 @@ internal sealed class CompiledPattern
     /// <exception cref="GlobParseException"><paramref name="pattern"/> cannot be compiled, or its regex is invalid or unsupported with <paramref name="regexOptions"/>.</exception>
     public CompiledPattern(string pattern, GlobOptions options, RegexOptions regexOptions, bool findKeys, out ulong[][]? keyWindows)
     {
-        var compilation = GlobCompiler.Compile(pattern, options, findKeys);
+        var compilation = GlobCompiler.Compile(pattern, options, findKeys, c_DeferShapeHint);
         keyWindows = compilation.KeyWindows;
         Pattern = pattern;
         Source = compilation.Source;
@@ -50,6 +56,8 @@ internal sealed class CompiledPattern
         try
         {
             _fast = RegexFreeMatcher.TryCreate(Source, regexOptions);
+            if (compilation.HintDeferred && _fast == null)
+                _hint = GlobCompiler.FindDeferredHint(pattern, options);
 
             // A literal prefix, and on netstandard2.0 inner text, rejects inputs more cheaply than the regex-free matcher.
 #if NET
@@ -64,10 +72,10 @@ internal sealed class CompiledPattern
             // Built on first use unless the pattern has escapes or verbatim regex text, or the options change how the regex is read.
             bool verbatim = options.BraceRangeExpander != null || options.Unescape || pattern.Contains(c_Escape) || (regexOptions & ~c_NeutralOptions) != 0;
             if (verbatim || (_fast == null && positiveSource == null))
-                _regex = Create(Source, regexOptions, _matchTimeout);
+                _regex = CreateRegex(Source, regexOptions, _matchTimeout);
 
             if (positiveSource != null && (verbatim || _fastPositive == null))
-                _positive = Create(positiveSource, regexOptions, _matchTimeout);
+                _positive = CreateRegex(positiveSource, regexOptions, _matchTimeout);
         }
         catch (ArgumentException e)
         {
@@ -86,28 +94,6 @@ internal sealed class CompiledPattern
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="CompiledPattern"/> class without its key sets.
-    /// </summary>
-    /// <param name="pattern">The glob pattern.</param>
-    /// <param name="options">The options.</param>
-    /// <param name="regexOptions">The options of the regex.</param>
-    /// <exception cref="GlobParseException"><paramref name="pattern"/> cannot be compiled, or its regex is invalid or unsupported with <paramref name="regexOptions"/>.</exception>
-    public CompiledPattern(string pattern, GlobOptions options, RegexOptions regexOptions)
-        : this(pattern, options, regexOptions, findKeys: false, out _)
-    {
-    }
-
-    /// <summary>
-    /// Determines whether <paramref name="input"/> contains a line terminator: line feed, carriage return, line separator or paragraph separator.
-    /// </summary>
-    /// <param name="input">The input to inspect.</param>
-    /// <returns><see langword="true"/> if <paramref name="input"/> contains a line terminator; otherwise, <see langword="false"/>.</returns>
-    private static bool HasLineTerminator(ReadOnlySpan<char> input)
-    {
-        return input.IndexOfAny(s_LineTerminators) >= 0;
-    }
-
-    /// <summary>
     /// Builds a regex, with the default match timeout unless <paramref name="matchTimeout"/> is set.
     /// </summary>
     /// <param name="source">The regex source.</param>
@@ -116,7 +102,7 @@ internal sealed class CompiledPattern
     /// <returns>The regex.</returns>
     /// <exception cref="ArgumentException"><paramref name="source"/> is not a valid regex.</exception>
     /// <exception cref="NotSupportedException">The regex is not supported with <paramref name="regexOptions"/>.</exception>
-    private static Regex Create(string source, RegexOptions regexOptions, TimeSpan? matchTimeout)
+    public static Regex CreateRegex(string source, RegexOptions regexOptions, TimeSpan? matchTimeout)
     {
         return matchTimeout is { } timeout ? new Regex(source, regexOptions, timeout) : new Regex(source, regexOptions);
     }
@@ -133,12 +119,12 @@ internal sealed class CompiledPattern
             return (_fastPrefix == null || _fastPrefix.IsSatisfiedBy(input)) && _fast.IsMatch(input.AsSpan());
 
         if (_fastPositive != null)
-            return !HasLineTerminator(input.AsSpan()) && !_fastPositive.IsMatch(input.AsSpan());
+            return !LineTerminators.Any(input.AsSpan()) && !_fastPositive.IsMatch(input.AsSpan());
 
         if (_positive == null)
             return (_hint == null || _hint.IsSatisfiedBy(input)) && _regex!.IsMatch(input);
 
-        return !HasLineTerminator(input.AsSpan()) && !((_hint == null || _hint.IsSatisfiedBy(input)) && _positive.IsMatch(input));
+        return !LineTerminators.Any(input.AsSpan()) && !((_hint == null || _hint.IsSatisfiedBy(input)) && _positive.IsMatch(input));
     }
 
     /// <summary>
@@ -154,13 +140,13 @@ internal sealed class CompiledPattern
             return (_fastPrefix == null || _fastPrefix.IsSatisfiedBy(input)) && _fast.IsMatch(input);
 
         if (_fastPositive != null)
-            return !HasLineTerminator(input) && !_fastPositive.IsMatch(input);
+            return !LineTerminators.Any(input) && !_fastPositive.IsMatch(input);
 
 #if NET7_0_OR_GREATER
         if (_positive == null)
             return (_hint == null || _hint.IsSatisfiedBy(input)) && _regex!.IsMatch(input);
 
-        return !HasLineTerminator(input) && !((_hint == null || _hint.IsSatisfiedBy(input)) && _positive.IsMatch(input));
+        return !LineTerminators.Any(input) && !((_hint == null || _hint.IsSatisfiedBy(input)) && _positive.IsMatch(input));
 #else
         return IsMatch(input.ToString());
 #endif
@@ -179,7 +165,7 @@ internal sealed class CompiledPattern
     public string Pattern { get; }
 
     /// <summary>Gets the regex of the pattern, built on first use when matching does not need it; every caller gets the same instance.</summary>
-    public Regex Regex => _regex ?? Interlocked.CompareExchange(ref _regex, Create(Source, RegexOptions, _matchTimeout), null) ?? _regex;
+    public Regex Regex => _regex ?? Interlocked.CompareExchange(ref _regex, CreateRegex(Source, RegexOptions, _matchTimeout), null) ?? _regex;
 
     /// <summary>Gets the options of the regex.</summary>
     public RegexOptions RegexOptions { get; }

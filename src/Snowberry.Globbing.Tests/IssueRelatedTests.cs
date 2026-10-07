@@ -56,7 +56,7 @@ public class IssueRelatedTests
     [InlineData("a\\b", "a?b", true)]
     public void QuestionMarkShouldMatchBackslashWhenWindowsDisabled(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, new GlobOptions { PathStyle = GlobPathStyle.Posix }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -66,7 +66,7 @@ public class IssueRelatedTests
     [InlineData("a\\b", "a?b", false)]
     public void QuestionMarkShouldNotMatchSlashes(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, new GlobOptions { PathStyle = GlobPathStyle.Windows }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]

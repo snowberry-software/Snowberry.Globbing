@@ -113,10 +113,7 @@ internal readonly ref struct RegexEmitter
     {
         if (node.Value == '@')
         {
-            sb.Append('(');
-            sb.Append(_f.Capture);
-            EmitAlternatives(index, ref sb);
-            sb.Append(')');
+            EmitGroup(index, _f.Capture.AsSpan(), ref sb);
             return;
         }
 
@@ -128,21 +125,14 @@ internal readonly ref struct RegexEmitter
 
         sb.Append(node.Value == '!' ? "(?:(?!(?:" : "(?:");
         EmitAlternatives(index, ref sb);
-
-        switch (node.Value)
+        if (node.Value == '!')
         {
-            case '?':
-                sb.Append(")?");
-                break;
-            case '+':
-                sb.Append(")+");
-                break;
-            case '*':
-                sb.Append(")*");
-                break;
-            default:
-                EmitNegationClose(in node, ref sb);
-                break;
+            EmitNegationClose(in node, ref sb);
+        }
+        else
+        {
+            sb.Append(')');
+            sb.Append(node.Value);
         }
 
         if (_options.CaptureGroups)
@@ -157,7 +147,7 @@ internal readonly ref struct RegexEmitter
     /// </summary>
     /// <remarks>
     /// The text after the lookahead is <see cref="RegexFragments.Globstar"/> when the alternatives contain <c>/</c> and
-    /// <see cref="RegexFragments.Star"/> otherwise, except in the unanchored case, which uses a non-capturing <see cref="GlobChars.Star"/>.
+    /// <see cref="RegexFragments.Star"/> otherwise, except in the unanchored case, which uses a non-capturing <see cref="GlobChars.SegmentRun"/>.
     /// The rest of the pattern is the remaining pattern text, not only the rest of the enclosing sequence.
     /// </remarks>
     /// <param name="node">The negated extended glob node.</param>
@@ -189,7 +179,21 @@ internal readonly ref struct RegexEmitter
         }
 
         sb.Append("))");
-        sb.Append(_f.Chars.Star);
+        sb.Append(_f.Chars.SegmentRun);
+        sb.Append(')');
+    }
+
+    /// <summary>
+    /// Writes a group of the alternatives of <paramref name="index"/>, opened with <paramref name="prefix"/>.
+    /// </summary>
+    /// <param name="index">The index of the node that owns the alternatives.</param>
+    /// <param name="prefix">The text after <c>(</c>, such as <c>?:</c>.</param>
+    /// <param name="sb">The builder that receives the regex.</param>
+    private void EmitGroup(int index, ReadOnlySpan<char> prefix, ref ValueStringBuilder sb)
+    {
+        sb.Append('(');
+        sb.Append(prefix);
+        EmitAlternatives(index, ref sb);
         sb.Append(')');
     }
 
@@ -217,21 +221,19 @@ internal readonly ref struct RegexEmitter
             ref readonly var node = ref _nodes[i];
             int last = i;
             int beforeLast = prev;
+            rendered = EmittedKind.Other;
 
             switch (node.Kind)
             {
                 case SyntaxKind.Literal:
                     RegexSyntax.AppendLiteral(ref sb, node.Value, (LiteralForm)node.Count);
-                    rendered = EmittedKind.Other;
                     break;
 
                 case SyntaxKind.Pipe:
                     sb.Append('|');
-                    rendered = EmittedKind.Other;
                     break;
 
                 case SyntaxKind.Separator:
-                    rendered = EmittedKind.Other;
                     if (node.Next >= 0 && _nodes[node.Next].Kind == SyntaxKind.Star)
                     {
                         var plan = PlanStar(sequence, node.Next, prev: i, prevPrev: prev);
@@ -250,7 +252,6 @@ internal readonly ref struct RegexEmitter
 
                 case SyntaxKind.Dot:
                     sb.Append(_f.Chars.DotLiteral);
-                    rendered = EmittedKind.Other;
                     break;
 
                 case SyntaxKind.Star:
@@ -271,7 +272,6 @@ internal readonly ref struct RegexEmitter
                         sb.Append(_f.SegmentStartQmark);
                     else
                         sb.Append(_f.Chars.Qmark);
-                    rendered = EmittedKind.Other;
                     break;
 
                 case SyntaxKind.Plus:
@@ -279,7 +279,6 @@ internal readonly ref struct RegexEmitter
                         sb.Append('+');
                     else
                         sb.Append(_f.Chars.PlusLiteral);
-                    rendered = EmittedKind.Other;
                     break;
 
                 case SyntaxKind.CharClass:
@@ -288,29 +287,19 @@ internal readonly ref struct RegexEmitter
                     break;
 
                 case SyntaxKind.Brace:
-                    sb.Append('(');
-                    sb.Append(_f.Capture);
-                    EmitAlternatives(i, ref sb);
-                    sb.Append(')');
-                    rendered = EmittedKind.Other;
+                    EmitGroup(i, _f.Capture.AsSpan(), ref sb);
                     break;
 
                 case SyntaxKind.BraceRange:
                     BraceRangeWriter.Write(_pattern.Slice(node.Start, node.Length), _options, ref sb);
-                    rendered = EmittedKind.Other;
                     break;
 
                 case SyntaxKind.Extglob:
                     EmitExtglob(in node, i, atPatternStart: IsPatternStart(sequence, prev), ref sb);
-                    rendered = EmittedKind.Other;
                     break;
 
                 case SyntaxKind.Group:
-                    sb.Append('(');
-                    sb.Append(_pattern.Slice(node.Start + 1, node.Count));
-                    EmitAlternatives(i, ref sb);
-                    sb.Append(')');
-                    rendered = EmittedKind.Other;
+                    EmitGroup(i, _pattern.Slice(node.Start + 1, node.Count), ref sb);
                     break;
 
                 default:
@@ -330,7 +319,7 @@ internal readonly ref struct RegexEmitter
     /// </summary>
     /// <remarks>
     /// A star or globstar that starts a segment is guarded by <see cref="GlobChars.NoDotsSlash"/> with <see cref="GlobOptions.MatchDotFiles"/> and by
-    /// <see cref="RegexFragments.NoDot"/> otherwise; with <see cref="GlobOptions.BashCompatibility"/> only <see cref="StarForm.BashStar"/> gets a guard, <see cref="RegexFragments.NoDot"/>.
+    /// <see cref="RegexFragments.DotGuard"/> otherwise; with <see cref="GlobOptions.BashCompatibility"/> only <see cref="StarForm.BashStar"/> gets a guard, <see cref="RegexFragments.DotGuard"/>.
     /// <see cref="StarForm.TrailingGlobstar"/> also matches the end of input unless <see cref="GlobOptions.StrictSlashes"/> is set, and
     /// <see cref="StarForm.MiddleGlobstar"/> matches a single separator, or the end of input when <see cref="StarPlan.MoreAfter"/> is set.
     /// </remarks>
@@ -346,10 +335,7 @@ internal readonly ref struct RegexEmitter
         var chars = _f.Chars;
         bool previousChained = chained;
         chained = false;
-        // In bash mode the dot guard belongs to the star itself, so it is not part of the globstar forms.
-        string segmentPrefix = _options.BashCompatibility ? "" : _options.MatchDotFiles ? chars.NoDotsSlash : _f.NoDot;
-
-        bool segmentLoops = _f.SegmentLoops && !_options.BashCompatibility;
+        string segmentPrefix = _options.BashCompatibility ? "" : _f.SegmentGuard;
 
         switch (plan.Form)
         {
@@ -359,7 +345,7 @@ internal readonly ref struct RegexEmitter
 
             case StarForm.BashStar:
                 if (plan.SegmentStart)
-                    sb.Append(_f.NoDot);
+                    sb.Append(_f.DotGuard);
                 sb.Append(_f.BashStar);
                 return EmittedKind.Star;
 
@@ -368,54 +354,11 @@ internal readonly ref struct RegexEmitter
                 return EmittedKind.Globstar;
 
             case StarForm.TrailingGlobstar:
-                sb.Append("(?:");
-                if (segmentLoops)
-                {
-                    sb.Append("(?:");
-                    sb.Append(chars.SlashLiteral);
-                    sb.Append(_f.Segment);
-                    sb.Append(")+");
-                }
-                else
-                {
-                    sb.Append(chars.SlashLiteral);
-                    sb.Append(segmentPrefix);
-                    sb.Append(_f.Globstar);
-                }
-
-                if (!_options.StrictSlashes)
-                {
-                    sb.Append('|');
-                    sb.Append(RegexSyntax.c_EndOfInput);
-                }
-
-                sb.Append(')');
+                sb.Append(_options.StrictSlashes ? _f.StrictTrailingGlobstar : _f.TrailingGlobstar);
                 return EmittedKind.Globstar;
 
             case StarForm.MiddleGlobstar:
-                sb.Append("(?:");
-                if (segmentLoops)
-                {
-                    sb.Append(chars.SlashLiteral);
-                    sb.Append(_f.LeadingSegments);
-                }
-                else
-                {
-                    sb.Append(chars.SlashLiteral);
-                    sb.Append(segmentPrefix);
-                    sb.Append(_f.Globstar);
-                    sb.Append(chars.SlashLiteral);
-                    sb.Append('|');
-                    sb.Append(chars.SlashLiteral);
-                }
-
-                if (plan.MoreAfter)
-                {
-                    sb.Append('|');
-                    sb.Append(RegexSyntax.c_EndOfInput);
-                }
-
-                sb.Append(')');
+                sb.Append(plan.MoreAfter ? _f.MiddleGlobstarOrEnd : _f.MiddleGlobstar);
                 return EmittedKind.Globstar;
 
             case StarForm.LeadingGlobstar:
@@ -429,26 +372,20 @@ internal readonly ref struct RegexEmitter
                 return EmittedKind.Globstar;
 
             default:
-                // A dot-guarded "*" that must match a character.
                 if (plan.SegmentStart && !plan.AfterLeadingDot && plan.OneChar && segmentPrefix.Length > 0 && !_options.MatchDotFiles)
                 {
-                    if (plan.BeforeDot && !_options.CaptureGroups)
-                        sb.Append(chars.SegmentFirstChar);
-                    else
-                        sb.Append(chars.OneCharNoDot);
-
-                    if (!_boundStars || !TryAppendBoundedStar(plan.Last, previousChained, out chained, ref sb))
-                        sb.Append(_f.Star);
-                    return EmittedKind.Star;
+                    sb.Append(plan.BeforeDot && !_options.CaptureGroups ? chars.SegmentFirstChar : chars.OneCharNoDot);
                 }
+                else
+                {
+                    if (plan.AfterLeadingDot)
+                        sb.Append(chars.NoDotSlash);
+                    else if (plan.SegmentStart)
+                        sb.Append(segmentPrefix);
 
-                if (plan.AfterLeadingDot)
-                    sb.Append(chars.NoDotSlash);
-                else if (plan.SegmentStart)
-                    sb.Append(segmentPrefix);
-
-                if (plan.OneChar && (plan.SegmentStart || plan.AfterLeadingDot))
-                    sb.Append(chars.OneChar);
+                    if (plan.OneChar && (plan.SegmentStart || plan.AfterLeadingDot))
+                        sb.Append(chars.OneChar);
+                }
 
                 if (!_boundStars || !TryAppendBoundedStar(plan.Last, previousChained, out chained, ref sb))
                     sb.Append(_f.Star);
@@ -468,16 +405,7 @@ internal readonly ref struct RegexEmitter
     /// <returns><see langword="true"/> if stars may be bounded; otherwise, <see langword="false"/>.</returns>
     private static bool CanBoundStars(ReadOnlySpan<SyntaxNode> nodes, GlobOptions options)
     {
-        if (options.CaptureGroups || options.BashCompatibility)
-            return false;
-
-        foreach (ref readonly var node in nodes)
-        {
-            if (node.Kind == SyntaxKind.Group || LiteralHint.IsVerbatimRegex(in node, options))
-                return false;
-        }
-
-        return true;
+        return !options.CaptureGroups && !options.BashCompatibility && !LiteralHint.ContainsVerbatimRegex(nodes, options, orGroup: true);
     }
 
     /// <summary>
@@ -508,13 +436,8 @@ internal readonly ref struct RegexEmitter
                 return false;
         }
 
-        // The separator class of Qmark, such as "[^/]", with the head character added.
         char head = LiteralChar(in _nodes[first]);
-        string separators = _f.Chars.Qmark;
-        sb.Append(separators.AsSpan(0, separators.Length - 1));
-        RegexSyntax.AppendClassMember(ref sb, head);
-        sb.Append("]*");
-
+        AppendStarUntil(head, ref sb);
         if (count > 1)
         {
             sb.Append("(?:");
@@ -523,12 +446,23 @@ internal readonly ref struct RegexEmitter
             for (int j = _nodes[first].Next; j != i; j = _nodes[j].Next)
                 RegexSyntax.AppendLiteral(ref sb, LiteralChar(in _nodes[j]), LiteralForm.Plain);
             sb.Append(')');
-            sb.Append(separators.AsSpan(0, separators.Length - 1));
-            RegexSyntax.AppendClassMember(ref sb, head);
-            sb.Append("]*)*");
+            AppendStarUntil(head, ref sb);
+            sb.Append(")*");
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Writes a run of characters other than a separator and <paramref name="head"/>, such as <c>[^/a]*</c>.
+    /// </summary>
+    /// <param name="head">The character the run stops before.</param>
+    /// <param name="sb">The builder that receives the regex.</param>
+    private void AppendStarUntil(char head, ref ValueStringBuilder sb)
+    {
+        sb.Append(_f.Chars.NotSeparatorOpen);
+        RegexSyntax.AppendClassMember(ref sb, head);
+        sb.Append("]*");
     }
 
     /// <summary>

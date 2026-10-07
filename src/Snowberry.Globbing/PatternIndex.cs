@@ -1,6 +1,8 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using Snowberry.Globbing.Compilation;
+using Snowberry.Globbing.Utilities;
 
 namespace Snowberry.Globbing;
 
@@ -12,10 +14,12 @@ namespace Snowberry.Globbing;
 /// </remarks>
 internal sealed class PatternIndex
 {
-    /// <summary>The least estimated cost, in relative units, of the keyed patterns for which an index is built.</summary>
+    /// <summary>
+    /// The least estimated cost, in relative units, of the keyed patterns for which an index is built; below
+    /// <see cref="LiteralHint.RegexRunCost"/>, so one keyed pattern that runs its regex is enough.
+    /// </summary>
     public const int c_MinSkippedCost = 200;
 
-    private const int c_GramLength = 3;
     private const int c_StackSlotWords = 64;
     private const ulong c_Occupied = 1UL << 63;
     private const int c_MaxIndexedLength = 1024;
@@ -57,7 +61,7 @@ internal sealed class PatternIndex
         {
             if (keys[i] is not { } grams)
             {
-                _always[i >> 6] |= 1UL << i;
+                BitUtilities.SetBit(_always, i);
                 continue;
             }
 
@@ -90,8 +94,7 @@ internal sealed class PatternIndex
                 equal[hash] = list = [];
 
             list.Add(i);
-            int bucket = Math.Min(pattern.Length, c_MaxIndexedLength + 1) - 1;
-            _equalLengths[bucket >> 6] |= 1UL << bucket;
+            BitUtilities.SetBit(_equalLengths, Math.Min(pattern.Length, c_MaxIndexedLength + 1) - 1);
         }
 
         _equal = new Dictionary<int, int[]>(equal.Count);
@@ -176,10 +179,10 @@ internal sealed class PatternIndex
     /// <remarks>Patterns equal to the input are added by <see cref="MarkEqual"/>.</remarks>
     /// <param name="text">The text the patterns are matched against.</param>
     /// <param name="candidates">A bit set of <see cref="Words"/> words, one bit per pattern.</param>
-    public void FindCandidates(ReadOnlySpan<char> text, Span<ulong> candidates)
+    private void FindCandidates(ReadOnlySpan<char> text, Span<ulong> candidates)
     {
         _always.AsSpan().CopyTo(candidates);
-        if (text.Length < c_GramLength)
+        if (text.Length < KeyGrams.c_GramLength)
             return;
 
         ulong[] slotKeys = _slotKeys;
@@ -192,9 +195,9 @@ internal sealed class PatternIndex
         {
             ulong gram = ((ulong)text[0] << 16) | text[1];
             int mask = slotKeys.Length - 1;
-            for (int i = c_GramLength - 1; i < text.Length; i++)
+            for (int i = KeyGrams.c_GramLength - 1; i < text.Length; i++)
             {
-                gram = ((gram << 16) | text[i]) & 0xFFFF_FFFF_FFFF;
+                gram = KeyGrams.Append(gram, text[i]);
                 ulong key = gram | c_Occupied;
                 int slot = (int)((key * c_Multiplier) >> _shift);
                 while (true)
@@ -203,15 +206,10 @@ internal sealed class PatternIndex
                     if (stored == key)
                     {
                         // Each bucket is added once, however often its trigram occurs.
-                        ulong bit = 1UL << slot;
-                        if ((expanded[slot >> 6] & bit) == 0)
+                        if (BitUtilities.TrySetBit(expanded, slot))
                         {
-                            expanded[slot >> 6] |= bit;
                             for (int b = _bucketStarts[slot]; b < _bucketStarts[slot + 1]; b++)
-                            {
-                                int pattern = _bucketPatterns[b];
-                                candidates[pattern >> 6] |= 1UL << pattern;
-                            }
+                                BitUtilities.SetBit(candidates, _bucketPatterns[b]);
                         }
 
                         break;
@@ -232,11 +230,27 @@ internal sealed class PatternIndex
     }
 
     /// <summary>
+    /// Sets <paramref name="candidates"/> to the patterns that can match <paramref name="target"/>, or equal the input or the normalized input.
+    /// </summary>
+    /// <param name="target">The text the patterns are matched against.</param>
+    /// <param name="input">The original input.</param>
+    /// <param name="normalized">The normalized input.</param>
+    /// <param name="changed">Whether <paramref name="normalized"/> differs from <paramref name="input"/>.</param>
+    /// <param name="candidates">A bit set of <see cref="Words"/> words, one bit per pattern.</param>
+    public void FindCandidates(ReadOnlySpan<char> target, ReadOnlySpan<char> input, ReadOnlySpan<char> normalized, bool changed, Span<ulong> candidates)
+    {
+        FindCandidates(target, candidates);
+        MarkEqual(input, candidates);
+        if (changed)
+            MarkEqual(normalized, candidates);
+    }
+
+    /// <summary>
     /// Adds to <paramref name="candidates"/> the first pattern equal to <paramref name="value"/>, if any.
     /// </summary>
     /// <param name="value">The input or the normalized input.</param>
     /// <param name="candidates">The candidate bit set.</param>
-    public void MarkEqual(ReadOnlySpan<char> value, Span<ulong> candidates)
+    private void MarkEqual(ReadOnlySpan<char> value, Span<ulong> candidates)
     {
         if (value.IsEmpty)
             return;
@@ -249,7 +263,7 @@ internal sealed class PatternIndex
         {
             if (value.SequenceEqual(_compiled[index].Pattern.AsSpan()))
             {
-                candidates[index >> 6] |= 1UL << index;
+                BitUtilities.SetBit(candidates, index);
                 return;
             }
         }

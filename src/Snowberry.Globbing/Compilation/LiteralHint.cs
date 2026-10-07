@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Snowberry.Globbing.Syntax;
 using Snowberry.Globbing.Utilities;
@@ -103,100 +102,137 @@ internal sealed class LiteralHint
     /// <returns>The hint, or <see langword="null"/> under the same conditions as the overload that parses the body.</returns>
     public static LiteralHint? Find(ReadOnlySpan<SyntaxNode> nodes, int root, GlobOptions options)
     {
-        if (!AppliesTo(options))
+        if (!CanUseLiterals(nodes, options))
             return null;
 
         // Anchors only pin the literal to the ends of the input when they mean start and end of input.
         bool anchored = !options.MatchSubstring && (options.RegexOptions & RegexOptions.Multiline) == 0;
 
-        // Verbatim regex text can quantify or alternate the text around it.
-        foreach (ref readonly var node in nodes)
+        // The runs are collected in one buffer; only the prefix, suffix and ordered runs become strings.
+        Span<char> textBuffer = stackalloc char[128];
+        var texts = new ValueStringBuilder(textBuffer);
+        Span<int> endBuffer = stackalloc int[16];
+        var ends = new ValueList<int>(endBuffer);
+        try
         {
-            if (IsVerbatimRegex(in node, options))
+            bool prefixRun = false;
+            bool suffixRun = false;
+            bool runAtStart = true;
+            int runStart = 0;
+            for (int i = nodes[root].FirstChild; i >= 0; i = nodes[i].Next)
+            {
+                ref readonly var node = ref nodes[i];
+                if (node.Kind == SyntaxKind.Pipe)
+                    return null;
+
+                char c = node.Kind switch
+                {
+                    SyntaxKind.Dot => '.',
+                    SyntaxKind.Literal when (LiteralForm)node.Count == LiteralForm.Plain && IsVerbatim(node.Value) => node.Value,
+                    _ => '\0',
+                };
+
+                if (c != '\0')
+                {
+                    texts.Append(c);
+                    continue;
+                }
+
+                if (texts.Length > runStart)
+                {
+                    ends.Add(texts.Length);
+                    runStart = texts.Length;
+                    prefixRun |= anchored && runAtStart;
+                }
+
+                runAtStart = false;
+            }
+
+            if (texts.Length > runStart)
+            {
+                ends.Add(texts.Length);
+                prefixRun |= anchored && runAtStart;
+                suffixRun = anchored;
+            }
+
+            // A long run is shortened; any part of it is required too.
+            int first = prefixRun ? 1 : 0;
+            int count = ends.Count - first - (suffixRun ? 1 : 0);
+            if (!prefixRun && !suffixRun && count <= 0)
                 return null;
-        }
 
-        string? prefix = null;
-        string? suffix = null;
-        var runs = new List<string>();
-        Span<char> buffer = stackalloc char[64];
-        var run = new ValueStringBuilder(buffer);
-        bool runAtStart = true;
-
-        for (int i = nodes[root].FirstChild; i >= 0; i = nodes[i].Next)
-        {
-            ref readonly var node = ref nodes[i];
-            if (node.Kind == SyntaxKind.Pipe)
+            var all = texts.Slice(0);
+            string? prefix = prefixRun ? all[..ends[0]].ToString() : null;
+            string? suffix = null;
+            if (suffixRun)
             {
-                run.Dispose();
-                return null;
+                int last = ends.Count - 1;
+                suffix = last == 0 && prefix != null ? prefix : all[(last == 0 ? 0 : ends[last - 1])..ends[last]].ToString();
             }
 
-            char c = node.Kind switch
+            string[]? ordered = null;
+            if (count > 0)
             {
-                SyntaxKind.Dot => '.',
-                SyntaxKind.Literal when (LiteralForm)node.Count == LiteralForm.Plain && IsVerbatim(node.Value) => node.Value,
-                _ => '\0',
-            };
-
-            if (c != '\0')
-            {
-                run.Append(c);
-                continue;
+                ordered = new string[count];
+                for (int k = 0; k < count; k++)
+                {
+                    int index = first + k;
+                    int start = index == 0 ? 0 : ends[index - 1];
+                    ordered[k] = all.Slice(start, Math.Min(ends[index] - start, c_MaxContainsLength)).ToString();
+                }
             }
 
-            Close(ref run, runAtStart, atEnd: false);
-            runAtStart = false;
+            return new LiteralHint(prefix, suffix, ordered, options.PathStyle == GlobPathStyle.Windows);
         }
-
-        Close(ref run, runAtStart, atEnd: true);
-        run.Dispose();
-
-        // A long run is shortened; any part of it is required too.
-        int first = prefix != null ? 1 : 0;
-        int count = runs.Count - first - (suffix != null ? 1 : 0);
-        if (prefix == null && suffix == null && count <= 0)
-            return null;
-
-        string[]? ordered = null;
-        if (count > 0)
+        finally
         {
-            ordered = new string[count];
-            for (int k = 0; k < count; k++)
-            {
-                string text = runs[first + k];
-                ordered[k] = text.Length > c_MaxContainsLength ? text[..c_MaxContainsLength] : text;
-            }
-        }
-
-        return new LiteralHint(prefix, suffix, ordered, options.PathStyle == GlobPathStyle.Windows);
-
-        void Close(ref ValueStringBuilder run, bool isPrefix, bool atEnd)
-        {
-            if (run.Length == 0)
-                return;
-
-            string text = run.Slice(0).ToString();
-            run.Length = 0;
-            if (anchored && isPrefix)
-                prefix = text;
-            if (anchored && atEnd)
-                suffix = text;
-            runs.Add(text);
+            texts.Dispose();
+            ends.Dispose();
         }
     }
 
     /// <summary>
-    /// Determines whether <paramref name="node"/> is written as verbatim regex text: a raw literal, as with
-    /// <see cref="GlobOptions.Unescape"/>, or a brace range written by <see cref="GlobOptions.BraceRangeExpander"/>.
+    /// Determines whether the literal text of a parsed pattern can be relied on: matching is case-sensitive and no node
+    /// is verbatim regex text, which can quantify or alternate the text around it.
     /// </summary>
-    /// <param name="node">The node.</param>
-    /// <param name="options">The options.</param>
-    /// <returns><see langword="true"/> if the node is written as verbatim regex text; otherwise, <see langword="false"/>.</returns>
-    public static bool IsVerbatimRegex(in SyntaxNode node, GlobOptions options)
+    /// <param name="nodes">The nodes of the parsed pattern.</param>
+    /// <param name="options">The options the pattern is compiled with.</param>
+    /// <returns><see langword="true"/> if literal text can be used; otherwise, <see langword="false"/>.</returns>
+    public static bool CanUseLiterals(ReadOnlySpan<SyntaxNode> nodes, GlobOptions options)
     {
-        return (node.Kind == SyntaxKind.Literal && (LiteralForm)node.Count == LiteralForm.Raw)
-            || (node.Kind == SyntaxKind.BraceRange && options.BraceRangeExpander != null);
+        return AppliesTo(options) && !ContainsVerbatimRegex(nodes, options, orGroup: false);
+    }
+
+    /// <summary>
+    /// Determines whether any node is written as verbatim regex text: a raw literal, as with <see cref="GlobOptions.Unescape"/>,
+    /// or a brace range written by <see cref="GlobOptions.BraceRangeExpander"/>.
+    /// </summary>
+    /// <param name="nodes">The nodes of the parsed pattern.</param>
+    /// <param name="options">The options the pattern is compiled with.</param>
+    /// <param name="orGroup"><see langword="true"/> to count a regex group as verbatim regex text too.</param>
+    /// <returns><see langword="true"/> if a node is verbatim regex text; otherwise, <see langword="false"/>.</returns>
+    public static bool ContainsVerbatimRegex(ReadOnlySpan<SyntaxNode> nodes, GlobOptions options, bool orGroup)
+    {
+        foreach (ref readonly var node in nodes)
+        {
+            if ((orGroup && node.Kind == SyntaxKind.Group)
+                || (node.Kind == SyntaxKind.Literal && (LiteralForm)node.Count == LiteralForm.Raw)
+                || (node.Kind == SyntaxKind.BraceRange && options.BraceRangeExpander != null))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Determines whether a literal <paramref name="c"/> can be part of literal text: it keeps its meaning under
+    /// <see cref="RegexOptions.IgnorePatternWhitespace"/> and is not the <c>\0</c> that ends a run of <see cref="Find(ReadOnlySpan{SyntaxNode}, int, GlobOptions)"/>.
+    /// </summary>
+    /// <param name="c">The character.</param>
+    /// <returns><see langword="false"/> for <c>\0</c>, whitespace and <c>#</c>; otherwise, <see langword="true"/>.</returns>
+    public static bool IsVerbatim(char c)
+    {
+        return c != '\0' && c != '#' && !char.IsWhiteSpace(c);
     }
 
     /// <summary>
@@ -207,16 +243,6 @@ internal sealed class LiteralHint
     private static bool AppliesTo(GlobOptions options)
     {
         return !options.IgnoreCase && (options.RegexOptions & RegexOptions.IgnoreCase) == 0;
-    }
-
-    /// <summary>
-    /// Determines whether <paramref name="c"/> keeps its literal meaning under <see cref="RegexOptions.IgnorePatternWhitespace"/>.
-    /// </summary>
-    /// <param name="c">The character.</param>
-    /// <returns><see langword="false"/> for whitespace and <c>#</c>; otherwise, <see langword="true"/>.</returns>
-    private static bool IsVerbatim(char c)
-    {
-        return c != '#' && !char.IsWhiteSpace(c);
     }
 
     /// <summary>Gets a value indicating whether a matching input must start with literal text.</summary>

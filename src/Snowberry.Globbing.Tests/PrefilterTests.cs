@@ -2,14 +2,12 @@ namespace Snowberry.Globbing.Tests;
 
 public class PrefilterTests
 {
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     [Theory]
     [InlineData("ABC.JS", true)]
     [InlineData("abc.js", true)]
     public void IgnoreCase_MatchesAnyCase(string input, bool expected)
     {
-        Glob.IsMatch(input, "*.js", s_Posix with { IgnoreCase = true }).Should().Be(expected);
+        Glob.IsMatch(input, "*.js", TestOptions.Posix with { IgnoreCase = true }).Should().Be(expected);
     }
 
     [Theory]
@@ -17,7 +15,7 @@ public class PrefilterTests
     [InlineData("*xyzabc{1..2}def*", "?", "xyzabdef")]
     public void BraceRangeExpander_Output_IsNotTreatedAsLiteralText(string pattern, string fragment, string input)
     {
-        var options = s_Posix with { BraceRangeExpander = _ => fragment };
+        var options = TestOptions.Posix with { BraceRangeExpander = _ => fragment };
         bool expected = new Glob(pattern, options).ToRegex().IsMatch(input);
 
         expected.Should().BeTrue();
@@ -28,7 +26,7 @@ public class PrefilterTests
     [Fact]
     public void IgnorePatternWhitespace_IgnoresLiteralSpaces()
     {
-        var options = s_Posix with { RegexOptions = RegexOptions.IgnorePatternWhitespace };
+        var options = TestOptions.Posix with { RegexOptions = RegexOptions.IgnorePatternWhitespace };
 
         Glob.IsMatch("foobar", "foo bar*", options).Should().BeTrue();
     }
@@ -43,7 +41,7 @@ public class PrefilterTests
     [InlineData("*abc*", "xabx", false)]
     public void LiteralText_DecidesWithoutChangingResults(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -53,7 +51,7 @@ public class PrefilterTests
     public void LongLiteralText_DecidesWithoutChangingResults(int length)
     {
         string literal = string.Concat(Enumerable.Repeat("ab", length)).Substring(0, length) + "z";
-        var glob = new Glob("*/" + literal + "/*", s_Posix);
+        var glob = new Glob("*/" + literal + "/*", TestOptions.Posix);
 
         glob.IsMatch("x/" + literal + "/y").Should().BeTrue();
         glob.IsMatch("x/" + literal.Substring(0, length) + "/y").Should().BeFalse();
@@ -66,7 +64,7 @@ public class PrefilterTests
     [InlineData("a/b/x.md", false)]
     public void MatchFileNameOnly_ChecksEveryPatternAgainstTheFileName(string input, bool expected)
     {
-        var glob = new Glob(["*.js", "*.ts"], s_Posix with { MatchFileNameOnly = true });
+        var glob = new Glob(["*.js", "*.ts"], TestOptions.Posix with { MatchFileNameOnly = true });
 
         glob.IsMatch(input).Should().Be(expected);
     }
@@ -74,7 +72,7 @@ public class PrefilterTests
     [Fact]
     public void MultiplePatterns_ReportTheFirstMatchingPattern()
     {
-        var glob = new Glob(["**/*.js", "**/*.ts", "!**/node_modules/**"], s_Posix);
+        var glob = new Glob(["**/*.js", "**/*.ts", "!**/node_modules/**"], TestOptions.Posix);
 
         glob.Match("src/a.ts").Pattern.Should().Be("**/*.ts");
         glob.Match("src/a.md").Pattern.Should().Be("!**/node_modules/**");
@@ -91,7 +89,7 @@ public class PrefilterTests
     [InlineData("a\u2028b", false)]
     public void NegatedPattern_MatchesInputsTheBodyDoesNot(string input, bool expected)
     {
-        Glob.IsMatch(input, "!**/node_modules/**", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, "!**/node_modules/**", TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -100,7 +98,7 @@ public class PrefilterTests
     [InlineData("a.txt\nb.md", false)]
     public void NegatedPattern_WithMultiline_KeepsRegexSemantics(string input, bool expected)
     {
-        var options = s_Posix with { RegexOptions = RegexOptions.Multiline };
+        var options = TestOptions.Posix with { RegexOptions = RegexOptions.Multiline };
 
         Glob.IsMatch(input, "!*.md", options).Should().Be(expected);
     }
@@ -111,13 +109,13 @@ public class PrefilterTests
     [InlineData("ac", false)]
     public void Unescape_RawQuantifierKeepsRegexSemantics(string input, bool expected)
     {
-        Glob.IsMatch(input, "a\\*b", s_Posix with { Unescape = true }).Should().Be(expected);
+        Glob.IsMatch(input, "a\\*b", TestOptions.Posix with { Unescape = true }).Should().Be(expected);
     }
 
     [Fact]
     public void WindowsStyle_AcceptsTrailingBackslash()
     {
-        Glob.IsMatch("b.js\\", "*.js", new GlobOptions { PathStyle = GlobPathStyle.Windows }).Should().BeTrue();
+        Glob.IsMatch("b.js\\", "*.js", TestOptions.Windows).Should().BeTrue();
     }
 
     [Theory]
@@ -134,16 +132,16 @@ public class PrefilterTests
     [InlineData("**/x*.min*", "a/x.min/", true)]
     public void LiteralRuns_InOrder_DecideWithoutChangingResults(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
-        Glob.IsMatch(input.AsSpan(), pattern, s_Posix).Should().Be(expected);
-        new Glob(pattern, s_Posix).ToRegex().IsMatch(input).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
+        Glob.IsMatch(input.AsSpan(), pattern, TestOptions.Posix).Should().Be(expected);
+        new Glob(pattern, TestOptions.Posix).ToRegex().IsMatch(input).Should().Be(expected);
     }
 
     [Fact]
     public void LiteralRuns_MissingMiddleRun_RejectsWithoutRunningTheRegex()
     {
         // Each globstar may stop at any "/b" segment, so the regex alone backtracks polynomially; the run "c" is missing.
-        var glob = new Glob("a/**/b/**/b/**/c/**/d", s_Posix with { MatchTimeout = TimeSpan.FromMilliseconds(200) });
+        var glob = new Glob("a/**/b/**/b/**/c/**/d", TestOptions.Posix with { MatchTimeout = TimeSpan.FromMilliseconds(200) });
         string input = "a" + string.Concat(Enumerable.Repeat("/b", 2000)) + "/x/d";
 
         glob.IsMatch(input).Should().BeFalse();

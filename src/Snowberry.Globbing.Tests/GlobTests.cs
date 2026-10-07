@@ -4,15 +4,13 @@ namespace Snowberry.Globbing.Tests;
 
 public class GlobTests
 {
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     [Fact]
     public void Constructor_ExposesPatternsAndOptions()
     {
-        var glob = new Glob("*.js", s_Posix);
+        var glob = new Glob("*.js", TestOptions.Posix);
 
         glob.Patterns.Should().Equal(["*.js"]);
-        glob.Options.Should().BeSameAs(s_Posix);
+        glob.Options.Should().BeSameAs(TestOptions.Posix);
         glob.ToString().Should().Be("*.js");
     }
 
@@ -81,7 +79,7 @@ public class GlobTests
     [Fact]
     public void Filter_ReturnsMatchingInputsInOrder()
     {
-        var glob = new Glob("**/*.cs", s_Posix with { IgnorePatterns = ["**/obj/**"] });
+        var glob = new Glob("**/*.cs", TestOptions.Posix with { IgnorePatterns = ["**/obj/**"] });
 
         var result = glob.Filter(["b.cs", "README.md", "obj/x.cs", "a/c.cs"]);
 
@@ -97,7 +95,7 @@ public class GlobTests
     [Fact]
     public void IsMatch_Span_AppliesIgnorePatterns()
     {
-        var glob = new Glob("*.js", s_Posix with { IgnorePatterns = ["a.*"] });
+        var glob = new Glob("*.js", TestOptions.Posix with { IgnorePatterns = ["a.*"] });
 
         glob.IsMatch("a.js".AsSpan()).Should().BeFalse();
         glob.IsMatch("b.js".AsSpan()).Should().BeTrue();
@@ -109,10 +107,10 @@ public class GlobTests
     [InlineData("a.ts", false)]
     public void IsMatch_Span_MatchesLikeString(string input, bool expected)
     {
-        var glob = new Glob("*.js", s_Posix);
+        var glob = new Glob("*.js", TestOptions.Posix);
 
         glob.IsMatch(input.AsSpan()).Should().Be(expected);
-        Glob.IsMatch(input.AsSpan(), "*.js", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input.AsSpan(), "*.js", TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -180,7 +178,7 @@ public class GlobTests
     [Fact]
     public void Match_ReportsIgnoredInput()
     {
-        var glob = new Glob("**/*.cs", s_Posix with { IgnorePatterns = ["**/obj/**"] });
+        var glob = new Glob("**/*.cs", TestOptions.Posix with { IgnorePatterns = ["**/obj/**"] });
 
         var ignored = glob.Match("src/obj/a.cs");
         var unmatched = glob.Match("src/a.md");
@@ -198,7 +196,7 @@ public class GlobTests
     [Fact]
     public void Match_ReportsMatchedPattern()
     {
-        var glob = new Glob(new[] { "*.js", "*.ts" }, s_Posix);
+        var glob = new Glob(new[] { "*.js", "*.ts" }, TestOptions.Posix);
 
         var result = glob.Match("a.ts");
 
@@ -212,7 +210,7 @@ public class GlobTests
     [Fact]
     public void Match_ReportsNormalizedInput()
     {
-        var glob = new Glob("src/*.cs", new GlobOptions { PathStyle = GlobPathStyle.Windows });
+        var glob = new Glob("src/*.cs", TestOptions.Windows);
 
         var result = glob.Match(@"src\a.cs");
 
@@ -255,7 +253,7 @@ public class GlobTests
     [Fact]
     public void ToRegexString_ForSinglePattern_EqualsGeneratedSource()
     {
-        new Glob("*.js", s_Posix).ToRegexString().Should().Be(GlobCompiler.CompileRegexSource("*.js", s_Posix));
+        new Glob("*.js", TestOptions.Posix).ToRegexString().Should().Be(GlobCompiler.CompileRegexSource("*.js", TestOptions.Posix));
     }
 
     [Fact]
@@ -360,7 +358,7 @@ public class GlobTests
     [InlineData("x.md", true)]
     public void ToRegex_WithPatternList_MatchesAny(string input, bool expected)
     {
-        var glob = new Glob(new[] { "*.js", "*.ts", "!a.*" }, s_Posix);
+        var glob = new Glob(new[] { "*.js", "*.ts", "!a.*" }, TestOptions.Posix);
 
         glob.ToRegex().IsMatch(input).Should().Be(expected);
         new Regex(glob.ToRegexString()).IsMatch(input).Should().Be(expected);

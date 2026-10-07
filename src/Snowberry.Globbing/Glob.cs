@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -32,27 +31,24 @@ namespace Snowberry.Globbing;
 /// </remarks>
 public sealed class Glob
 {
-    private const int c_CacheCapacity = 256;
     private const int c_StackNormalizeLength = 256;
     private const int c_StackCandidateWords = 32;
 
-    private static readonly ConcurrentDictionary<(string Pattern, GlobOptions Options), Glob> s_Cache = new(GlobCacheKeyComparer.Instance);
-
-    private static readonly (string Pattern, GlobOptions Options)[] s_CacheKeys = new (string, GlobOptions)[c_CacheCapacity];
-
-    private static readonly object s_CacheLock = new();
-
-    private static int s_CacheCount;
-
-    private static uint s_CacheSeed = 2463534242;
-
     private readonly CompiledPattern[] _compiled;
+
+    /// <summary>Whether backslashes in inputs are converted to <c>/</c> before matching.</summary>
     private readonly bool _convertSeparators;
     private readonly Glob? _ignore;
     private readonly PatternIndex? _index;
-    private readonly bool _matchesSpans;
-    private readonly CompiledPattern? _single;
 
+    /// <summary>
+    /// Whether inputs are matched as spans without a string: without <see cref="GlobOptions.InputNormalizer"/>, whose result
+    /// must be a string, and, where the regex engine cannot match spans, only when every pattern has a regex-free matcher.
+    /// </summary>
+    private readonly bool _matchesSpans;
+
+    /// <summary>The only pattern when it is matched directly, without ignore patterns, <see cref="GlobOptions.InputNormalizer"/> or <see cref="GlobOptions.MatchFileNameOnly"/>; otherwise, <see langword="null"/>.</summary>
+    private readonly CompiledPattern? _single;
     private readonly string[] _patterns;
     private Regex? _combinedRegex;
 
@@ -126,12 +122,13 @@ public sealed class Glob
 
         var regexOptions = Options.RegexOptions | (Options.IgnoreCase ? RegexOptions.IgnoreCase | RegexOptions.CultureInvariant : RegexOptions.None);
         _compiled = new CompiledPattern[patterns.Length];
-        ulong[][]?[] keyWindows = new ulong[][]?[patterns.Length];
+        ulong[][]?[]? keyWindows = patterns.Length > 1 ? new ulong[][]?[patterns.Length] : null;
         for (int i = 0; i < patterns.Length; i++)
         {
             try
             {
-                _compiled[i] = new CompiledPattern(patterns[i], Options, regexOptions, findKeys: patterns.Length > 1, out keyWindows[i]);
+                _compiled[i] = new CompiledPattern(patterns[i], Options, regexOptions, findKeys: keyWindows != null, out ulong[][]? keys);
+                keyWindows?[i] = keys;
             }
             catch (GlobParseException e)
             {
@@ -139,7 +136,7 @@ public sealed class Glob
             }
         }
 
-        _index = PatternIndex.Create(_compiled, keyWindows);
+        _index = keyWindows != null ? PatternIndex.Create(_compiled, keyWindows) : null;
 
         // With IgnorePatternWhitespace, a "#" in one pattern comments out the rest of the combined regex.
         if (patterns.Length > 1 && (regexOptions & RegexOptions.IgnorePatternWhitespace) != 0)
@@ -345,7 +342,6 @@ public sealed class Glob
     /// <summary>
     /// Gets the cached glob for <paramref name="pattern"/> and <paramref name="options"/>, compiling and caching it on a miss.
     /// </summary>
-    /// <remarks>Once the cache is full, a new glob replaces a randomly chosen one.</remarks>
     /// <param name="pattern">The glob pattern.</param>
     /// <param name="options">The options, or <see langword="null"/> for <see cref="GlobOptions.Default"/>.</param>
     /// <returns>The glob for the pattern and options.</returns>
@@ -353,38 +349,7 @@ public sealed class Glob
     /// <exception cref="GlobParseException"><paramref name="pattern"/> or a <see cref="GlobOptions.IgnorePatterns"/> entry is <see langword="null"/> or empty (<see cref="GlobParseError.EmptyPattern"/>), or cannot be compiled.</exception>
     private static Glob GetOrCreate(string pattern, GlobOptions? options)
     {
-        var key = (ValidatePattern(pattern, nameof(pattern)), options ?? GlobOptions.Default);
-        if (s_Cache.TryGetValue(key, out var glob))
-            return glob;
-
-        glob = new Glob(key.Item1, key.Item2);
-        lock (s_CacheLock)
-        {
-            if (s_Cache.TryGetValue(key, out var cached))
-                return cached;
-
-            if (s_CacheCount < c_CacheCapacity)
-            {
-                s_CacheKeys[s_CacheCount++] = key;
-            }
-            else
-            {
-                // A xorshift step picks the entry to replace.
-                uint seed = s_CacheSeed;
-                seed ^= seed << 13;
-                seed ^= seed >> 17;
-                seed ^= seed << 5;
-                s_CacheSeed = seed;
-
-                int slot = (int)(seed % c_CacheCapacity);
-                s_Cache.TryRemove(s_CacheKeys[slot], out _);
-                s_CacheKeys[slot] = key;
-            }
-
-            s_Cache[key] = glob;
-        }
-
-        return glob;
+        return GlobCache.GetOrAdd(ValidatePattern(pattern, nameof(pattern)), options ?? GlobOptions.Default);
     }
 
     /// <summary>
@@ -476,8 +441,14 @@ public sealed class Glob
     [MethodImpl(MethodImplOptions.NoInlining)]
     private bool IsMatchAny(string input)
     {
-        if (_matchesSpans && (Options.MatchFileNameOnly || (_convertSeparators && input.AsSpan().IndexOf('\\') >= 0)))
-            return IsMatchCore(input.AsSpan());
+        if (_matchesSpans)
+        {
+            if (Options.MatchFileNameOnly)
+                return IsMatchCore(input.AsSpan());
+
+            if (_convertSeparators && input.AsSpan().IndexOf('\\') >= 0)
+                return IsMatchConverted(input.AsSpan());
+        }
 
         string normalized = Normalize(input);
         return FindPattern(input, normalized) != null && !IsIgnored(input, normalized);
@@ -508,12 +479,8 @@ public sealed class Glob
     }
 
     /// <summary>
-    /// Determines whether <paramref name="input"/> matches this glob, converting separators into a stack or pooled buffer.
+    /// Determines whether <paramref name="input"/> matches this glob, matching spans without a string; used only when <see cref="_matchesSpans"/> is set.
     /// </summary>
-    /// <remarks>
-    /// Only used without <see cref="GlobOptions.InputNormalizer"/>, whose result must be a string, and, where the regex
-    /// engine cannot match spans, only when every pattern has a regex-free matcher.
-    /// </remarks>
     /// <param name="input">The input to match.</param>
     /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
     private bool IsMatchCore(ReadOnlySpan<char> input)
@@ -596,10 +563,7 @@ public sealed class Glob
         candidates = candidates[..words];
         try
         {
-            _index.FindCandidates(target, candidates);
-            _index.MarkEqual(input, candidates);
-            if (changed)
-                _index.MarkEqual(normalized, candidates);
+            _index.FindCandidates(target, input, normalized, changed, candidates);
 
             for (int w = 0; w < words; w++)
             {
@@ -641,10 +605,7 @@ public sealed class Glob
         try
         {
             bool changed = !ReferenceEquals(normalized, input);
-            _index.FindCandidates(target.AsSpan(), candidates);
-            _index.MarkEqual(input.AsSpan(), candidates);
-            if (changed)
-                _index.MarkEqual(normalized.AsSpan(), candidates);
+            _index.FindCandidates(target.AsSpan(), input.AsSpan(), normalized.AsSpan(), changed, candidates);
 
             for (int w = 0; w < words; w++)
             {
@@ -721,9 +682,7 @@ public sealed class Glob
     /// <exception cref="ArgumentException">The combined source is not a valid regex.</exception>
     private Regex CreateCombinedRegex()
     {
-        return Options.MatchTimeout is { } timeout
-            ? new Regex(ToRegexString(), _compiled[0].RegexOptions, timeout)
-            : new Regex(ToRegexString(), _compiled[0].RegexOptions);
+        return CompiledPattern.CreateRegex(ToRegexString(), _compiled[0].RegexOptions, Options.MatchTimeout);
     }
 
     /// <summary>

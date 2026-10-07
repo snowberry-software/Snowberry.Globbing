@@ -30,7 +30,7 @@ public class PatternIndexTests
 
     private static GlobOptions OptionsFor(string name)
     {
-        var posix = new GlobOptions { PathStyle = GlobPathStyle.Posix };
+        var posix = TestOptions.Posix;
         return name switch
         {
             "posix" => posix,
@@ -70,7 +70,7 @@ public class PatternIndexTests
     [InlineData("x/.svz", "**/[._]s[a-rt-v][a-z]")]
     public void BracketOnlyPatterns_StillMatchAmongManyPatterns(string input, string pattern)
     {
-        var glob = new Glob([.. Enumerable.Range(0, 50).Select(i => $"dir{i}/**/*.txt"), pattern], new GlobOptions { PathStyle = GlobPathStyle.Posix });
+        var glob = new Glob([.. Enumerable.Range(0, 50).Select(i => $"dir{i}/**/*.txt"), pattern], TestOptions.Posix);
 
         glob.Match(input).Pattern.Should().Be(pattern);
     }
@@ -79,7 +79,7 @@ public class PatternIndexTests
     public void InputEqualToAPattern_MatchesThatPatternAmongManyPatterns()
     {
         string[] patterns = [.. Enumerable.Range(0, 50).Select(i => $"dir{i}/**/*.txt"), "[ab]c", "\\*.js"];
-        var glob = new Glob(patterns, new GlobOptions { PathStyle = GlobPathStyle.Posix });
+        var glob = new Glob(patterns, TestOptions.Posix);
 
         glob.Match("[ab]c").Pattern.Should().Be("[ab]c");
         glob.Match("\\*.js").Pattern.Should().Be("\\*.js");
@@ -90,7 +90,7 @@ public class PatternIndexTests
     public void ThousandsOfPatterns_KeepTheFirstMatchingPattern()
     {
         string[] patterns = [.. Enumerable.Range(0, 3000).Select(i => $"dir{i}/**"), "**/target.txt", "dir2999/**/*.txt"];
-        var glob = new Glob(patterns, new GlobOptions { PathStyle = GlobPathStyle.Posix });
+        var glob = new Glob(patterns, TestOptions.Posix);
 
         glob.Match("dir2999/a/target.txt").Pattern.Should().Be("dir2999/**");
         glob.Match("dir5/a/target.txt").Pattern.Should().Be("dir5/**");
@@ -104,7 +104,7 @@ public class PatternIndexTests
         // The input holds the trigrams of all 300 patterns, so many hash slots are hit before the matching one.
         string[] words = [.. Enumerable.Range(0, 300).Select(i => string.Concat((char)('a' + (i / 26 % 26)), (char)('a' + (i % 26)), "q"))];
         string[] patterns = [.. words.Select(w => $"**/*_{w}")];
-        var glob = new Glob(patterns, new GlobOptions { PathStyle = GlobPathStyle.Posix });
+        var glob = new Glob(patterns, TestOptions.Posix);
         string all = string.Concat(words.Select(w => "_" + w));
 
         foreach (string word in words)

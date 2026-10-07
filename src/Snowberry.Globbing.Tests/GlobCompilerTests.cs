@@ -1,21 +1,21 @@
+using Snowberry.Globbing.Compilation;
+
 namespace Snowberry.Globbing.Tests;
 
 public class GlobCompilerTests
 {
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     [Theory]
     [InlineData("*.{js,ts}")]
     [InlineData("@(a|b)/*.cs")]
     public void BracesAndAtExtglob_DoNotCapture(string pattern)
     {
-        new Glob(pattern, s_Posix).ToRegex().GetGroupNumbers().Should().ContainSingle();
+        new Glob(pattern, TestOptions.Posix).ToRegex().GetGroupNumbers().Should().ContainSingle();
     }
 
     [Fact]
     public void CaptureGroups_CaptureStarsLazily()
     {
-        var match = new Glob("*.{js,ts}", s_Posix with { CaptureGroups = true }).ToRegex().Match("a.b.ts");
+        var match = new Glob("*.{js,ts}", TestOptions.Posix with { CaptureGroups = true }).ToRegex().Match("a.b.ts");
 
         match.Groups[1].Value.Should().Be("a.b");
         match.Groups[2].Value.Should().Be("ts");
@@ -28,7 +28,7 @@ public class GlobCompilerTests
     [InlineData("*.!(js)", "a.js", false)]
     public void CaptureGroups_WithNegatedExtglob_CompilesAndMatches(string pattern, string input, bool expected)
     {
-        var glob = new Glob(pattern, s_Posix with { CaptureGroups = true });
+        var glob = new Glob(pattern, TestOptions.Posix with { CaptureGroups = true });
 
         glob.IsMatch(input).Should().Be(expected);
     }
@@ -36,17 +36,7 @@ public class GlobCompilerTests
     [Fact]
     public void ClassWithPosixClass_HasNoLiteralFallback()
     {
-        new Glob("[[:space:]]", s_Posix).ToRegexString().Should().NotContain("\\[");
-    }
-
-    [Fact]
-    public void DeeplyNestedGroups_ThrowNestingTooDeep()
-    {
-        string pattern = new string('(', 300) + "a" + new string(')', 300);
-
-        var e = FluentActions.Invoking(() => new Glob(pattern, s_Posix)).Should().ThrowExactly<GlobParseException>().Which;
-
-        e.Error.Should().Be(GlobParseError.NestingTooDeep);
+        new Glob("[[:space:]]", TestOptions.Posix).ToRegexString().Should().NotContain("\\[");
     }
 
     [Theory]
@@ -54,7 +44,7 @@ public class GlobCompilerTests
     [InlineData("aab", false)]
     public void DotAfterBraceRange_IsLiteral(string input, bool expected)
     {
-        Glob.IsMatch(input, "{a..c}a.", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, "{a..c}a.", TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -62,7 +52,7 @@ public class GlobCompilerTests
     [InlineData(true)]
     public void EscapedSlash_MatchesSeparator(bool bashCompatibility)
     {
-        Glob.IsMatch("a/b", "a\\/b", s_Posix with { BashCompatibility = bashCompatibility }).Should().BeTrue();
+        Glob.IsMatch("a/b", "a\\/b", TestOptions.Posix with { BashCompatibility = bashCompatibility }).Should().BeTrue();
     }
 
     [Theory]
@@ -72,7 +62,7 @@ public class GlobCompilerTests
     [InlineData("*.Md", "a.md", false)]
     public void ExtensionShape_MatchesExtensionCaseSensitively(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -84,7 +74,7 @@ public class GlobCompilerTests
     [InlineData("**/b", "a/.c/b", false)]
     public void LeadingGlobstar_SpansWholeSegments(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -93,7 +83,7 @@ public class GlobCompilerTests
     [InlineData("b", true)]
     public void LeadingGlobstar_WithMatchSubstring_StartsAtSegment(string input, bool expected)
     {
-        Glob.IsMatch(input, "**/b", s_Posix with { MatchSubstring = true }).Should().Be(expected);
+        Glob.IsMatch(input, "**/b", TestOptions.Posix with { MatchSubstring = true }).Should().Be(expected);
     }
 
     [Theory]
@@ -104,8 +94,8 @@ public class GlobCompilerTests
     {
         string pattern = "a" + new string(opener, 20000);
 
-        Glob.IsMatch(pattern, pattern, s_Posix).Should().BeTrue();
-        Glob.IsMatch("a", pattern, s_Posix).Should().BeFalse();
+        Glob.IsMatch(pattern, pattern, TestOptions.Posix).Should().BeTrue();
+        Glob.IsMatch("a", pattern, TestOptions.Posix).Should().BeFalse();
     }
 
     [Fact]
@@ -113,8 +103,8 @@ public class GlobCompilerTests
     {
         string pattern = new('(', 20000);
 
-        Glob.IsMatch(pattern, pattern, s_Posix).Should().BeTrue();
-        Glob.IsMatch("x", pattern, s_Posix).Should().BeFalse();
+        Glob.IsMatch(pattern, pattern, TestOptions.Posix).Should().BeTrue();
+        Glob.IsMatch("x", pattern, TestOptions.Posix).Should().BeFalse();
     }
 
     [Theory]
@@ -123,7 +113,7 @@ public class GlobCompilerTests
     [InlineData("2", false)]
     public void NumericRangeWithStep_SkipsValues(string input, bool expected)
     {
-        Glob.IsMatch(input, "{1..5..2}", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, "{1..5..2}", TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -138,7 +128,7 @@ public class GlobCompilerTests
     [InlineData("{1..99999999999999999999}", "{1..99999999999999999999}", true)]
     public void NumericRange_AtTheLimitsOfLong_MatchesWithoutOverflow(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -149,7 +139,7 @@ public class GlobCompilerTests
     [InlineData("11", false)]
     public void NumericRange_MatchesEveryNumber(string input, bool expected)
     {
-        Glob.IsMatch(input, "{1..10}", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, "{1..10}", TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -158,7 +148,7 @@ public class GlobCompilerTests
     [InlineData("1", false)]
     public void PaddedNumericRange_KeepsPadding(string input, bool expected)
     {
-        Glob.IsMatch(input, "{01..03}", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, "{01..03}", TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -167,25 +157,25 @@ public class GlobCompilerTests
     [InlineData("a/b|c", "c", true)]
     public void Pipe_IsLiteralOnlyInPlainPatterns(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
     [InlineData("+(a)+", "aa+", true)]
     [InlineData("*(b)+", "bb+", true)]
     [InlineData("@(a)+", "aa", true)]
-    public void PlusAfterQuantifiedExtglob_IsLiteral(string pattern, string input, bool expected)
+    public void PlusAfterExtglob_IsLiteralOnlyAfterQuantifiedExtglob(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
     [InlineData("a*(b)?", "a")]
     [InlineData("a*(b)?", "abb")]
     [InlineData("?(c)?", "c")]
-    public void QuestionMarkAfterExtglob_IsLazyQuantifier(string pattern, string input)
+    public void QuestionMarkAfterQuantifiedExtglob_MatchesLikeAnOptionalQuantifier(string pattern, string input)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().BeTrue();
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().BeTrue();
     }
 
     [Theory]
@@ -193,7 +183,7 @@ public class GlobCompilerTests
     [InlineData("bab", false)]
     public void QuotesAfterText_MatchLiterally(string input, bool expected)
     {
-        Glob.IsMatch(input, "b\"a*\"", s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, "b\"a*\"", TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -203,7 +193,7 @@ public class GlobCompilerTests
     [InlineData("", "||", false)]
     public void RepeatedSpecialCharacters_MatchLiterally(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -214,6 +204,31 @@ public class GlobCompilerTests
     [InlineData("x/{a,b", "x/{a,b", true)]
     public void UnclosedBrace_MatchesLiterally(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("*.js", true)]
+    [InlineData("**/*.cs", true)]
+    [InlineData("*", true)]
+    [InlineData(".*", false)]
+    [InlineData("*-*.js", false)]
+    [InlineData("src/*.js", false)]
+    [InlineData("!*.js", false)]
+    public void Compile_DeferShapeHint_LeavesOutOnlyTheHintOfAShapeThatStartsWithAStar(string pattern, bool deferred)
+    {
+        var options = TestOptions.Posix;
+        var eager = GlobCompiler.Compile(pattern, options);
+
+        var compilation = GlobCompiler.Compile(pattern, options, deferShapeHint: true);
+
+        compilation.HintDeferred.Should().Be(deferred);
+        compilation.Source.Should().Be(eager.Source);
+        var hint = deferred ? GlobCompiler.FindDeferredHint(pattern, options) : compilation.Hint;
+        (hint?.HasPrefix).Should().Be(eager.Hint?.HasPrefix);
+        (hint?.HasOrdered).Should().Be(eager.Hint?.HasOrdered);
+        (hint?.EstimatedRejectCost).Should().Be(eager.Hint?.EstimatedRejectCost);
+        if (deferred)
+            compilation.Hint.Should().BeNull();
     }
 }

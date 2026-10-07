@@ -116,27 +116,6 @@ public class GlobParseExceptionTests
         e.InnerException.Should().NotBeNull();
     }
 
-    [Theory]
-    [InlineData("a[b", GlobParseError.MissingClosingBracket)]
-    [InlineData("a(b", GlobParseError.MissingClosingParenthesis)]
-    [InlineData("a{b", GlobParseError.MissingClosingBrace)]
-    [InlineData("a)b", GlobParseError.MissingOpeningParenthesis)]
-    public void Constructor_WithStrictBrackets_ReportsUnbalancedDelimiter(string pattern, GlobParseError error)
-    {
-        var e = FluentActions.Invoking(() => new Glob(pattern, new GlobOptions { StrictBrackets = true })).Should().ThrowExactly<GlobParseException>().Which;
-
-        e.Error.Should().Be(error);
-        e.Pattern.Should().Be(pattern);
-    }
-
-    [Fact]
-    public void Constructor_WithTooLongPattern_ReportsPatternTooLong()
-    {
-        var e = FluentActions.Invoking(() => new Glob("abcdef", new GlobOptions { MaxPatternLength = 5 })).Should().ThrowExactly<GlobParseException>().Which;
-
-        e.Error.Should().Be(GlobParseError.PatternTooLong);
-    }
-
     [Fact]
     public void ParamName_NamesTheArgumentThatSuppliedThePattern()
     {

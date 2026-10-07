@@ -1,3 +1,6 @@
+using System;
+using System.Runtime.CompilerServices;
+
 namespace Snowberry.Globbing.Utilities;
 
 /// <summary>
@@ -5,6 +8,35 @@ namespace Snowberry.Globbing.Utilities;
 /// </summary>
 internal static class BitUtilities
 {
+    /// <summary>
+    /// Sets bit <paramref name="index"/> of a bit set.
+    /// </summary>
+    /// <param name="bits">The bit set, 64 bits per word.</param>
+    /// <param name="index">The non-negative bit index; the shift uses its low 6 bits.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void SetBit(Span<ulong> bits, int index)
+    {
+        bits[index >> 6] |= 1UL << index;
+    }
+
+    /// <summary>
+    /// Sets bit <paramref name="index"/> of a bit set unless it is already set.
+    /// </summary>
+    /// <param name="bits">The bit set, 64 bits per word.</param>
+    /// <param name="index">The non-negative bit index; the shift uses its low 6 bits.</param>
+    /// <returns><see langword="true"/> if the bit was clear and is now set; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TrySetBit(Span<ulong> bits, int index)
+    {
+        ref ulong word = ref bits[index >> 6];
+        ulong bit = 1UL << index;
+        if ((word & bit) != 0)
+            return false;
+
+        word |= bit;
+        return true;
+    }
+
     /// <summary>
     /// Returns the index of the lowest set bit of <paramref name="value"/>.
     /// </summary>

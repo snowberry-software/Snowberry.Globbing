@@ -15,10 +15,10 @@ namespace Snowberry.Globbing.Benchmark;
 /// run, so there is no hand-maintained results document to keep in sync.
 ///
 /// Two complementary views:
-///   <see cref="PipelineBenchmarks"/> — the per-phase baseline. Decomposes the glob
+///   <see cref="PipelineBenchmarks"/>: the per-phase baseline. Decomposes the glob
 ///     lifecycle into compile to regex source (lex + parse + emit) -> construct regex -> run the
-///     final generated regex, plus end-to-end <see cref="Glob"/> construction.
-///   <see cref="MatchBenchmarks"/> — end-to-end match throughput of a pre-compiled
+///     regex <see cref="Glob.ToRegex"/> returns, plus end-to-end <see cref="Glob"/> construction.
+///   <see cref="MatchBenchmarks"/>: end-to-end match throughput of a pre-compiled
 ///     <see cref="Glob"/> over a
 ///     representative dataset, the cost a consumer actually pays per path.
 /// </summary>
@@ -32,7 +32,7 @@ internal static class Program
 
 /// <summary>
 /// Glob patterns and the datasets they are exercised against. Centralised here so the
-/// pipeline and throughput benchmarks measure the exact same workloads — patterns live
+/// pipeline and throughput benchmarks measure the exact same workloads. Patterns live
 /// as <c>const</c> strings to keep the two benchmark classes from drifting apart.
 /// </summary>
 public static class Workloads
@@ -153,9 +153,9 @@ public static class Workloads
 
 /// <summary>
 /// Per-phase baseline of the glob compilation lifecycle. Each scenario yields one row per
-/// phase so the cost of regex-source compilation, regex construction and running
-/// the final generated regex can be read independently and summed against the end-to-end
-/// <see cref="Create"/> figure.
+/// phase so the cost of regex-source compilation, regex construction and running the regex
+/// can be read independently. <see cref="Create"/> is end-to-end construction, which may
+/// skip building the regex, so it is not the sum of the phases.
 /// </summary>
 [MemoryDiagnoser]
 public class PipelineBenchmarks
@@ -187,14 +187,14 @@ public class PipelineBenchmarks
         return new Regex(_regexSource);
     }
 
-    /// <summary>End-to-end construction of a <see cref="Glob"/> (sum reference for the phases above).</summary>
+    /// <summary>End-to-end construction of a <see cref="Glob"/>, which may skip building the regex.</summary>
     [Benchmark]
     public Glob Create()
     {
         return new Glob(_pattern);
     }
 
-    /// <summary>Run the final generated regex over the scenario's dataset.</summary>
+    /// <summary>Run the regex <see cref="Glob.ToRegex"/> returns over the scenario's dataset; <see cref="Glob.IsMatch(string)"/> uses it only when no regex-free matcher applies.</summary>
     [Benchmark]
     public int RunRegex()
     {
@@ -224,7 +224,7 @@ public class PipelineBenchmarks
 }
 
 /// <summary>
-/// End-to-end match throughput of a pre-compiled matcher over a representative dataset —
+/// End-to-end match throughput of a pre-compiled matcher over a representative dataset:
 /// the cost a consumer pays per path once a matcher has been created. Includes a
 /// multi-pattern (OR) scenario that the single-pattern <see cref="PipelineBenchmarks"/>
 /// cannot decompose.

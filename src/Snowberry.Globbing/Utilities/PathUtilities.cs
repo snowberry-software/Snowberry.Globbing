@@ -17,7 +17,7 @@ internal static class PathUtilities
     /// <param name="path">The path.</param>
     /// <param name="windows"><see langword="true"/> to treat both <c>/</c> and <c>\</c> as separators; otherwise, only <c>/</c>.</param>
     /// <returns>The file name, for example <c>b</c> for <c>a/b</c> and for <c>a/b/</c>.</returns>
-    public static string BaseName(string path, bool windows = false)
+    public static string BaseName(string path, bool windows)
     {
         var name = BaseName(path.AsSpan(), windows);
         return name.Length == path.Length ? path : name.ToString();
@@ -50,7 +50,7 @@ internal static class PathUtilities
     /// Converts backslashes to forward slashes.
     /// </summary>
     /// <param name="str">The string to convert.</param>
-    /// <returns>The string with every backslash replaced by a forward slash.</returns>
+    /// <returns>The string with every backslash replaced by a forward slash, or <paramref name="str"/> itself when it has no backslash; callers rely on that to detect a change by reference.</returns>
     public static string ToPosixSlashes(string str)
     {
         return str.Replace('\\', '/');

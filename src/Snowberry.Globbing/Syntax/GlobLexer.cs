@@ -135,8 +135,7 @@ internal ref struct GlobLexer
                     continue;
 
                 case '!':
-                    // "!(?=", "!(?!", "!(?<" and "!(?:" start a regex group, not a negated extended glob.
-                    if (_options.Extglobs && At(i + 1) == '(' && (At(i + 2) != '?' || At(i + 3) is not ('!' or '=' or '<' or ':')))
+                    if (_options.Extglobs && OpensNegatedExtglob(_pattern, i))
                     {
                         tokens.Add(new GlobToken(GlobTokenKind.ExtglobOpen, '!', LiteralForm.Plain, i, 2));
                         i += 2;
@@ -165,13 +164,35 @@ internal ref struct GlobLexer
     }
 
     /// <summary>
+    /// Determines whether the <c>!</c> at <paramref name="i"/> opens <c>!(...)</c> rather than a regex group such as <c>!(?=</c>, <c>!(?!</c>, <c>!(?&lt;</c> or <c>!(?:</c>.
+    /// </summary>
+    /// <param name="pattern">The pattern.</param>
+    /// <param name="i">The position of the <c>!</c>.</param>
+    /// <returns><see langword="true"/> if the <c>!</c> opens a negated extended glob; otherwise, <see langword="false"/>.</returns>
+    public static bool OpensNegatedExtglob(ReadOnlySpan<char> pattern, int i)
+    {
+        return At(pattern, i + 1) == '(' && (At(pattern, i + 2) != '?' || At(pattern, i + 3) is not ('!' or '=' or '<' or ':'));
+    }
+
+    /// <summary>
+    /// Reads a character, tolerating positions past the end.
+    /// </summary>
+    /// <param name="s">The text to read.</param>
+    /// <param name="i">The position to read.</param>
+    /// <returns>The character at <paramref name="i"/>, or <c>\0</c> if <paramref name="i"/> is past the end of <paramref name="s"/>.</returns>
+    public static char At(ReadOnlySpan<char> s, int i)
+    {
+        return i < s.Length ? s[i] : '\0';
+    }
+
+    /// <summary>
     /// Reads a pattern character, tolerating positions past the end.
     /// </summary>
     /// <param name="i">The position to read.</param>
     /// <returns>The character at <paramref name="i"/>, or <c>\0</c> if <paramref name="i"/> is past the end of the pattern.</returns>
     private readonly char At(int i)
     {
-        return i < _pattern.Length ? _pattern[i] : '\0';
+        return At(_pattern, i);
     }
 
     /// <summary>

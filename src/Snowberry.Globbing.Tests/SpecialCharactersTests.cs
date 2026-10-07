@@ -37,7 +37,7 @@ public class SpecialCharactersTests
     [InlineData("ab", "a\\\\b", false)]
     public void BackslashShouldBeEscaped(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Posix };
+        var options = TestOptions.Posix;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 
@@ -613,6 +613,7 @@ public class SpecialCharactersTests
         var glob = new Glob(pattern);
 
         glob.IsMatch(input).Should().BeTrue();
+        // Portability: JavaScript with the u flag rejects an escaped letter or underscore that is not an escape.
         glob.ToRegexString().Should().NotContain(@"\_").And.NotContain(@"\é");
     }
 

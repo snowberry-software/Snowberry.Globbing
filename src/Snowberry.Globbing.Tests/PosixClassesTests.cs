@@ -2,12 +2,11 @@ namespace Snowberry.Globbing.Tests;
 
 /// <summary>
 /// Tests for POSIX character classes ported from picomatch.
-/// POSIX classes are expanded with default options; PosixClasses = true additionally enables [!...] negation.
+/// POSIX classes are expanded with default options.
 /// </summary>
 public class PosixClassesTests
 {
-    private static readonly GlobOptions s_PosixOptions = new() { PosixClasses = true };
-    private static readonly GlobOptions s_StrictPosixOptions = new() { PosixClasses = true, StrictSlashes = true };
+    private static readonly GlobOptions s_StrictSlashes = new() { StrictSlashes = true };
 
     [Theory]
     [InlineData("a", "[[:alnum:]]", true)]
@@ -17,7 +16,7 @@ public class PosixClassesTests
     [InlineData(".", "[[:alnum:]]", false)]
     public void AlnumClassShouldMatchAlphanumericCharacters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -27,7 +26,7 @@ public class PosixClassesTests
     [InlineData("a-b", "[[:alnum:]]+", false)]
     public void AlnumClassWithPlusShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -39,7 +38,7 @@ public class PosixClassesTests
     [InlineData("!", "[[:alpha:]]", false)]
     public void AlphaClassShouldMatchAlphabeticCharacters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -49,7 +48,7 @@ public class PosixClassesTests
     [InlineData("A", "[[:alpha:]123]", true)]
     public void AlphaClassWithExtraChars(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -58,7 +57,7 @@ public class PosixClassesTests
     [InlineData("123", "[[:alpha:]]*", false)]
     public void AlphaClassWithStarShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -70,7 +69,7 @@ public class PosixClassesTests
     [InlineData("a3", "[[:alpha:][:digit:]]", false)]
     public void AlphaDigitCombinedClass(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -79,7 +78,7 @@ public class PosixClassesTests
     [InlineData("a c", "a (\\[b\\]|[b])", false)]
     public void AlternationWithBrackets(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -89,7 +88,7 @@ public class PosixClassesTests
     [InlineData("\u00E9", "[[:ascii:]]", false)]
     public void AsciiClassShouldMatchAsciiCharacters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -99,7 +98,7 @@ public class PosixClassesTests
     [InlineData("\n", "[[:blank:]]", false)]
     public void BlankClassShouldMatchSpaceAndTab(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -108,7 +107,7 @@ public class PosixClassesTests
     [InlineData("a c", "a ([b])", false)]
     public void BracketsInParens(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -132,6 +131,7 @@ public class PosixClassesTests
     [InlineData("*[[:space:]]*")]
     public void ClassesShouldNotLeakIntoGeneratedRegex(string pattern)
     {
+        // Portability: a nested "[:" is a class in PostgreSQL but plain text in .NET and JavaScript.
         new Glob(pattern).ToRegexString().Should().NotContain("[:");
     }
 
@@ -143,7 +143,7 @@ public class PosixClassesTests
     [InlineData(" ", "[[:cntrl:]]", false)]
     public void CntrlClassShouldMatchControlCharacters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -153,7 +153,7 @@ public class PosixClassesTests
     [InlineData("aa", "[[:alpha:]][[:digit:]]", false)]
     public void CombinedPosixClassesShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -165,7 +165,7 @@ public class PosixClassesTests
     [InlineData("X", "[[:digit:]]", false)]
     public void DigitClassShouldMatchDigits(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -174,7 +174,7 @@ public class PosixClassesTests
     [InlineData("abc", "[[:digit:]]*", false)]
     public void DigitClassWithStarShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -186,7 +186,7 @@ public class PosixClassesTests
     [InlineData("1!  ", "[[:digit:]][[:punct:]][[:space:]]", false)]
     public void DigitPunctSpaceCombinations(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -194,7 +194,7 @@ public class PosixClassesTests
     [InlineData("a b", "a \\[b\\]", false)]
     public void EscapedBracketsMatchLiteral(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -204,7 +204,7 @@ public class PosixClassesTests
     [InlineData(" ", "[[:graph:]]", false)]
     public void GraphClassShouldMatchVisibleCharacters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -215,7 +215,7 @@ public class PosixClassesTests
     public void InvalidPosixBracketIsJustCharClass(string input, string pattern, bool expected)
     {
         // invalid posix bracket, but valid char class - matches literal chars :, a, l, p, h
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -227,7 +227,7 @@ public class PosixClassesTests
     [InlineData("!", "[abc[:punct:][0-9]", true)]
     public void InvalidPosixExpressionsAreCharsToMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -238,7 +238,7 @@ public class PosixClassesTests
     [InlineData("a c", "a [b]", false)]
     public void LiteralBracketsInPatterns(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -250,7 +250,7 @@ public class PosixClassesTests
     [InlineData("9", "[[:lower:]]", false)]
     public void LowerClassShouldMatchLowercaseLetters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -259,7 +259,7 @@ public class PosixClassesTests
     [InlineData("aBc", "[[:lower:]]+", false)]
     public void LowerClassWithPlusShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -269,7 +269,7 @@ public class PosixClassesTests
     [InlineData("aB", "[[:lower:]][[:upper:]]", true)]
     public void LowerUpperCombination(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -278,7 +278,7 @@ public class PosixClassesTests
     [InlineData(".", "[[:alnum:][:alpha:][:blank:][:cntrl:][:digit:][:lower:][:space:][:upper:][:xdigit:]]", false)]
     public void ManyPosixClassesCombined(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -289,7 +289,7 @@ public class PosixClassesTests
     [InlineData("9A", "[[:lower:][:digit:]]", false)]
     public void MultiplePosixClassesInOneBracket(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -300,7 +300,7 @@ public class PosixClassesTests
     [InlineData("9A", "[[:lower:][:digit:]]+", false)]
     public void MultiplePosixClassesWithPlus(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -311,7 +311,7 @@ public class PosixClassesTests
     [InlineData("999", "[[:lower:][:digit:]]*", true)]
     public void MultiplePosixClassesWithStar(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -320,7 +320,7 @@ public class PosixClassesTests
     [InlineData("b", "[^[:alpha:]]", false)]
     public void NegatedAlphaWithCaret(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -329,7 +329,7 @@ public class PosixClassesTests
     [InlineData("b", "[![:alpha:]]", false)]
     public void NegatedAlphaWithExclamation(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -338,7 +338,7 @@ public class PosixClassesTests
     [InlineData("b", "[^[:digit:]]", true)]
     public void NegatedDigitClass(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -347,7 +347,7 @@ public class PosixClassesTests
     [InlineData("b", "[![:digit:]]", true)]
     public void NegatedDigitClassWithExclamation(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -357,7 +357,7 @@ public class PosixClassesTests
     [InlineData("q", "[a-c[:digit:]x-z]", false)]
     public void PosixClassWithRanges(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -365,7 +365,7 @@ public class PosixClassesTests
     [InlineData("1.txt", "[[:alpha:]].*", false)]
     public void PosixClassWithWildcardShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -375,7 +375,7 @@ public class PosixClassesTests
     [InlineData("\x7F", "[[:print:]]", false)]
     public void PrintClassShouldMatchPrintableCharacters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -387,14 +387,14 @@ public class PosixClassesTests
     [InlineData(" ", "[[:punct:]]", false)]
     public void PunctClassShouldMatchPunctuation(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
     [InlineData("?*+", "[[:punct:]]", false)]
     public void PunctClassShouldOnlyMatchOneChar(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -404,7 +404,7 @@ public class PosixClassesTests
     // NOTE: "foo" matching "foo[[:punct:]]*" returns false - star after POSIX class requires at least one match
     public void PunctClassWithStarShouldMatchMultiple(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -414,7 +414,7 @@ public class PosixClassesTests
     [InlineData("1", "[[:space:]]", false)]
     public void SpaceClassShouldMatchWhitespace(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -425,7 +425,7 @@ public class PosixClassesTests
     [InlineData(".", "[[:digit:][:upper:][:space:]]", false)]
     public void ThreePosixClassesCombined(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -433,7 +433,7 @@ public class PosixClassesTests
     [InlineData("a1b", "[[:alpha:]][[:digit:]][[:upper:]]", false)]
     public void ThreeSequentialPosixClasses(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -445,7 +445,7 @@ public class PosixClassesTests
     [InlineData("2", "[[:upper:]]", false)]
     public void UpperClassShouldMatchUppercaseLetters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -454,7 +454,7 @@ public class PosixClassesTests
     [InlineData("aBc", "[[:upper:]]+", false)]
     public void UpperClassWithPlusShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -462,7 +462,7 @@ public class PosixClassesTests
     [InlineData("P-ATH", "[_[:alpha:]][_[:alnum:]]*", false)]
     public void ValidShIdentifierFirstTwoChars(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -470,7 +470,7 @@ public class PosixClassesTests
     [InlineData("1PATH", "[_[:alpha:]]*", false)]
     public void ValidShIdentifierStart(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -478,7 +478,7 @@ public class PosixClassesTests
     [InlineData("file.txt", "*[[:digit:]].*", false)]
     public void WildcardWithPosixClassShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -490,7 +490,7 @@ public class PosixClassesTests
     [InlineData("abc", "a[[:word:]]+c", true)]
     public void WordClassPatternMatching(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -501,7 +501,7 @@ public class PosixClassesTests
     [InlineData(" ", "[[:word:]]", false)]
     public void WordClassShouldMatchWordCharacters(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -513,7 +513,7 @@ public class PosixClassesTests
     [InlineData("axyzc", "a[[:word:]]+", true)]
     public void WordClassWithPlusPatternMatching(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -521,7 +521,7 @@ public class PosixClassesTests
     [InlineData("hello world", "[[:word:]]+", false)]
     public void WordClassWithPlusShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -533,7 +533,7 @@ public class PosixClassesTests
     [InlineData("!", "[[:xdigit:]]", false)]
     public void XdigitClassShouldMatchHexDigits(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -543,7 +543,7 @@ public class PosixClassesTests
     [InlineData("xyz", "[[:xdigit:]]+", false)]
     public void XdigitClassWithPlusShouldMatch(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -553,6 +553,6 @@ public class PosixClassesTests
     [InlineData("xyz", "[[:xdigit:]]*", false)]
     public void XdigitWithStarShouldMatchHexStrings(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 }

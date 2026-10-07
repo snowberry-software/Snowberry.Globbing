@@ -1,3 +1,5 @@
+using System;
+
 namespace Snowberry.Globbing.Compilation;
 
 /// <summary>
@@ -6,12 +8,15 @@ namespace Snowberry.Globbing.Compilation;
 /// <remarks>The text is taken from the <see cref="RegexFragments"/> and <see cref="GlobChars"/> the emitter uses with default options.</remarks>
 internal sealed class RegexFreeVocabulary
 {
-    /// <summary>The Windows separator class.</summary>
-    public const string c_WindowsSeparator = "[\\\\/]";
-
     private readonly string _boundedStarStart;
+    private readonly string _consumingStarStart;
+    private readonly string[] _dotLeadingGlobstars;
+    private readonly string _dotSegmentStarStart;
+    private readonly string _dotSegmentSlashStarStart;
+    private readonly string _emptyStarStart;
     private readonly string _guardedStar;
-    private readonly string[] _starStarts;
+    private readonly string _middleStar;
+    private readonly string _starStart;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RegexFreeVocabulary"/> class.
@@ -25,23 +30,24 @@ internal sealed class RegexFreeVocabulary
         Windows = windows;
         Separator = sep;
         LeadingGlobstar = f.LeadingSegments;
-        MiddleGlobstar = string.Concat("(?:", sep, f.LeadingSegments, "|", RegexSyntax.c_EndOfInput, ")");
-        TrailingGlobstar = string.Concat("(?:(?:", sep, f.Segment, ")+|", RegexSyntax.c_EndOfInput, ")");
+        MiddleGlobstar = f.MiddleGlobstarOrEnd;
+        TrailingGlobstar = f.TrailingGlobstar;
         WholeGlobstar = chars.NoDot + f.Globstar;
-
-        // The guards of a star that starts a segment and must match a character; the last two, of MatchDotFiles, only keep out . and .. segments.
-        _starStarts = [chars.OneCharNoDot, chars.SegmentFirstChar, chars.NoDots + chars.OneChar, chars.NoDotsSlash + chars.OneChar, chars.NoDot];
-        _guardedStar = chars.OneChar + chars.Star;
-        ConsumingStarStart = chars.SegmentFirstChar;
-        MiddleStar = chars.Star;
-        _boundedStarStart = chars.Qmark[..^1];
+        var dot = RegexFragments.For(GlobOptions.Default with { PathStyle = windows ? GlobPathStyle.Windows : GlobPathStyle.Posix, MatchDotFiles = true });
+        _dotLeadingGlobstars = [string.Concat("(?:", chars.NoDots, dot.Globstar, sep, ")?"), dot.LeadingGlobstar];
+        OneChar = chars.OneChar;
+        _starStart = chars.OneCharNoDot;
+        _consumingStarStart = chars.SegmentFirstChar;
+        _dotSegmentStarStart = chars.NoDots + chars.OneChar;
+        _dotSegmentSlashStarStart = chars.NoDotsSlash + chars.OneChar;
+        _emptyStarStart = chars.NoDot;
+        _guardedStar = chars.OneChar + chars.SegmentRun;
+        _middleStar = chars.SegmentRun;
+        _boundedStarStart = chars.NotSeparatorOpen;
     }
 
-    /// <summary>Gets the guard of a star that starts a segment and consumes its first character itself.</summary>
-    public string ConsumingStarStart { get; }
-
-    /// <summary>Gets <c>[^/]*</c>: a star inside a segment, between two literals.</summary>
-    public string MiddleStar { get; }
+    /// <summary>Gets the lookahead that requires a character other than a line terminator.</summary>
+    public string OneChar { get; }
 
     /// <summary>Gets <c>(?:(?!\.)[^/]*/)*</c>: any number of segments that do not start with a dot, each followed by a separator.</summary>
     public string LeadingGlobstar { get; }
@@ -62,41 +68,78 @@ internal sealed class RegexFreeVocabulary
     public bool Windows { get; }
 
     /// <summary>
-    /// Gets the length of the star at <paramref name="index"/> of <paramref name="source"/>: a run of non-separators that does
-    /// not start with a line terminator and is not empty, and that does not start with a dot or, with <paramref name="dotSegments"/>, is not <c>.</c> or <c>..</c>.
+    /// Determines whether <paramref name="source"/> has <paramref name="text"/> at <paramref name="index"/>.
     /// </summary>
     /// <param name="source">The regex source.</param>
     /// <param name="index">The index to look at.</param>
-    /// <param name="bound">The character the star stops before, as in <c>[^/-]*</c>, or <c>-1</c> if it has none.</param>
-    /// <param name="dotSegments">Whether the star may start with a dot unless its segment is <c>.</c> or <c>..</c>, and must start the input.</param>
-    /// <param name="mayBeEmpty">Whether the star may be empty or start with a line terminator, and only must not start with a dot.</param>
-    /// <returns>The length of the star text, or <c>0</c> if there is none at <paramref name="index"/>.</returns>
-    public int StarLengthAt(string source, int index, out int bound, out bool dotSegments, out bool mayBeEmpty)
+    /// <param name="text">The text to look for.</param>
+    /// <returns><see langword="true"/> if <paramref name="text"/> is at <paramref name="index"/>; otherwise, <see langword="false"/>.</returns>
+    public static bool At(string source, int index, string text)
     {
-        bound = -1;
-        dotSegments = false;
-        mayBeEmpty = false;
-        for (int i = 0; i < _starStarts.Length; i++)
-        {
-            string start = _starStarts[i];
-            if (At(source, index, start))
-            {
-                dotSegments = i is 2 or 3;
-                mayBeEmpty = i == 4;
-                int length = MiddleStarLengthAt(source, index + start.Length, out bound, out bool guarded);
-                if (guarded)
-                    return 0;
+        return (uint)index <= (uint)source.Length && source.AsSpan(index).StartsWith(text.AsSpan());
+    }
 
-                return length > 0 ? start.Length + length : 0;
-            }
+    /// <summary>
+    /// Gets the length of the leading globstar of <see cref="GlobOptions.MatchDotFiles"/> at <paramref name="index"/>.
+    /// </summary>
+    /// <param name="source">The regex source.</param>
+    /// <param name="index">The position in <paramref name="source"/>.</param>
+    /// <returns>The length of the globstar, or 0 if there is none; it matches segments, none of them <c>.</c> or <c>..</c>, each followed by a separator.</returns>
+    public int DotLeadingGlobstarLengthAt(string source, int index)
+    {
+        foreach (string globstar in _dotLeadingGlobstars)
+        {
+            if (At(source, index, globstar))
+                return globstar.Length;
         }
 
         return 0;
     }
 
     /// <summary>
-    /// Gets the length of the star inside a segment at <paramref name="index"/> of <paramref name="source"/>: <see cref="MiddleStar"/>,
-    /// or a run of characters other than a separator and one bound character, as in <c>[^/-]*</c>.
+    /// Gets the length of the star at <paramref name="index"/> of <paramref name="source"/>: a run of non-separators that does
+    /// not start with a line terminator and is not empty, and that does not start with a dot or, with <paramref name="dotSegments"/>, is not <c>.</c> or <c>..</c>.
+    /// </summary>
+    /// <param name="source">The regex source.</param>
+    /// <param name="index">The index to look at.</param>
+    /// <param name="bound">The character the star stops before, as in <c>[^/-]*</c>, or <c>-1</c> if it has none.</param>
+    /// <param name="dotSegments">Whether the star may start with a dot unless its segment is <c>.</c> or <c>..</c>, and must start the input or follow a leading globstar of <see cref="GlobOptions.MatchDotFiles"/>.</param>
+    /// <param name="mayBeEmpty">Whether the star may be empty or start with a line terminator, and only must not start with a dot.</param>
+    /// <param name="consumes">Whether the star takes the first character of its segment itself, even when a literal follows.</param>
+    /// <returns>The length of the star text, or <c>0</c> if there is none at <paramref name="index"/>.</returns>
+    public int StarLengthAt(string source, int index, out int bound, out bool dotSegments, out bool mayBeEmpty, out bool consumes)
+    {
+        dotSegments = false;
+        mayBeEmpty = false;
+        consumes = false;
+        if (At(source, index, _starStart))
+            return StarLength(source, index, _starStart, out bound);
+
+        if (At(source, index, _consumingStarStart))
+        {
+            consumes = true;
+            return StarLength(source, index, _consumingStarStart, out bound);
+        }
+
+        dotSegments = true;
+        if (At(source, index, _dotSegmentStarStart))
+            return StarLength(source, index, _dotSegmentStarStart, out bound);
+
+        if (At(source, index, _dotSegmentSlashStarStart))
+            return StarLength(source, index, _dotSegmentSlashStarStart, out bound);
+
+        dotSegments = false;
+        mayBeEmpty = At(source, index, _emptyStarStart);
+        if (mayBeEmpty)
+            return StarLength(source, index, _emptyStarStart, out bound);
+
+        bound = -1;
+        return 0;
+    }
+
+    /// <summary>
+    /// Gets the length of the star inside a segment at <paramref name="index"/> of <paramref name="source"/>: a run of
+    /// non-separators, or a run of characters other than a separator and one bound character, as in <c>[^/-]*</c>.
     /// </summary>
     /// <param name="source">The regex source.</param>
     /// <param name="index">The index to look at.</param>
@@ -110,8 +153,8 @@ internal sealed class RegexFreeVocabulary
         if (guarded)
             return _guardedStar.Length;
 
-        if (At(source, index, MiddleStar))
-            return MiddleStar.Length;
+        if (At(source, index, _middleStar))
+            return _middleStar.Length;
 
         int q = index + _boundedStarStart.Length;
         if (!At(source, index, _boundedStarStart) || q + 3 > source.Length)
@@ -121,7 +164,7 @@ internal sealed class RegexFreeVocabulary
         if (c == '\\')
         {
             c = source[++q];
-            if (c < 128 && char.IsLetterOrDigit(c))
+            if (RegexSyntax.IsAsciiLetterOrDigit(c))
                 return 0;
         }
         else if (c is ']' or '[' or '^' or '-')
@@ -137,14 +180,19 @@ internal sealed class RegexFreeVocabulary
     }
 
     /// <summary>
-    /// Determines whether <paramref name="source"/> has <paramref name="text"/> at <paramref name="index"/>.
+    /// Gets the length of a star that starts with <paramref name="start"/> at <paramref name="index"/>.
     /// </summary>
     /// <param name="source">The regex source.</param>
-    /// <param name="index">The index to look at.</param>
-    /// <param name="text">The text to look for.</param>
-    /// <returns><see langword="true"/> if <paramref name="text"/> is at <paramref name="index"/>; otherwise, <see langword="false"/>.</returns>
-    private static bool At(string source, int index, string text)
+    /// <param name="index">The index of <paramref name="start"/>.</param>
+    /// <param name="start">The guard the star starts with.</param>
+    /// <param name="bound">The character the star stops before, or <c>-1</c> if it has none.</param>
+    /// <returns>The length of the guard and star text, or <c>0</c> if no unguarded star follows the guard.</returns>
+    private int StarLength(string source, int index, string start, out int bound)
     {
-        return index + text.Length <= source.Length && string.CompareOrdinal(source, index, text, 0, text.Length) == 0;
+        int length = MiddleStarLengthAt(source, index + start.Length, out bound, out bool guarded);
+        if (guarded)
+            return 0;
+
+        return length > 0 ? start.Length + length : 0;
     }
 }

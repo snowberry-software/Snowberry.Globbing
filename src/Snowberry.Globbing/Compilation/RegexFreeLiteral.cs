@@ -45,33 +45,6 @@ internal sealed class RegexFreeLiteral
     public string Text { get; }
 
     /// <summary>
-    /// Joins two literals.
-    /// </summary>
-    /// <param name="a">The first literal.</param>
-    /// <param name="b">The literal that follows <paramref name="a"/>.</param>
-    /// <returns>A literal that matches <paramref name="a"/> followed by <paramref name="b"/>.</returns>
-    public static RegexFreeLiteral Concat(RegexFreeLiteral a, RegexFreeLiteral b)
-    {
-        if (b.Length == 0)
-            return a;
-
-        if (a.Length == 0)
-            return b;
-
-        string text = a.Text + b.Text;
-        if (a._kinds == null && b._kinds == null)
-            return new RegexFreeLiteral(text, null, null);
-
-        byte[] kinds = new byte[text.Length];
-        ulong[] sets = new ulong[2 * text.Length];
-        a._kinds?.CopyTo(kinds, 0);
-        a._sets?.CopyTo(sets, 0);
-        b._kinds?.CopyTo(kinds, a.Length);
-        b._sets?.CopyTo(sets, 2 * a.Length);
-        return new RegexFreeLiteral(text, kinds, sets);
-    }
-
-    /// <summary>
     /// Determines whether <paramref name="input"/> matches the literal at <paramref name="index"/>.
     /// </summary>
     /// <param name="input">The input.</param>

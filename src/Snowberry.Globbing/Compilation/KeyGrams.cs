@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
+using System.Runtime.CompilerServices;
 using Snowberry.Globbing.Syntax;
 
 namespace Snowberry.Globbing.Compilation;
@@ -12,7 +12,10 @@ namespace Snowberry.Globbing.Compilation;
 /// <remarks>Keys come from runs of literals, dots and simple bracket expressions in the root sequence.</remarks>
 internal static class KeyGrams
 {
-    private const int c_GramLength = 3;
+    /// <summary>The number of characters in a trigram.</summary>
+    public const int c_GramLength = 3;
+
+    private const ulong c_GramMask = 0xFFFF_FFFF_FFFF;
     private const int c_MaxGramsPerWindow = 128;
     private const int c_MaxWindowElements = 3;
     private const int c_MaxWindows = 64;
@@ -32,14 +35,8 @@ internal static class KeyGrams
     /// </returns>
     public static ulong[][]? Find(ReadOnlySpan<SyntaxNode> nodes, int root, ReadOnlySpan<char> pattern, GlobOptions options)
     {
-        if (options.IgnoreCase || (options.RegexOptions & RegexOptions.IgnoreCase) != 0)
+        if (!LiteralHint.CanUseLiterals(nodes, options))
             return null;
-
-        foreach (ref readonly var node in nodes)
-        {
-            if (LiteralHint.IsVerbatimRegex(in node, options))
-                return null;
-        }
 
         var elements = new List<string[]>();
         var windows = new List<ulong[]>();
@@ -52,7 +49,7 @@ internal static class KeyGrams
             string[]? alternatives = node.Kind switch
             {
                 SyntaxKind.Dot => Literal('.'),
-                SyntaxKind.Literal when (LiteralForm)node.Count == LiteralForm.Plain && IsVerbatim(node.Value) => Literal(node.Value),
+                SyntaxKind.Literal when (LiteralForm)node.Count == LiteralForm.Plain && LiteralHint.IsVerbatim(node.Value) => Literal(node.Value),
                 SyntaxKind.CharClass => ClassAlternatives(pattern.Slice(node.Start + 1, node.Length - 2), options),
                 _ => null,
             };
@@ -68,14 +65,27 @@ internal static class KeyGrams
     }
 
     /// <summary>
-    /// Packs three characters of <paramref name="text"/> into a trigram.
+    /// Packs three characters into a trigram.
     /// </summary>
-    /// <param name="text">The text.</param>
-    /// <param name="index">The position of the first character.</param>
+    /// <param name="first">The first character.</param>
+    /// <param name="second">The second character.</param>
+    /// <param name="third">The third character.</param>
     /// <returns>The trigram, one character per 16 bits.</returns>
-    public static ulong Pack(ReadOnlySpan<char> text, int index)
+    public static ulong Pack(char first, char second, char third)
     {
-        return ((ulong)text[index] << 32) | ((ulong)text[index + 1] << 16) | text[index + 2];
+        return ((ulong)first << 32) | ((ulong)second << 16) | third;
+    }
+
+    /// <summary>
+    /// Appends <paramref name="c"/> to a trigram, dropping its first character.
+    /// </summary>
+    /// <param name="gram">The trigram, packed as by <see cref="Pack"/>.</param>
+    /// <param name="c">The character to append.</param>
+    /// <returns>The trigram of the last two characters of <paramref name="gram"/> and <paramref name="c"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong Append(ulong gram, char c)
+    {
+        return ((gram << 16) | c) & c_GramMask;
     }
 
     /// <summary>
@@ -152,7 +162,7 @@ internal static class KeyGrams
         {
             if (start + c_GramLength <= elements.Count && IsSingleChar(elements[start]) && IsSingleChar(elements[start + 1]) && IsSingleChar(elements[start + 2]))
             {
-                windows.Add([((ulong)elements[start][0][0] << 32) | ((ulong)elements[start + 1][0][0] << 16) | elements[start + 2][0][0]]);
+                windows.Add([Pack(elements[start][0][0], elements[start + 1][0][0], elements[start + 2][0][0])]);
                 continue;
             }
 
@@ -165,13 +175,15 @@ internal static class KeyGrams
                 if (product > c_MaxGramsPerWindow)
                     break;
 
+                // Every text is at least a trigram long exactly when the shortest one is.
+                if (ShortestLength(elements, start, start + length) < c_GramLength)
+                    continue;
+
                 grams ??= [];
                 grams.Clear();
-                if (Collect(elements, start, start + length, string.Empty, grams))
-                {
-                    windows.Add([.. grams]);
-                    break;
-                }
+                Collect(elements, start, start + length, 0, grams);
+                windows.Add([.. grams]);
+                break;
             }
         }
 
@@ -179,32 +191,51 @@ internal static class KeyGrams
     }
 
     /// <summary>
-    /// Adds the last trigram of every text that elements <paramref name="from"/> to <paramref name="to"/> can match after <paramref name="prefix"/>.
+    /// Adds the last trigram of every text that elements <paramref name="from"/> to <paramref name="to"/> can match after the text before them.
     /// </summary>
     /// <param name="elements">The elements of the run.</param>
     /// <param name="from">The first element still to append.</param>
     /// <param name="to">The element after the window.</param>
-    /// <param name="prefix">The text of the elements before <paramref name="from"/>.</param>
-    /// <param name="grams">The trigrams found.</param>
-    /// <returns><see langword="false"/> if some text is shorter than a trigram; otherwise, <see langword="true"/>.</returns>
-    private static bool Collect(List<string[]> elements, int from, int to, string prefix, HashSet<ulong> grams)
+    /// <param name="last">The last three characters of the text before <paramref name="from"/>, packed as by <see cref="Pack"/>.</param>
+    /// <param name="grams">The trigrams found; every text must be at least a trigram long.</param>
+    private static void Collect(List<string[]> elements, int from, int to, ulong last, HashSet<ulong> grams)
     {
         if (from == to)
         {
-            if (prefix.Length < c_GramLength)
-                return false;
-
-            grams.Add(Pack(prefix.AsSpan(), prefix.Length - c_GramLength));
-            return true;
+            grams.Add(last);
+            return;
         }
 
         foreach (string alternative in elements[from])
         {
-            if (!Collect(elements, from + 1, to, prefix + alternative, grams))
-                return false;
+            ulong next = last;
+            foreach (char c in alternative.Length > c_GramLength ? alternative.AsSpan(alternative.Length - c_GramLength) : alternative.AsSpan())
+                next = Append(next, c);
+
+            Collect(elements, from + 1, to, next, grams);
+        }
+    }
+
+    /// <summary>
+    /// Gets the length of the shortest text that elements <paramref name="from"/> to <paramref name="to"/> can match.
+    /// </summary>
+    /// <param name="elements">The elements of the run.</param>
+    /// <param name="from">The first element of the window.</param>
+    /// <param name="to">The element after the window.</param>
+    /// <returns>The sum of the shortest alternative of each element.</returns>
+    private static int ShortestLength(List<string[]> elements, int from, int to)
+    {
+        int total = 0;
+        for (int k = from; k < to; k++)
+        {
+            int shortest = int.MaxValue;
+            foreach (string alternative in elements[k])
+                shortest = Math.Min(shortest, alternative.Length);
+
+            total += shortest;
         }
 
-        return true;
+        return total;
     }
 
     /// <summary>
@@ -215,16 +246,6 @@ internal static class KeyGrams
     private static string[] Literal(char c)
     {
         return c < s_AsciiLiterals.Length ? s_AsciiLiterals[c] : [new string(c, 1)];
-    }
-
-    /// <summary>
-    /// Determines whether a literal keeps its meaning under <see cref="RegexOptions.IgnorePatternWhitespace"/>, as <see cref="LiteralHint"/> requires.
-    /// </summary>
-    /// <param name="c">The character.</param>
-    /// <returns><see langword="false"/> for <c>\0</c>, whitespace and <c>#</c>; otherwise, <see langword="true"/>.</returns>
-    private static bool IsVerbatim(char c)
-    {
-        return c != '\0' && c != '#' && !char.IsWhiteSpace(c);
     }
 
     /// <summary>

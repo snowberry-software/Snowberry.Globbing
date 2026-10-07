@@ -64,7 +64,7 @@ public class SlashesWindowsTests
     [InlineData("a\\c", "!(a/b)", true)]
     public void ShouldMatchWindowsSeparators(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
+        var options = TestOptions.Windows;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 
@@ -80,7 +80,7 @@ public class SlashesWindowsTests
     [InlineData("a\\b", "*", true)]
     public void ShouldNotTreatBackslashAsSeparatorInPosixStyle(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Posix };
+        var options = TestOptions.Posix;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 }

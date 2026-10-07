@@ -5,9 +5,6 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class NegationTests
 {
-    // [!...] is not bracket negation (picomatch parity); use [^...]
-    private static readonly GlobOptions s_PosixOptions = new() { PosixClasses = true };
-
     [Theory]
     [InlineData("!a", "\\!a", true)]
     [InlineData("a", "\\!a", false)]
@@ -68,7 +65,7 @@ public class NegationTests
     [InlineData("c", "[^a]", true)]
     public void ShouldNegateCharacterClassWithExclamation(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -191,7 +188,7 @@ public class NegationTests
     [InlineData("d", "[^a-c]", true)]
     public void ShouldNegateRangeInBrackets(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -417,7 +414,7 @@ public class NegationTests
     [InlineData("!(foo)a", ".a", true)]
     public void NegatedGlobstarExtglob_FollowedByText_NeverMatches(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, new GlobOptions { PathStyle = GlobPathStyle.Posix }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
