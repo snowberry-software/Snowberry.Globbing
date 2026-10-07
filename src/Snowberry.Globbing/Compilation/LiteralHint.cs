@@ -222,6 +222,9 @@ internal sealed class LiteralHint
     /// <summary>Gets a value indicating whether a matching input must start with literal text.</summary>
     public bool HasPrefix => _prefix != null;
 
+    /// <summary>Gets a value indicating whether a matching input must contain literal text away from its ends.</summary>
+    public bool HasOrdered => _ordered != null;
+
     /// <summary>
     /// Determines whether <paramref name="input"/> has the required literal text.
     /// </summary>

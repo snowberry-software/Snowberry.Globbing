@@ -51,6 +51,7 @@ public sealed class Glob
     private readonly Glob? _ignore;
     private readonly PatternIndex? _index;
     private readonly bool _matchesSpans;
+    private readonly CompiledPattern? _single;
 
     private readonly string[] _patterns;
     private Regex? _combinedRegex;
@@ -160,6 +161,10 @@ public sealed class Glob
         }
 
         _matchesSpans = Options.InputNormalizer == null && Array.TrueForAll(_compiled, c => c.MatchesSpanWithoutString) && (_ignore == null || _ignore._matchesSpans);
+
+        // One pattern whose input needs no normalization beyond separators is matched directly.
+        if (_compiled.Length == 1 && _ignore == null && Options.InputNormalizer == null && !Options.MatchFileNameOnly)
+            _single = _compiled[0];
     }
 
     /// <summary>
@@ -451,6 +456,26 @@ public sealed class Glob
     {
         Guard.NotNull(input);
 
+        if (_single != null)
+        {
+            if (!_convertSeparators || input.IndexOf('\\') < 0)
+                return input.Length > 0 && (input == _single.Pattern || _single.IsMatch(input));
+
+            if (_matchesSpans)
+                return IsMatchConverted(input.AsSpan());
+        }
+
+        return IsMatchAny(input);
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="input"/> matches a pattern of this glob and no ignore pattern.
+    /// </summary>
+    /// <param name="input">The input to match.</param>
+    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private bool IsMatchAny(string input)
+    {
         if (_matchesSpans && (Options.MatchFileNameOnly || (_convertSeparators && input.AsSpan().IndexOf('\\') >= 0)))
             return IsMatchCore(input.AsSpan());
 
@@ -467,7 +492,17 @@ public sealed class Glob
     public bool IsMatch(ReadOnlySpan<char> input)
     {
         if (_matchesSpans)
+        {
+            if (_single != null)
+            {
+                if (!_convertSeparators || input.IndexOf('\\') < 0)
+                    return !input.IsEmpty && (input.SequenceEqual(_single.Pattern.AsSpan()) || _single.IsMatch(input));
+
+                return IsMatchConverted(input);
+            }
+
             return IsMatchCore(input);
+        }
 
         return IsMatch(input.ToString());
     }
@@ -646,6 +681,12 @@ public sealed class Glob
         Guard.NotNull(input);
 
         string normalized = Normalize(input);
+        if (_single != null && ReferenceEquals(normalized, input))
+        {
+            bool success = input.Length > 0 && (input == _single.Pattern || _single.IsMatch(input));
+            return new GlobMatch(success, false, input, input, success ? _single.Pattern : null);
+        }
+
         string? pattern = FindPattern(input, normalized);
         if (pattern == null)
             return new GlobMatch(false, false, input, normalized, null);

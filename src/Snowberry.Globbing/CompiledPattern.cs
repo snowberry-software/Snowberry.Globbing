@@ -51,8 +51,12 @@ internal sealed class CompiledPattern
         {
             _fast = RegexFreeMatcher.TryCreate(Source, regexOptions);
 
-            // A literal prefix rejects most inputs more cheaply than the regex-free matcher.
+            // A literal prefix, and on netstandard2.0 inner text, rejects inputs more cheaply than the regex-free matcher.
+#if NET
             if (_fast != null && _hint is { HasPrefix: true })
+#else
+            if (_fast != null && _hint is { HasPrefix: true } or { HasOrdered: true })
+#endif
                 _fastPrefix = _hint;
             if (positiveSource != null)
                 _fastPositive = RegexFreeMatcher.TryCreate(positiveSource, regexOptions);

@@ -169,6 +169,13 @@ var files = await db.Files.Where(f => Regex.IsMatch(f.Path, source, RegexOptions
 
 The regex covers the patterns only. `Glob` applies the rest itself: `IgnoreCase` (use `RegexOptions.IgnoreCase`, `~*` in PostgreSQL or the `i` flag in JavaScript), `RegexOptions`, `MatchTimeout`, `IgnorePatterns`, `MatchFileNameOnly`, input normalization and the input-equals-pattern rule.
 
+### PostgreSQL Performance
+
+- **A trigram index works.** With `CREATE EXTENSION pg_trgm` and a `gin (path gin_trgm_ops)` index, the planner uses the index for any pattern with a literal word of two or more letters or digits, such as the `cs` of `**/*.cs` or the `node_modules` of `**/node_modules/**`. The lookaheads in the regex do not prevent this. Patterns without such a literal (`*`, `**`, `**/.*`) and negated patterns (`!*.md`) still scan the table.
+- **Keep combined regexes small.** PostgreSQL builds the matching automaton again for every row, so the cost per row grows with the length of the regex. A `Glob` of 1,000 patterns gives a 60 KB regex that takes about 2 seconds to compile per connection and about 1 ms per row. For long pattern lists, narrow the rows first with a cheaper or indexed condition, such as a `LIKE` on a required extension, and apply the combined regex to the rest.
+- **Use `~ ANY(...)` for at most 32 regexes.** `path ~ ANY(@regexes)`, with one `ToRegexString()` per pattern, is faster than one combined regex while the array has at most 32 entries. PostgreSQL caches 32 compiled regexes per connection, so a longer array compiles every regex again for every row.
+- **Prefer glibc-based images.** On Alpine-based PostgreSQL images, regexes with more than about 20 distinct characters, such as `**/{yarn.lock,package-lock.json}`, are 10 to 20 times slower per row than on `postgres:17`, because musl's allocator is slow for the automaton's per-row allocations.
+
 ## Error Handling
 
 | Situation | Exception |

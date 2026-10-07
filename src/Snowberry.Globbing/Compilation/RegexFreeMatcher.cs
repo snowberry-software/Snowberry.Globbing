@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -7,8 +8,9 @@ namespace Snowberry.Globbing.Compilation;
 
 /// <summary>
 /// Decides without running a regex whether an input matches one of the regex shapes the emitter writes for the most
-/// common globs, such as <c>*.js</c>, <c>**/*.js</c>, <c>*.{js,ts}</c>, <c>src/**</c>, <c>src/**/*.cs</c>,
-/// <c>**/bin/**</c>, <c>**</c> and plain literals.
+/// common globs, such as <c>*.js</c>, <c>*.min.*.js</c>, <c>**/*.js</c>, <c>*.{js,ts}</c>, <c>src/**</c>, <c>src/**/*.cs</c>,
+/// <c>**/bin/**</c>, <c>**</c>, <c>*-*.js</c>, <c>*.*</c>, plain literals and ASCII bracket expressions such as <c>*.[jt]s</c> or <c>?</c>,
+/// including the <see cref="GlobOptions.MatchDotFiles"/> forms of a star that starts the input.
 /// </summary>
 /// <remarks>
 /// The shape is recognized from the regex source; any other source, or a regex option that changes its meaning, runs the regex.
@@ -17,18 +19,26 @@ namespace Snowberry.Globbing.Compilation;
 internal sealed class RegexFreeMatcher
 {
     private const string c_End = ")$(?!\\n)";
+    private const int c_MaxInnerLiterals = 8;
     private const int c_MaxLiteralLength = 256;
     private const string c_Start = "^(?:";
 
     private static readonly RegexFreeVocabulary s_Posix = new(windows: false);
     private static readonly RegexFreeVocabulary s_Windows = new(windows: true);
 
-    private readonly string[]? _alternatives;
+    private const int c_MaxTails = 64;
+
     private readonly string? _headLiteral;
+    private readonly string[]? _inner;
     private readonly bool _leadingSegments;
     private readonly string _literal;
     private readonly bool _optionalSeparator;
     private readonly bool _star;
+    private readonly bool _starConsumes;
+    private readonly bool _starDots;
+    private readonly bool _starMayBeEmpty;
+    private readonly bool _lastStarGuarded;
+    private readonly RegexFreeLiteral[] _tails;
     private readonly bool _trailingGlobstar;
     private readonly bool _wholeGlobstar;
     private readonly bool _windows;
@@ -41,8 +51,12 @@ internal sealed class RegexFreeMatcher
     /// <param name="leadingSegments">Whether segments that do not start with a dot may come before the star or literal.</param>
     /// <param name="wholeGlobstar">Whether the regex is a whole-input globstar.</param>
     /// <param name="star">Whether a star run comes before the literal.</param>
-    /// <param name="literal">The literal text.</param>
-    /// <param name="alternatives">The literal alternatives after <paramref name="literal"/>, or <see langword="null"/> if there are none.</param>
+    /// <param name="starDots">Whether the star run may start with a dot unless its segment is <c>.</c> or <c>..</c>.</param>
+    /// <param name="starMayBeEmpty">Whether the star run may be empty or start with a line terminator, and only must not start with a dot.</param>
+    /// <param name="lastStarGuarded">Whether the character after the last inner literal must exist and not be a line terminator.</param>
+    /// <param name="starConsumes">Whether the star run takes the first character of its segment even when a literal follows.</param>
+    /// <param name="inner">The literals, in order, that the star run contains, each followed by another star run, or <see langword="null"/> if there are none.</param>
+    /// <param name="tails">The alternatives for the text that ends the shape; the first is the literal before a trailing globstar.</param>
     /// <param name="trailingGlobstar">Whether a trailing globstar follows the literal.</param>
     /// <param name="optionalSeparator">Whether one separator may end the input.</param>
     private RegexFreeMatcher(
@@ -51,8 +65,12 @@ internal sealed class RegexFreeMatcher
         bool leadingSegments,
         bool wholeGlobstar,
         bool star,
-        string literal,
-        string[]? alternatives,
+        bool starDots,
+        bool starMayBeEmpty,
+        bool lastStarGuarded,
+        bool starConsumes,
+        string[]? inner,
+        RegexFreeLiteral[] tails,
         bool trailingGlobstar,
         bool optionalSeparator)
     {
@@ -61,8 +79,13 @@ internal sealed class RegexFreeMatcher
         _leadingSegments = leadingSegments;
         _wholeGlobstar = wholeGlobstar;
         _star = star;
-        _literal = literal;
-        _alternatives = alternatives;
+        _starDots = starDots;
+        _starMayBeEmpty = starMayBeEmpty;
+        _lastStarGuarded = lastStarGuarded;
+        _starConsumes = starConsumes;
+        _inner = inner;
+        _tails = tails;
+        _literal = tails[0].Text;
         _trailingGlobstar = trailingGlobstar;
         _optionalSeparator = optionalSeparator;
     }
@@ -119,30 +142,80 @@ internal sealed class RegexFreeMatcher
         else
         {
             int q = p;
-            if (!TryParseLiteral(source, ref q, end, windows, out string head))
+            if (!TryParseLiteral(source, ref q, end, windows, out var head))
                 return null;
 
             if (At(source, q, v.MiddleGlobstar))
             {
-                headLiteral = head;
+                if (head.HasClasses)
+                    return null;
+
+                headLiteral = head.Text;
                 leading = true;
                 p = q + v.MiddleGlobstar.Length;
             }
         }
 
-        int starLength = whole ? 0 : v.StarLengthAt(source, p);
+        int bound = -1;
+        bool starDots = false;
+        bool starMayBeEmpty = false;
+        int starLength = whole ? 0 : v.StarLengthAt(source, p, out bound, out starDots, out starMayBeEmpty);
         bool star = starLength > 0;
+
+        // Only the first star sees the start of the input, where the dot-segment guard applies.
+        if (starDots && (leading || headLiteral != null))
+            return null;
+
+        bool starConsumes = star && At(source, p, v.ConsumingStarStart);
         p += starLength;
 
-        string literal = "";
+        var literal = RegexFreeLiteral.Empty;
         if (!whole && !TryParseLiteral(source, ref p, end, windows, out literal))
             return null;
 
-        string[]? alternatives = null;
-        if (!whole && p < end && source[p] == '(' && !At(source, p, v.TrailingGlobstar) && !TryParseAlternatives(source, ref p, end, windows, out alternatives))
+        // A star bounded by a character, as in [^/-]*-, is a plain star only when that character and another star follow it.
+        List<string>? inner = null;
+        int middle;
+        bool guarded = false;
+        while (star && literal.Length > 0 && (middle = v.MiddleStarLengthAt(source, p, out int nextBound, out bool nextGuarded)) > 0)
+        {
+            // Only the last star may be guarded.
+            if (guarded || literal.HasClasses || (bound >= 0 && (literal.Length != 1 || literal.Text[0] != bound)))
+                return null;
+
+            (inner ??= []).Add(literal.Text);
+            bound = nextBound;
+            guarded = nextGuarded;
+            p += middle;
+            if (!TryParseLiteral(source, ref p, end, windows, out literal))
+                return null;
+        }
+
+        if (bound >= 0)
             return null;
 
-        bool trailing = !whole && !star && alternatives == null && literal.Length > 0 && At(source, p, v.TrailingGlobstar);
+        RegexFreeLiteral[] tails = [literal];
+        bool grouped = false;
+        while (!whole && p < end && source[p] == '(' && !At(source, p, v.TrailingGlobstar))
+        {
+            if (!TryParseAlternatives(source, ref p, end, windows, out var alternatives) || !TryParseLiteral(source, ref p, end, windows, out var after))
+                return null;
+
+            grouped = true;
+            if (tails.Length * alternatives.Length > c_MaxTails)
+                return null;
+
+            var product = new RegexFreeLiteral[tails.Length * alternatives.Length];
+            for (int i = 0; i < tails.Length; i++)
+            {
+                for (int j = 0; j < alternatives.Length; j++)
+                    product[(i * alternatives.Length) + j] = RegexFreeLiteral.Concat(RegexFreeLiteral.Concat(tails[i], alternatives[j]), after);
+            }
+
+            tails = product;
+        }
+
+        bool trailing = !whole && !star && !grouped && !literal.HasClasses && literal.Length > 0 && At(source, p, v.TrailingGlobstar);
         if (trailing)
             p += v.TrailingGlobstar.Length;
 
@@ -154,19 +227,19 @@ internal sealed class RegexFreeMatcher
             return null;
 
         // Matching costs up to the input length times the literal length.
-        if (literal.Length > c_MaxLiteralLength || headLiteral?.Length > c_MaxLiteralLength
-            || (alternatives != null && Array.Exists(alternatives, a => a.Length > c_MaxLiteralLength)))
+        if (literal.Length > c_MaxLiteralLength || headLiteral?.Length > c_MaxLiteralLength || Array.Exists(tails, t => t.Length > 2 * c_MaxLiteralLength)
+            || (inner != null && (inner.Count > c_MaxInnerLiterals || inner.Exists(i => i.Length > c_MaxLiteralLength || HasSlash(i)))))
             return null;
 
         // A star run does not take a separator, so the text after it must not have one.
-        if (star && (HasSlash(literal) || (alternatives != null && Array.Exists(alternatives, HasSlash))))
+        if (star && Array.Exists(tails, t => HasSlash(t.Text)))
             return null;
 
         // The end-of-input alternative of a middle globstar must stay unable to match, so the rest needs a character.
-        if (headLiteral != null && !star && literal.Length == 0 && (alternatives == null || Array.Exists(alternatives, a => a.Length == 0)))
+        if (headLiteral != null && !star && Array.Exists(tails, t => t.Length == 0))
             return null;
 
-        return new RegexFreeMatcher(windows, headLiteral, leading, whole, star, literal, alternatives, trailing, optionalSeparator);
+        return new RegexFreeMatcher(windows, headLiteral, leading, whole, star, starDots, starMayBeEmpty, guarded, starConsumes, inner?.ToArray(), tails, trailing, optionalSeparator);
     }
 
     /// <summary>
@@ -200,17 +273,17 @@ internal sealed class RegexFreeMatcher
     /// <param name="windows">Whether separators are written as Windows separator classes.</param>
     /// <param name="alternatives">The alternatives, if the group has only literal alternatives.</param>
     /// <returns><see langword="true"/> if the group has only literal alternatives; otherwise, <see langword="false"/>.</returns>
-    private static bool TryParseAlternatives(string source, ref int p, int end, bool windows, out string[]? alternatives)
+    private static bool TryParseAlternatives(string source, ref int p, int end, bool windows, out RegexFreeLiteral[] alternatives)
     {
-        alternatives = null;
+        alternatives = [];
         if (!At(source, p, "(?:"))
             return false;
 
         int q = p + 3;
-        var list = new List<string>();
+        var list = new List<RegexFreeLiteral>();
         while (true)
         {
-            if (!TryParseLiteral(source, ref q, end, windows, out string alternative))
+            if (!TryParseLiteral(source, ref q, end, windows, out var alternative))
                 return false;
 
             list.Add(alternative);
@@ -243,12 +316,14 @@ internal sealed class RegexFreeMatcher
     /// <param name="p">The index to read from; on success, the index after the run.</param>
     /// <param name="end">The index the shape ends at.</param>
     /// <param name="windows">Whether separators are written as Windows separator classes.</param>
-    /// <param name="literal">The literal text read, possibly empty.</param>
+    /// <param name="literal">The literal read, possibly empty.</param>
     /// <returns><see langword="true"/> if the text read is literal; otherwise, <see langword="false"/>.</returns>
-    private static bool TryParseLiteral(string source, ref int p, int end, bool windows, out string literal)
+    private static bool TryParseLiteral(string source, ref int p, int end, bool windows, out RegexFreeLiteral literal)
     {
-        literal = "";
+        literal = RegexFreeLiteral.Empty;
         var sb = new StringBuilder();
+        List<byte>? kinds = null;
+        List<ulong>? sets = null;
         int q = p;
         while (q < end)
         {
@@ -265,6 +340,9 @@ internal sealed class RegexFreeMatcher
                 if (escaped == '/' && q + 2 < source.Length && source[q + 2] == '?')
                     break;
 
+                kinds?.Add(RegexFreeLiteral.c_Literal);
+                sets?.Add(0);
+                sets?.Add(0);
                 sb.Append(escaped);
                 q += 2;
                 continue;
@@ -275,14 +353,38 @@ internal sealed class RegexFreeMatcher
                 if (q + RegexFreeVocabulary.c_WindowsSeparator.Length < source.Length && source[q + RegexFreeVocabulary.c_WindowsSeparator.Length] == '?')
                     break;
 
+                kinds?.Add(RegexFreeLiteral.c_Literal);
+                sets?.Add(0);
+                sets?.Add(0);
                 sb.Append('/');
                 q += RegexFreeVocabulary.c_WindowsSeparator.Length;
+                continue;
+            }
+
+            // A class with a quantifier, such as a star, ends the run.
+            int r = q;
+            if (c == '[' && TryParseClass(source, ref r, end, windows, out ulong low, out ulong high, out bool nonAscii) && !(r < end && source[r] is '?' or '*' or '+' or '{'))
+            {
+                q = r;
+                if (kinds == null)
+                {
+                    kinds = [.. new byte[sb.Length]];
+                    sets = [.. new ulong[2 * sb.Length]];
+                }
+
+                kinds.Add(nonAscii ? RegexFreeLiteral.c_ClassWithNonAscii : RegexFreeLiteral.c_Class);
+                sets!.Add(low);
+                sets.Add(high);
+                sb.Append('\0');
                 continue;
             }
 
             if (c is '^' or '$' or '.' or '|' or '?' or '*' or '+' or '(' or ')' or '[' or ']' or '{' or '}')
                 break;
 
+            kinds?.Add(RegexFreeLiteral.c_Literal);
+            sets?.Add(0);
+            sets?.Add(0);
             sb.Append(c);
             q++;
         }
@@ -291,9 +393,102 @@ internal sealed class RegexFreeMatcher
         if (q < end && source[q] is '?' or '*' or '+' or '{')
             return false;
 
-        literal = sb.ToString();
+        literal = sb.Length == 0 ? RegexFreeLiteral.Empty : new RegexFreeLiteral(sb.ToString(), kinds?.ToArray(), sets?.ToArray());
         p = q;
         return true;
+    }
+
+    /// <summary>
+    /// Reads a character class of ASCII characters and ranges, such as <c>[a-z_]</c> or <c>[^./]</c>, that does not match a separator.
+    /// </summary>
+    /// <param name="source">The regex source.</param>
+    /// <param name="p">The index of the <c>[</c>; on success, the index after the class.</param>
+    /// <param name="end">The index the shape ends at.</param>
+    /// <param name="windows">Whether <c>\</c> is a separator too.</param>
+    /// <param name="low">The ASCII characters 0 to 63 the class matches, one bit each.</param>
+    /// <param name="high">The ASCII characters 64 to 127 the class matches, one bit each.</param>
+    /// <param name="nonAscii">Whether the class matches every non-ASCII character.</param>
+    /// <returns><see langword="true"/> if the class has a supported form; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseClass(string source, ref int p, int end, bool windows, out ulong low, out ulong high, out bool nonAscii)
+    {
+        low = 0;
+        high = 0;
+        nonAscii = false;
+        int q = p + 1;
+        bool negated = q < end && source[q] == '^';
+        if (negated)
+            q++;
+
+        bool any = false;
+        while (q < end && source[q] != ']')
+        {
+            if (!TryReadClassMember(source, ref q, end, out char first))
+                return false;
+
+            char last = first;
+            if (q + 1 < end && source[q] == '-' && source[q + 1] != ']')
+            {
+                q++;
+                if (!TryReadClassMember(source, ref q, end, out last) || last < first)
+                    return false;
+            }
+
+            for (int c = first; c <= last; c++)
+            {
+                if (c < 64)
+                    low |= 1UL << c;
+                else
+                    high |= 1UL << (c - 64);
+            }
+
+            any = true;
+        }
+
+        if (q >= end || !any)
+            return false;
+
+        if (negated)
+        {
+            low = ~low;
+            high = ~high;
+            nonAscii = true;
+        }
+
+        if (((low >> '/') & 1) != 0 || (windows && ((high >> ('\\' - 64)) & 1) != 0))
+            return false;
+
+        p = q + 1;
+        return true;
+    }
+
+    /// <summary>
+    /// Reads one ASCII member of a character class: a character, or a backslash and a character that is not a letter or digit.
+    /// </summary>
+    /// <param name="source">The regex source.</param>
+    /// <param name="q">The index of the member; on success, the index after it.</param>
+    /// <param name="end">The index the shape ends at.</param>
+    /// <param name="member">The character the member stands for.</param>
+    /// <returns><see langword="true"/> if the member is a supported ASCII character; otherwise, <see langword="false"/>.</returns>
+    private static bool TryReadClassMember(string source, ref int q, int end, out char member)
+    {
+        member = source[q];
+        if (member == '[')
+            return false;
+
+        if (member == '\\')
+        {
+            if (q + 1 >= end)
+                return false;
+
+            member = source[q + 1];
+            if (member < 128 && char.IsLetterOrDigit(member))
+                return false;
+
+            q++;
+        }
+
+        q++;
+        return member < 128;
     }
 
     /// <summary>
@@ -355,12 +550,13 @@ internal sealed class RegexFreeMatcher
     /// <returns><see langword="true"/> if the range matches; otherwise, <see langword="false"/>.</returns>
     private bool MatchEnd(ReadOnlySpan<char> input, int start, int end)
     {
-        if (_alternatives == null)
-            return MatchTail(input, start, end, "");
+        var tails = _tails;
+        if (tails.Length == 1)
+            return MatchTail(input, start, end, tails[0]);
 
-        foreach (string alternative in _alternatives)
+        foreach (var tail in _tails)
         {
-            if (MatchTail(input, start, end, alternative))
+            if (MatchTail(input, start, end, tail))
                 return true;
         }
 
@@ -369,17 +565,17 @@ internal sealed class RegexFreeMatcher
 
     /// <summary>
     /// Determines whether the input from <paramref name="start"/> to <paramref name="end"/> matches the leading segments,
-    /// star and literal, followed by <paramref name="alternative"/>.
+    /// star and inner literals, followed by <paramref name="tail"/>.
     /// </summary>
     /// <param name="input">The input.</param>
-    /// <param name="start">The index the leading segments, star or literal start at.</param>
-    /// <param name="end">The index the literals must end at.</param>
-    /// <param name="alternative">The alternative that follows the literal.</param>
+    /// <param name="start">The index the leading segments, star or tail start at.</param>
+    /// <param name="end">The index the tail must end at.</param>
+    /// <param name="tail">The text that ends the shape.</param>
     /// <returns><see langword="true"/> if the range matches; otherwise, <see langword="false"/>.</returns>
-    private bool MatchTail(ReadOnlySpan<char> input, int start, int end, string alternative)
+    private bool MatchTail(ReadOnlySpan<char> input, int start, int end, RegexFreeLiteral tail)
     {
-        int literalStart = end - _literal.Length - alternative.Length;
-        if (literalStart < start || !LiteralAt(input, literalStart, _literal) || !LiteralAt(input, literalStart + _literal.Length, alternative))
+        int literalStart = end - tail.Length;
+        if (literalStart < start || !tail.At(input, literalStart, _windows))
             return false;
 
         if (_star)
@@ -391,7 +587,18 @@ internal sealed class RegexFreeMatcher
                 return false;
 
             int starStart = start + separator + 1;
-            if (starStart >= input.Length || input[starStart] == '.' || IsLineTerminator(input[starStart]))
+            if (_starMayBeEmpty)
+            {
+                if (starStart < input.Length && input[starStart] == '.')
+                    return false;
+            }
+            else if ((_starConsumes && starStart == literalStart) || starStart >= input.Length || IsLineTerminator(input[starStart])
+                || (_starDots ? IsDotSegment(input, starStart) : input[starStart] == '.'))
+            {
+                return false;
+            }
+
+            if (_inner != null && !ContainsInner(input, _starConsumes ? starStart + 1 : starStart, literalStart))
                 return false;
 
             return !_leadingSegments || FirstDotSegment(input, start, starStart) == starStart;
@@ -401,6 +608,64 @@ internal sealed class RegexFreeMatcher
             return true;
 
         return _leadingSegments && IsSeparator(input[literalStart - 1]) && FirstDotSegment(input, start, literalStart) == literalStart;
+    }
+
+    /// <summary>
+    /// Determines whether the segment at <paramref name="index"/> is <c>.</c> or <c>..</c>.
+    /// </summary>
+    /// <param name="input">The input.</param>
+    /// <param name="index">The index the segment starts at.</param>
+    /// <returns><see langword="true"/> if one or two dots at <paramref name="index"/> are followed by a separator or the end of the input; otherwise, <see langword="false"/>.</returns>
+    private bool IsDotSegment(ReadOnlySpan<char> input, int index)
+    {
+        if (input[index] != '.')
+            return false;
+
+        int k = index + 1;
+        if (k < input.Length && input[k] == '.')
+            k++;
+
+        return k == input.Length || IsSeparator(input[k]);
+    }
+
+    /// <summary>
+    /// Determines whether the inner literals occur in order, without overlapping, between <paramref name="from"/> and <paramref name="to"/>.
+    /// </summary>
+    /// <param name="input">The input.</param>
+    /// <param name="from">The index the first inner literal may start at.</param>
+    /// <param name="to">The index the last inner literal must end by.</param>
+    /// <returns><see langword="true"/> if every inner literal fits; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private bool ContainsInner(ReadOnlySpan<char> input, int from, int to)
+    {
+        string[] inner = _inner!;
+        for (int i = 0; i < inner.Length; i++)
+        {
+            string literal = inner[i];
+            while (true)
+            {
+                if (to - from < literal.Length)
+                    return false;
+
+                int index = input[from..to].IndexOf(literal.AsSpan(), StringComparison.Ordinal);
+                if (index < 0)
+                    return false;
+
+                int after = from + index + literal.Length;
+
+                // A guarded last star needs a non-line-terminator after the literal, so later occurrences are tried.
+                if (_lastStarGuarded && i == inner.Length - 1 && (after >= input.Length || IsLineTerminator(input[after])))
+                {
+                    from += index + 1;
+                    continue;
+                }
+
+                from = after;
+                break;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
