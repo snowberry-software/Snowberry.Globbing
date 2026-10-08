@@ -47,9 +47,6 @@ internal static class GlobAnalyzer
                     features |= GlobFeatures.Braces;
             }
 
-            if (!options.Extglobs)
-                features &= ~GlobFeatures.Extglob;
-
             var segments = new List<string>();
             int segmentStart = 0;
             int baseEnd = -1;

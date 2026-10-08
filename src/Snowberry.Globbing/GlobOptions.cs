@@ -13,7 +13,10 @@ namespace Snowberry.Globbing;
 /// </remarks>
 public sealed record GlobOptions
 {
+    private static readonly TimeSpan s_MaxMatchTimeout = TimeSpan.FromMilliseconds(int.MaxValue - 1);
+
     private readonly IReadOnlyList<string> _ignorePatterns = [];
+    private readonly TimeSpan? _matchTimeout;
     private readonly int _maxPatternLength = 65536;
 
     /// <summary>
@@ -139,6 +142,24 @@ public sealed record GlobOptions
     public bool MatchSubstring { get; init; }
 
     /// <summary>
+    /// Gets the time limit for each regex evaluation during matching, or <see langword="null"/> to use the process-wide
+    /// <c>REGEX_DEFAULT_MATCH_TIMEOUT</c>. Default is <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// Exceeding the limit makes matching throw <see cref="RegexMatchTimeoutException"/>. A call evaluates up to one regex per
+    /// pattern and per <see cref="IgnorePatterns"/> entry. <see cref="Regex.InfiniteMatchTimeout"/> disables the timeout.
+    /// The limit also applies to <see cref="Glob.ToRegex"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is zero, negative or greater than <see cref="int.MaxValue"/> minus one milliseconds, and is not <see cref="Regex.InfiniteMatchTimeout"/>.</exception>
+    public TimeSpan? MatchTimeout
+    {
+        get => _matchTimeout;
+        init => _matchTimeout = value is not { } timeout || timeout == Regex.InfiniteMatchTimeout || (timeout > TimeSpan.Zero && timeout <= s_MaxMatchTimeout)
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(MatchTimeout), value, $"The match timeout must be positive and at most {nameof(Int32)}.{nameof(int.MaxValue)} - 1 milliseconds, or {nameof(Regex)}.{nameof(Regex.InfiniteMatchTimeout)}.");
+    }
+
+    /// <summary>
     /// Gets the maximum pattern length in characters. Default is <c>65536</c>.
     /// </summary>
     /// <remarks>Compiling a longer pattern throws <see cref="GlobParseException"/> with <see cref="GlobParseError.PatternTooLong"/>.</remarks>
@@ -177,9 +198,10 @@ public sealed record GlobOptions
     /// </summary>
     /// <remarks>
     /// <see cref="IgnoreCase"/> adds <see cref="RegexOptions.IgnoreCase"/> and <see cref="RegexOptions.CultureInvariant"/>
-    /// automatically. The options are not encoded in <see cref="Glob.ToRegexString"/>. An invalid combination makes
-    /// compiling throw <see cref="GlobParseException"/> with <see cref="GlobParseError.InvalidPattern"/>. Use
-    /// <see cref="RegexOptions.Compiled"/> for a glob reused across a very large number of inputs.
+    /// automatically. The options are not encoded in <see cref="Glob.ToRegexString"/>. An invalid or unsupported
+    /// combination, such as <c>RegexOptions.NonBacktracking</c>, makes compiling throw <see cref="GlobParseException"/>
+    /// with <see cref="GlobParseError.InvalidPattern"/>. Use <see cref="RegexOptions.Compiled"/> for a glob reused across a
+    /// very large number of inputs.
     /// </remarks>
     public RegexOptions RegexOptions { get; init; }
 

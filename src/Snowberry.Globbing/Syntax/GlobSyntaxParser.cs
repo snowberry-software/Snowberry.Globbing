@@ -56,7 +56,7 @@ internal ref struct GlobSyntaxParser
     public int Parse()
     {
         MatchDelimiters();
-        return ParseSequence(0, _tokens.Length, SequenceRole.Root, 0, inParens: false, inExtglob: false, inBrace: false, depth: 0);
+        return ParseSequence(0, _tokens.Length, SequenceRole.Root, 0, inParens: false, inBrace: false, depth: 0);
     }
 
     /// <summary>
@@ -141,20 +141,21 @@ internal ref struct GlobSyntaxParser
     /// <returns>The number of prefix tokens, or 0 if the group has no regex prefix.</returns>
     private readonly int GroupPrefixLength(int start, int end)
     {
-        if (start + 1 >= end || _tokens[start].Kind != GlobTokenKind.Question || _tokens[start + 1].Kind != GlobTokenKind.Literal)
+        // Only unescaped characters form a prefix, so (?\!a) stays literal.
+        if (start + 1 >= end || _tokens[start].Kind != GlobTokenKind.Question || !IsPlainLiteral(start + 1))
             return 0;
 
         char c = _tokens[start + 1].Value;
         if (c is ':' or '=' or '!')
             return 2;
 
-        if (c != '<' || start + 2 >= end || _tokens[start + 2].Kind != GlobTokenKind.Literal)
+        if (c != '<' || start + 2 >= end || !IsPlainLiteral(start + 2))
             return 0;
 
         if (_tokens[start + 2].Value is '=' or '!')
             return 3;
 
-        for (int i = start + 2; i < end && _tokens[i].Kind == GlobTokenKind.Literal; i++)
+        for (int i = start + 2; i < end && IsPlainLiteral(i); i++)
         {
             char n = _tokens[i].Value;
             if (n == '>')
@@ -165,6 +166,16 @@ internal ref struct GlobSyntaxParser
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Determines whether the token at <paramref name="index"/> is a literal written without an escape.
+    /// </summary>
+    /// <param name="index">The token index.</param>
+    /// <returns><see langword="true"/> if the token is a <see cref="LiteralForm.Plain"/> literal; otherwise, <see langword="false"/>.</returns>
+    private readonly bool IsPlainLiteral(int index)
+    {
+        return _tokens[index].Kind == GlobTokenKind.Literal && _tokens[index].Form == LiteralForm.Plain;
     }
 
     /// <summary>
@@ -278,12 +289,11 @@ internal ref struct GlobSyntaxParser
     /// <param name="kind">The node kind to create, <see cref="SyntaxKind.Group"/> or <see cref="SyntaxKind.Extglob"/>.</param>
     /// <param name="open">The token index of the paired opener.</param>
     /// <param name="depth">The nesting depth of the sequence that contains the node; the alternatives are parsed one level deeper.</param>
-    /// <param name="inExtglob">The <see cref="SyntaxNode.InExtglob"/> value of the alternatives.</param>
     /// <param name="inBrace"><see langword="true"/> to treat every dot in the alternatives as a leading dot, as inside a brace alternative.</param>
     /// <param name="firstToken">The token index where the content starts, or -1 to start right after <paramref name="open"/>.</param>
     /// <returns>The index of the node, whose children are one <see cref="SyntaxKind.Sequence"/> per alternative.</returns>
     /// <exception cref="GlobParseException">The nesting limit is exceeded (<see cref="GlobParseError.NestingTooDeep"/>).</exception>
-    private int ParseAlternatives(SyntaxKind kind, int open, int depth, bool inExtglob, bool inBrace, int firstToken = -1)
+    private int ParseAlternatives(SyntaxKind kind, int open, int depth, bool inBrace, int firstToken = -1)
     {
         int close = _match[open];
         var openToken = _tokens[open];
@@ -292,25 +302,40 @@ internal ref struct GlobSyntaxParser
         int index = _nodes.Add(node);
 
         var role = kind == SyntaxKind.Extglob ? SequenceRole.ExtglobAlternative : SequenceRole.GroupAlternative;
-        int start = firstToken < 0 ? open + 1 : firstToken;
+        ParseAlternativeList(index, firstToken < 0 ? open + 1 : firstToken, close, GlobTokenKind.Pipe, role, inParens: true, inBrace, depth);
+        return index;
+    }
+
+    /// <summary>
+    /// Parses the tokens from <paramref name="start"/> up to <paramref name="close"/> as alternatives split on
+    /// <paramref name="separator"/> tokens that are not inside a nested paired delimiter, and links them to <paramref name="parent"/>.
+    /// </summary>
+    /// <param name="parent">The index of the node the alternatives belong to.</param>
+    /// <param name="start">The token index of the first alternative.</param>
+    /// <param name="close">The token index of the paired closer.</param>
+    /// <param name="separator">The token kind between alternatives.</param>
+    /// <param name="role">The role of each alternative.</param>
+    /// <param name="inParens">The <see cref="SyntaxNode.InParens"/> value of the alternatives.</param>
+    /// <param name="inBrace"><see langword="true"/> to treat every dot in the alternatives as a leading dot.</param>
+    /// <param name="depth">The nesting depth of the sequence that contains the parent; the alternatives are parsed one level deeper.</param>
+    /// <exception cref="GlobParseException">The nesting limit is exceeded (<see cref="GlobParseError.NestingTooDeep"/>).</exception>
+    private void ParseAlternativeList(int parent, int start, int close, GlobTokenKind separator, SequenceRole role, bool inParens, bool inBrace, int depth)
+    {
         int last = -1;
         int alternative = 0;
-
         for (int i = start; i <= close; i++)
         {
-            if (i < close && _tokens[i].Kind != GlobTokenKind.Pipe)
+            if (i < close && _tokens[i].Kind != separator)
             {
                 if (_match[i] > i)
                     i = _match[i];
                 continue;
             }
 
-            int child = ParseSequence(start, i, role, alternative++, inParens: true, inExtglob, inBrace, depth + 1);
-            Link(index, ref last, child);
+            int child = ParseSequence(start, i, role, alternative++, inParens, inBrace, depth + 1);
+            Link(parent, ref last, child);
             start = i + 1;
         }
-
-        return index;
     }
 
     /// <summary>
@@ -327,7 +352,7 @@ internal ref struct GlobSyntaxParser
         int contentStart = open + 1;
         int prefixLength = GroupPrefixLength(contentStart, close);
 
-        int group = ParseAlternatives(SyntaxKind.Group, open, depth, inExtglob: false, inBrace: false, firstToken: contentStart + prefixLength);
+        int group = ParseAlternatives(SyntaxKind.Group, open, depth, inBrace: false, firstToken: contentStart + prefixLength);
         _nodes[group].Count = prefixLength == 0 ? 0 : _tokens[contentStart + prefixLength - 1].End - _tokens[contentStart].Start;
         return group;
     }
@@ -346,13 +371,12 @@ internal ref struct GlobSyntaxParser
     /// <param name="role">What the sequence is, such as the root or one alternative of a group.</param>
     /// <param name="alternative">The zero-based position of the sequence among its alternatives.</param>
     /// <param name="inParens"><see langword="true"/> if the sequence is inside a group or extended glob.</param>
-    /// <param name="inExtglob"><see langword="true"/> if the sequence is inside an extended glob.</param>
     /// <param name="inBrace"><see langword="true"/> if the sequence is inside a brace expression.</param>
     /// <param name="depth">The nesting depth of the sequence, 0 for the root, checked against <see cref="c_MaxNestingDepth"/>.</param>
     /// <returns>The index of the sequence node.</returns>
     /// <exception cref="GlobParseException"><paramref name="depth"/>, or the depth of a nested sequence, exceeds <see cref="c_MaxNestingDepth"/> (<see cref="GlobParseError.NestingTooDeep"/>).</exception>
     /// <exception cref="InvalidOperationException">A token has an unknown <see cref="GlobTokenKind"/>.</exception>
-    private int ParseSequence(int from, int to, SequenceRole role, int alternative, bool inParens, bool inExtglob, bool inBrace, int depth)
+    private int ParseSequence(int from, int to, SequenceRole role, int alternative, bool inParens, bool inBrace, int depth)
     {
         if (depth > c_MaxNestingDepth)
             throw new GlobParseException(_source, GlobParseError.NestingTooDeep, _offset + (from < _tokens.Length ? _tokens[from].Start : _pattern.Length), $"The pattern nests groups, braces or extended globs more than {c_MaxNestingDepth} levels deep.");
@@ -361,7 +385,6 @@ internal ref struct GlobSyntaxParser
         sequence.Role = role;
         sequence.Count = alternative;
         sequence.InParens = inParens;
-        sequence.InExtglob = inExtglob;
         int index = _nodes.Add(sequence);
 
         int last = -1;
@@ -399,7 +422,7 @@ internal ref struct GlobSyntaxParser
 
                 case GlobTokenKind.Dot:
                     child = Add(SyntaxKind.Dot, token);
-                    _nodes[child].Flag = !_plain && (inParens || inBrace || previous == SyntaxKind.Separator || (role == SequenceRole.Root && previous == null));
+                    _nodes[child].IsLeadingDot = !_plain && (inParens || inBrace || previous == SyntaxKind.Separator || (role == SequenceRole.Root && previous == null));
                     break;
 
                 case GlobTokenKind.Pipe when !_plain:
@@ -437,12 +460,12 @@ internal ref struct GlobSyntaxParser
                         break;
                     }
 
-                    child = ParseAlternatives(SyntaxKind.Extglob, i, depth, inExtglob: true, inBrace);
+                    child = ParseAlternatives(SyntaxKind.Extglob, i, depth, inBrace);
                     i = _match[i];
                     break;
 
                 case GlobTokenKind.OpenBrace:
-                    if (_match[i] >= 0 && TryParseBrace(i, depth, inParens, inExtglob, out child))
+                    if (_match[i] >= 0 && TryParseBrace(i, depth, inParens, out child))
                     {
                         i = _match[i];
                         break;
@@ -473,11 +496,10 @@ internal ref struct GlobSyntaxParser
     /// <param name="open">The token index of the paired <c>{</c>.</param>
     /// <param name="depth">The nesting depth of the sequence that contains the brace; the alternatives are parsed one level deeper.</param>
     /// <param name="inParens">The <see cref="SyntaxNode.InParens"/> value of the containing sequence, passed on to the alternatives.</param>
-    /// <param name="inExtglob">The <see cref="SyntaxNode.InExtglob"/> value of the containing sequence, passed on to the alternatives.</param>
     /// <param name="index">The index of the created node, or -1 if the brace is neither a range nor has alternatives.</param>
     /// <returns><see langword="true"/> if a node was created; <see langword="false"/> if the brace should be literal.</returns>
     /// <exception cref="GlobParseException">The nesting limit is exceeded (<see cref="GlobParseError.NestingTooDeep"/>).</exception>
-    private bool TryParseBrace(int open, int depth, bool inParens, bool inExtglob, out int index)
+    private bool TryParseBrace(int open, int depth, bool inParens, out int index)
     {
         int close = _match[open];
 
@@ -502,24 +524,7 @@ internal ref struct GlobSyntaxParser
         }
 
         index = _nodes.Add(SyntaxNode.Create(SyntaxKind.Brace, _tokens[open].Start, _tokens[close].End - _tokens[open].Start));
-        int last = -1;
-        int alternative = 0;
-        int start = open + 1;
-
-        for (int i = start; i <= close; i++)
-        {
-            if (i < close && _tokens[i].Kind != GlobTokenKind.Comma)
-            {
-                if (_match[i] > i)
-                    i = _match[i];
-                continue;
-            }
-
-            int child = ParseSequence(start, i, SequenceRole.BraceAlternative, alternative++, inParens, inExtglob, inBrace: true, depth + 1);
-            Link(index, ref last, child);
-            start = i + 1;
-        }
-
+        ParseAlternativeList(index, open + 1, close, GlobTokenKind.Comma, SequenceRole.BraceAlternative, inParens, inBrace: true, depth);
         return true;
     }
 

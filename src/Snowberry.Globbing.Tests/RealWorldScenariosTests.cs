@@ -2,21 +2,17 @@ namespace Snowberry.Globbing.Tests;
 
 public class RealWorldScenariosTests
 {
-    private static readonly GlobOptions s_Windows = new() { PathStyle = GlobPathStyle.Windows };
-
     private static readonly Glob s_CSharpSources = new(
         ["*.cs", "*.csproj"],
-        s_Windows with { MatchFileNameOnly = true, IgnoreCase = true, IgnorePatterns = ["*.Designer.cs", "AssemblyInfo.cs"] });
-
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
+        TestOptions.Windows with { MatchFileNameOnly = true, IgnoreCase = true, IgnorePatterns = ["*.Designer.cs", "AssemblyInfo.cs"] });
 
     private static readonly Glob s_SourcesOnly = new(
         "**",
-        s_Posix with { IgnorePatterns = ["**/{bin,obj}/**", "!**/*.{cs,csproj,sln}"] });
+        TestOptions.Posix with { IgnorePatterns = ["**/{bin,obj}/**", "!**/*.{cs,csproj,sln}"] });
 
     private static readonly Glob s_WebBuild = new(
         ["src/**/*.{js,jsx,ts,tsx}", "*.json"],
-        s_Windows with { IgnorePatterns = ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/node_modules/**", "**/*.d.ts"] });
+        TestOptions.Windows with { IgnorePatterns = ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/node_modules/**", "**/*.d.ts"] });
 
 
     [Theory]
@@ -38,7 +34,7 @@ public class RealWorldScenariosTests
     [Fact]
     public void Monorepo_FilterKeepsSelectedPackageSourcesInOrder()
     {
-        var glob = new Glob("packages/{core,utils}/src/**/*.ts", s_Posix with { IgnorePatterns = ["**/*.test.ts"] });
+        var glob = new Glob("packages/{core,utils}/src/**/*.ts", TestOptions.Posix with { IgnorePatterns = ["**/*.test.ts"] });
         string[] files =
         [
             "packages/core/src/index.ts",

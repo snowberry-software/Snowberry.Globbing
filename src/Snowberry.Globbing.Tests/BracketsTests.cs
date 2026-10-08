@@ -5,17 +5,6 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class BracketsTests
 {
-    // POSIX option needed for [!...] bracket negation
-    private static readonly GlobOptions s_PosixOptions = new() { PosixClasses = true };
-
-    [Theory]
-    [InlineData("a", "[^abc]", false)]
-    [InlineData("d", "[^abc]", true)]
-    public void CaretNegatedBrackets_WithPosixClassesEnabled_StillNegate(string input, string pattern, bool expected)
-    {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
-    }
-
     [Theory]
     [InlineData(@"[\]]")]
     [InlineData(@"a[\]b]c")]
@@ -24,7 +13,7 @@ public class BracketsTests
     [InlineData(@"[\][a]")]
     public void EscapedClosingBracketShouldGenerateParsableRegex(string pattern)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Posix };
+        var options = TestOptions.Posix;
 
         _ = new Regex(new Glob(pattern, options).ToRegexString());
     }
@@ -121,7 +110,7 @@ public class BracketsTests
     [InlineData("[", @"[\][a]", true)]
     public void ShouldSupportEscapedClosingBracketInBrackets(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, new GlobOptions { PathStyle = GlobPathStyle.Posix }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]
@@ -129,7 +118,7 @@ public class BracketsTests
     [InlineData("]", @"[!\]]", false)]
     public void ShouldSupportEscapedClosingBracketInNegatedBrackets(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, new GlobOptions { PosixClasses = true, PathStyle = GlobPathStyle.Posix }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]

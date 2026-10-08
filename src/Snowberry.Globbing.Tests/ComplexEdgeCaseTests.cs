@@ -132,7 +132,6 @@ public class ComplexEdgeCaseTests
         string pattern = string.Join("/", Enumerable.Repeat("*", 100)) + "/*.js";
         var matcher = new Glob(pattern);
 
-        matcher.Should().NotBeNull();
         matcher.IsMatch("test.js").Should().BeFalse();
     }
 
@@ -143,7 +142,7 @@ public class ComplexEdgeCaseTests
     [InlineData(@"test\app.js", "src/**/*.js", false)]
     public void WindowsOption_MatchCorrectly(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
+        var options = TestOptions.Windows;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 }

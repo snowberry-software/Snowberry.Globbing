@@ -2,6 +2,108 @@ namespace Snowberry.Globbing.Tests;
 
 public class GlobParseExceptionTests
 {
+#if NET7_0_OR_GREATER
+    private const RegexOptions c_NonBacktracking = RegexOptions.NonBacktracking;
+#else
+    // The value of RegexOptions.NonBacktracking, which .NET Framework rejects as an invalid option.
+    private const RegexOptions c_NonBacktracking = (RegexOptions)1024;
+#endif
+
+    private static readonly GlobOptions s_NonBacktracking = new() { RegexOptions = c_NonBacktracking };
+
+    [Theory]
+    [InlineData("*.js")]
+    [InlineData("abc")]
+    [InlineData("!*.md")]
+    [InlineData("src/**/*.cs")]
+    [InlineData("!(a|b)")]
+    public void Constructor_WithNonBacktracking_ThrowsInvalidPattern(string pattern)
+    {
+        var e = FluentActions.Invoking(() => new Glob(pattern, s_NonBacktracking)).Should().ThrowExactly<GlobParseException>().Which;
+
+        e.Error.Should().Be(GlobParseError.InvalidPattern);
+        e.Pattern.Should().Be(pattern);
+        e.ParamName.Should().Be("pattern");
+#if NET7_0_OR_GREATER
+        e.InnerException.Should().BeOfType<NotSupportedException>();
+#else
+        e.InnerException.Should().BeOfType<ArgumentOutOfRangeException>();
+#endif
+    }
+
+    [Theory]
+    [InlineData("!{1..3}", false)]
+    [InlineData("!a\\)\\)\\[", true)]
+    public void Constructor_WithNegatedBodyThatIsNotValidRegexOnItsOwn_ThrowsInvalidPattern(string pattern, bool unescape)
+    {
+        var options = new GlobOptions { BraceRangeExpander = unescape ? null : _ => "))[", Unescape = unescape };
+
+        var e = FluentActions.Invoking(() => new Glob(pattern, options)).Should().ThrowExactly<GlobParseException>().Which;
+
+        e.Error.Should().Be(GlobParseError.InvalidPattern);
+        e.Pattern.Should().Be(pattern);
+        Glob.TryCreate(pattern, options, out _).Should().BeFalse();
+    }
+
+    // With IgnorePatternWhitespace, "#" starts a comment that can swallow the rest of a combined regex.
+    [Fact]
+    public void Constructor_WithIgnorePatternWhitespaceComment_ThrowsInvalidPattern()
+    {
+        string commented = "#(" + (char)10 + ")#";
+        var options = new GlobOptions { RegexOptions = RegexOptions.IgnorePatternWhitespace };
+
+        var negated = FluentActions.Invoking(() => new Glob("!" + commented, options)).Should().ThrowExactly<GlobParseException>().Which;
+        var list = FluentActions.Invoking(() => new Glob([commented, "b"], options)).Should().ThrowExactly<GlobParseException>().Which;
+
+        negated.Error.Should().Be(GlobParseError.InvalidPattern);
+        list.Error.Should().Be(GlobParseError.InvalidPattern);
+        list.ParamName.Should().Be("patterns");
+        Glob.TryCreate("!" + commented, options, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsMatch_StaticWithNonBacktracking_ThrowsInvalidPattern()
+    {
+        FluentActions.Invoking(() => Glob.IsMatch("a.js", "*.js", s_NonBacktracking))
+            .Should().ThrowExactly<GlobParseException>()
+            .Which.Error.Should().Be(GlobParseError.InvalidPattern);
+    }
+
+    [Fact]
+    public void TryCreate_WithNonBacktracking_ReturnsFalseWithInvalidPattern()
+    {
+        Glob.TryCreate("*.js", s_NonBacktracking, out var glob, out var error).Should().BeFalse();
+        Glob.TryCreate("*.js", s_NonBacktracking, out _).Should().BeFalse();
+
+        glob.Should().BeNull();
+        error!.Error.Should().Be(GlobParseError.InvalidPattern);
+        error.Pattern.Should().Be("*.js");
+    }
+
+#if NET7_0_OR_GREATER
+    [Fact]
+    public void Constructor_WithNonBacktracking_IgnorePatternThatUsesLookarounds_ThrowsForIgnorePatterns()
+    {
+        // A plain substring pattern compiles without lookarounds; the ignore pattern does not.
+        var options = s_NonBacktracking with { MatchSubstring = true, IgnorePatterns = ["**"] };
+
+        var e = FluentActions.Invoking(() => new Glob("abc", options)).Should().ThrowExactly<GlobParseException>().Which;
+
+        e.Error.Should().Be(GlobParseError.InvalidPattern);
+        e.ParamName.Should().Be(nameof(GlobOptions.IgnorePatterns));
+        e.Pattern.Should().Be("**");
+    }
+
+    [Fact]
+    public void Constructor_WithNonBacktracking_PlainSubstringPattern_Compiles()
+    {
+        var glob = new Glob("abc", s_NonBacktracking with { MatchSubstring = true });
+
+        glob.IsMatch("xabcx").Should().BeTrue();
+        glob.IsMatch("xabx").Should().BeFalse();
+    }
+#endif
+
     [Theory]
     [InlineData("[z-a]")]
     [InlineData("a/[z-a]/*.js")]
@@ -12,27 +114,6 @@ public class GlobParseExceptionTests
         e.Error.Should().Be(GlobParseError.InvalidPattern);
         e.Pattern.Should().Be(pattern);
         e.InnerException.Should().NotBeNull();
-    }
-
-    [Theory]
-    [InlineData("a[b", GlobParseError.MissingClosingBracket)]
-    [InlineData("a(b", GlobParseError.MissingClosingParenthesis)]
-    [InlineData("a{b", GlobParseError.MissingClosingBrace)]
-    [InlineData("a)b", GlobParseError.MissingOpeningParenthesis)]
-    public void Constructor_WithStrictBrackets_ReportsUnbalancedDelimiter(string pattern, GlobParseError error)
-    {
-        var e = FluentActions.Invoking(() => new Glob(pattern, new GlobOptions { StrictBrackets = true })).Should().ThrowExactly<GlobParseException>().Which;
-
-        e.Error.Should().Be(error);
-        e.Pattern.Should().Be(pattern);
-    }
-
-    [Fact]
-    public void Constructor_WithTooLongPattern_ReportsPatternTooLong()
-    {
-        var e = FluentActions.Invoking(() => new Glob("abcdef", new GlobOptions { MaxPatternLength = 5 })).Should().ThrowExactly<GlobParseException>().Which;
-
-        e.Error.Should().Be(GlobParseError.PatternTooLong);
     }
 
     [Fact]

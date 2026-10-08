@@ -1,10 +1,12 @@
 using System;
-using System.Collections.Concurrent;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Snowberry.Globbing.Syntax;
 using Snowberry.Globbing.Utilities;
 
@@ -29,13 +31,24 @@ namespace Snowberry.Globbing;
 /// </remarks>
 public sealed class Glob
 {
-    private const int c_CacheCapacity = 256;
+    private const int c_StackNormalizeLength = 256;
+    private const int c_StackCandidateWords = 32;
 
-    private static readonly ConcurrentDictionary<(string Pattern, GlobOptions Options), Glob> s_Cache = new();
     private readonly CompiledPattern[] _compiled;
+
+    /// <summary>Whether backslashes in inputs are converted to <c>/</c> before matching.</summary>
     private readonly bool _convertSeparators;
     private readonly Glob? _ignore;
+    private readonly PatternIndex? _index;
 
+    /// <summary>
+    /// Whether inputs are matched as spans without a string: without <see cref="GlobOptions.InputNormalizer"/>, whose result
+    /// must be a string, and, where the regex engine cannot match spans, only when every pattern has a regex-free matcher.
+    /// </summary>
+    private readonly bool _matchesSpans;
+
+    /// <summary>The only pattern when it is matched directly, without ignore patterns, <see cref="GlobOptions.InputNormalizer"/> or <see cref="GlobOptions.MatchFileNameOnly"/>; otherwise, <see langword="null"/>.</summary>
+    private readonly CompiledPattern? _single;
     private readonly string[] _patterns;
     private Regex? _combinedRegex;
 
@@ -109,15 +122,32 @@ public sealed class Glob
 
         var regexOptions = Options.RegexOptions | (Options.IgnoreCase ? RegexOptions.IgnoreCase | RegexOptions.CultureInvariant : RegexOptions.None);
         _compiled = new CompiledPattern[patterns.Length];
+        ulong[][]?[]? keyWindows = patterns.Length > 1 ? new ulong[][]?[patterns.Length] : null;
         for (int i = 0; i < patterns.Length; i++)
         {
             try
             {
-                _compiled[i] = new CompiledPattern(patterns[i], Options, regexOptions);
+                _compiled[i] = new CompiledPattern(patterns[i], Options, regexOptions, findKeys: keyWindows != null, out ulong[][]? keys);
+                keyWindows?[i] = keys;
             }
             catch (GlobParseException e)
             {
                 throw e.ForParameter(paramName);
+            }
+        }
+
+        _index = keyWindows != null ? PatternIndex.Create(_compiled, keyWindows) : null;
+
+        // With IgnorePatternWhitespace, a "#" in one pattern comments out the rest of the combined regex.
+        if (patterns.Length > 1 && (regexOptions & RegexOptions.IgnorePatternWhitespace) != 0)
+        {
+            try
+            {
+                _combinedRegex = CreateCombinedRegex();
+            }
+            catch (ArgumentException e)
+            {
+                throw new GlobParseException(ToString(), GlobParseError.InvalidPattern, -1, $"The patterns do not combine into a valid regular expression: {e.Message}", e).ForParameter(paramName);
             }
         }
 
@@ -126,6 +156,12 @@ public sealed class Glob
             string ignoreName = nameof(GlobOptions.IgnorePatterns);
             _ignore = new Glob(ValidatePatterns(Options.IgnorePatterns, ignoreName), Options with { IgnorePatterns = [] }, ignoreName);
         }
+
+        _matchesSpans = Options.InputNormalizer == null && Array.TrueForAll(_compiled, c => c.MatchesSpanWithoutString) && (_ignore == null || _ignore._matchesSpans);
+
+        // One pattern whose input needs no normalization beyond separators is matched directly.
+        if (_compiled.Length == 1 && _ignore == null && Options.InputNormalizer == null && !Options.MatchFileNameOnly)
+            _single = _compiled[0];
     }
 
     /// <summary>
@@ -156,6 +192,7 @@ public sealed class Glob
     /// <returns><see langword="true"/> if <paramref name="input"/> matches; otherwise, <see langword="false"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="input"/> or <paramref name="pattern"/> is <see langword="null"/>.</exception>
     /// <exception cref="GlobParseException"><paramref name="pattern"/> is empty (<see cref="GlobParseError.EmptyPattern"/>) or cannot be compiled.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public static bool IsMatch(string input, string pattern)
     {
         return IsMatch(input, pattern, null);
@@ -171,6 +208,7 @@ public sealed class Glob
     /// <returns><see langword="true"/> if <paramref name="input"/> matches <paramref name="pattern"/> and no ignore pattern; otherwise, <see langword="false"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="input"/> or <paramref name="pattern"/> is <see langword="null"/>.</exception>
     /// <exception cref="GlobParseException"><paramref name="pattern"/> or a <see cref="GlobOptions.IgnorePatterns"/> entry is <see langword="null"/> or empty (<see cref="GlobParseError.EmptyPattern"/>), or cannot be compiled.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public static bool IsMatch(string input, string pattern, GlobOptions? options)
     {
         Guard.NotNull(input);
@@ -186,6 +224,7 @@ public sealed class Glob
     /// <returns><see langword="true"/> if <paramref name="input"/> matches; otherwise, <see langword="false"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="pattern"/> is <see langword="null"/>.</exception>
     /// <exception cref="GlobParseException"><paramref name="pattern"/> is empty (<see cref="GlobParseError.EmptyPattern"/>) or cannot be compiled.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public static bool IsMatch(ReadOnlySpan<char> input, string pattern)
     {
         return IsMatch(input, pattern, null);
@@ -201,6 +240,7 @@ public sealed class Glob
     /// <returns><see langword="true"/> if <paramref name="input"/> matches <paramref name="pattern"/> and no ignore pattern; otherwise, <see langword="false"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="pattern"/> is <see langword="null"/>.</exception>
     /// <exception cref="GlobParseException"><paramref name="pattern"/> or a <see cref="GlobOptions.IgnorePatterns"/> entry is <see langword="null"/> or empty (<see cref="GlobParseError.EmptyPattern"/>), or cannot be compiled.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public static bool IsMatch(ReadOnlySpan<char> input, string pattern, GlobOptions? options)
     {
         return GetOrCreate(pattern, options).IsMatch(input);
@@ -215,6 +255,7 @@ public sealed class Glob
     /// <exception cref="ArgumentNullException"><paramref name="input"/> or <paramref name="patterns"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="patterns"/> contains no patterns.</exception>
     /// <exception cref="GlobParseException">A pattern is <see langword="null"/> or empty (<see cref="GlobParseError.EmptyPattern"/>), or cannot be compiled.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public static bool IsMatch(string input, IEnumerable<string> patterns)
     {
         return IsMatch(input, patterns, null);
@@ -231,6 +272,7 @@ public sealed class Glob
     /// <exception cref="ArgumentNullException"><paramref name="input"/> or <paramref name="patterns"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="patterns"/> contains no patterns.</exception>
     /// <exception cref="GlobParseException">A pattern or a <see cref="GlobOptions.IgnorePatterns"/> entry is <see langword="null"/> or empty (<see cref="GlobParseError.EmptyPattern"/>), or cannot be compiled.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public static bool IsMatch(string input, IEnumerable<string> patterns, GlobOptions? options)
     {
         Guard.NotNull(input);
@@ -300,7 +342,6 @@ public sealed class Glob
     /// <summary>
     /// Gets the cached glob for <paramref name="pattern"/> and <paramref name="options"/>, compiling and caching it on a miss.
     /// </summary>
-    /// <remarks>The static cache is cleared when it has reached its capacity before a new glob is added.</remarks>
     /// <param name="pattern">The glob pattern.</param>
     /// <param name="options">The options, or <see langword="null"/> for <see cref="GlobOptions.Default"/>.</param>
     /// <returns>The glob for the pattern and options.</returns>
@@ -308,16 +349,7 @@ public sealed class Glob
     /// <exception cref="GlobParseException"><paramref name="pattern"/> or a <see cref="GlobOptions.IgnorePatterns"/> entry is <see langword="null"/> or empty (<see cref="GlobParseError.EmptyPattern"/>), or cannot be compiled.</exception>
     private static Glob GetOrCreate(string pattern, GlobOptions? options)
     {
-        var key = (ValidatePattern(pattern, nameof(pattern)), options ?? GlobOptions.Default);
-        if (s_Cache.TryGetValue(key, out var glob))
-            return glob;
-
-        glob = new Glob(key.Item1, key.Item2);
-        if (s_Cache.Count >= c_CacheCapacity)
-            s_Cache.Clear();
-
-        s_Cache[key] = glob;
-        return glob;
+        return GlobCache.GetOrAdd(ValidatePattern(pattern, nameof(pattern)), options ?? GlobOptions.Default);
     }
 
     /// <summary>
@@ -370,6 +402,7 @@ public sealed class Glob
     /// <param name="inputs">The inputs to filter, typically paths.</param>
     /// <returns>The elements of <paramref name="inputs"/> that match, in their original order, evaluated lazily as the result is enumerated.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="inputs"/> is <see langword="null"/>, or, during enumeration, contains a <see langword="null"/> element.</exception>
+    /// <exception cref="RegexMatchTimeoutException">During enumeration, a regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public IEnumerable<string> Filter(IEnumerable<string> inputs)
     {
         Guard.NotNull(inputs);
@@ -383,11 +416,42 @@ public sealed class Glob
     /// <param name="input">The input to match, typically a path.</param>
     /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public bool IsMatch(string input)
     {
         Guard.NotNull(input);
 
-        return FindPattern(input, Normalize(input)) != null && !IsIgnored(input);
+        if (_single != null)
+        {
+            if (!_convertSeparators || input.IndexOf('\\') < 0)
+                return input.Length > 0 && (input == _single.Pattern || _single.IsMatch(input));
+
+            if (_matchesSpans)
+                return IsMatchConverted(input.AsSpan());
+        }
+
+        return IsMatchAny(input);
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="input"/> matches a pattern of this glob and no ignore pattern.
+    /// </summary>
+    /// <param name="input">The input to match.</param>
+    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private bool IsMatchAny(string input)
+    {
+        if (_matchesSpans)
+        {
+            if (Options.MatchFileNameOnly)
+                return IsMatchCore(input.AsSpan());
+
+            if (_convertSeparators && input.AsSpan().IndexOf('\\') >= 0)
+                return IsMatchConverted(input.AsSpan());
+        }
+
+        string normalized = Normalize(input);
+        return FindPattern(input, normalized) != null && !IsIgnored(input, normalized);
     }
 
     /// <summary>
@@ -395,26 +459,175 @@ public sealed class Glob
     /// </summary>
     /// <param name="input">The input to match, typically a path.</param>
     /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public bool IsMatch(ReadOnlySpan<char> input)
     {
-#if NET7_0_OR_GREATER
-        if (Options.InputNormalizer == null && !Options.MatchFileNameOnly && _ignore == null
-            && (!_convertSeparators || input.IndexOf('\\') < 0))
+        if (_matchesSpans)
         {
-            if (input.IsEmpty)
-                return false;
-
-            foreach (var compiled in _compiled)
+            if (_single != null)
             {
-                if (input.SequenceEqual(compiled.Pattern.AsSpan()) || compiled.IsMatch(input))
-                    return true;
+                if (!_convertSeparators || input.IndexOf('\\') < 0)
+                    return !input.IsEmpty && (input.SequenceEqual(_single.Pattern.AsSpan()) || _single.IsMatch(input));
+
+                return IsMatchConverted(input);
             }
 
-            return false;
+            return IsMatchCore(input);
         }
-#endif
 
         return IsMatch(input.ToString());
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="input"/> matches this glob, matching spans without a string; used only when <see cref="_matchesSpans"/> is set.
+    /// </summary>
+    /// <param name="input">The input to match.</param>
+    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
+    private bool IsMatchCore(ReadOnlySpan<char> input)
+    {
+        if (input.IsEmpty)
+            return false;
+
+        if (!_convertSeparators || input.IndexOf('\\') < 0)
+            return FindPatternIndex(input, input, changed: false) >= 0 && (_ignore == null || _ignore.FindPatternIndex(input, input, changed: false) < 0);
+
+        return IsMatchConverted(input);
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="input"/>, which contains backslashes to convert, matches this glob.
+    /// </summary>
+    /// <param name="input">The non-empty input to match.</param>
+    /// <returns><see langword="true"/> if <paramref name="input"/> matches a pattern and no ignore pattern; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private bool IsMatchConverted(ReadOnlySpan<char> input)
+    {
+        char[]? rented = null;
+        var buffer = input.Length <= c_StackNormalizeLength
+            ? stackalloc char[c_StackNormalizeLength]
+            : (rented = ArrayPool<char>.Shared.Rent(input.Length));
+        try
+        {
+            var normalized = buffer[..input.Length];
+            PathUtilities.ToPosixSlashes(input, normalized);
+            return FindPatternIndex(input, normalized, changed: true) >= 0
+                && (_ignore == null || _ignore.FindPatternIndex(input, normalized, changed: true) < 0);
+        }
+        finally
+        {
+            if (rented != null)
+                ArrayPool<char>.Shared.Return(rented, clearArray: true);
+        }
+    }
+
+    /// <summary>
+    /// Finds the first pattern that matches the input, ignoring the ignore patterns.
+    /// </summary>
+    /// <param name="input">The original input.</param>
+    /// <param name="normalized">The normalized input.</param>
+    /// <param name="changed">Whether <paramref name="normalized"/> may differ from <paramref name="input"/>.</param>
+    /// <returns>The index of the first matching pattern, or -1 if none matches.</returns>
+    private int FindPatternIndex(ReadOnlySpan<char> input, ReadOnlySpan<char> normalized, bool changed)
+    {
+        var target = Options.MatchFileNameOnly ? PathUtilities.BaseName(normalized, _convertSeparators) : normalized;
+        if (_index != null)
+            return FindIndexed(input, normalized, changed, target);
+
+        for (int i = 0; i < _compiled.Length; i++)
+        {
+            var compiled = _compiled[i];
+            var pattern = compiled.Pattern.AsSpan();
+            if (input.SequenceEqual(pattern) || (changed && normalized.SequenceEqual(pattern)))
+                return i;
+
+            if (!normalized.IsEmpty && compiled.IsMatch(target))
+                return i;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Finds the first pattern that matches the input, as <see cref="FindPatternIndex"/> does, testing only the candidates of <see cref="_index"/>.
+    /// </summary>
+    /// <param name="input">The original input.</param>
+    /// <param name="normalized">The normalized input.</param>
+    /// <param name="changed">Whether <paramref name="normalized"/> may differ from <paramref name="input"/>.</param>
+    /// <param name="target">The text the patterns are matched against.</param>
+    /// <returns>The index of the first matching pattern, or -1 if none matches.</returns>
+    private int FindIndexed(ReadOnlySpan<char> input, ReadOnlySpan<char> normalized, bool changed, ReadOnlySpan<char> target)
+    {
+        int words = _index!.Words;
+        ulong[]? rented = null;
+        var candidates = words <= c_StackCandidateWords ? stackalloc ulong[c_StackCandidateWords] : (rented = ArrayPool<ulong>.Shared.Rent(words));
+        candidates = candidates[..words];
+        try
+        {
+            _index.FindCandidates(target, input, normalized, changed, candidates);
+
+            for (int w = 0; w < words; w++)
+            {
+                for (ulong bits = candidates[w]; bits != 0; bits &= bits - 1)
+                {
+                    int i = (w << 6) + BitUtilities.TrailingZeroCount(bits);
+                    var compiled = _compiled[i];
+                    var pattern = compiled.Pattern.AsSpan();
+                    if (input.SequenceEqual(pattern) || (changed && normalized.SequenceEqual(pattern)))
+                        return i;
+
+                    if (!normalized.IsEmpty && compiled.IsMatch(target))
+                        return i;
+                }
+            }
+
+            return -1;
+        }
+        finally
+        {
+            if (rented != null)
+                ArrayPool<ulong>.Shared.Return(rented);
+        }
+    }
+
+    /// <summary>
+    /// Finds the first pattern that matches the input, as <see cref="FindPattern"/> does, testing only the candidates of <see cref="_index"/>.
+    /// </summary>
+    /// <param name="input">The original input.</param>
+    /// <param name="normalized">The input as returned by <see cref="Normalize"/>.</param>
+    /// <param name="target">The text the patterns are matched against.</param>
+    /// <returns>The first matching pattern, or <see langword="null"/> if none matches.</returns>
+    private string? FindIndexed(string input, string normalized, string target)
+    {
+        int words = _index!.Words;
+        ulong[]? rented = null;
+        var candidates = words <= c_StackCandidateWords ? stackalloc ulong[c_StackCandidateWords] : (rented = ArrayPool<ulong>.Shared.Rent(words));
+        candidates = candidates[..words];
+        try
+        {
+            bool changed = !ReferenceEquals(normalized, input);
+            _index.FindCandidates(target.AsSpan(), input.AsSpan(), normalized.AsSpan(), changed, candidates);
+
+            for (int w = 0; w < words; w++)
+            {
+                for (ulong bits = candidates[w]; bits != 0; bits &= bits - 1)
+                {
+                    var compiled = _compiled[(w << 6) + BitUtilities.TrailingZeroCount(bits)];
+                    string pattern = compiled.Pattern;
+                    if (input == pattern || (changed && normalized == pattern))
+                        return pattern;
+
+                    if (normalized.Length > 0 && compiled.IsMatch(target))
+                        return pattern;
+                }
+            }
+
+            return null;
+        }
+        finally
+        {
+            if (rented != null)
+                ArrayPool<ulong>.Shared.Return(rented);
+        }
     }
 
     /// <summary>
@@ -423,23 +636,30 @@ public sealed class Glob
     /// <param name="input">The input to match, typically a path.</param>
     /// <returns>The result of the match, including whether an ignore pattern excluded the input.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
+    /// <exception cref="RegexMatchTimeoutException">A regex evaluation exceeded the match timeout (see <see cref="GlobOptions.MatchTimeout"/>).</exception>
     public GlobMatch Match(string input)
     {
         Guard.NotNull(input);
 
         string normalized = Normalize(input);
+        if (_single != null && ReferenceEquals(normalized, input))
+        {
+            bool success = input.Length > 0 && (input == _single.Pattern || _single.IsMatch(input));
+            return new GlobMatch(success, false, input, input, success ? _single.Pattern : null);
+        }
+
         string? pattern = FindPattern(input, normalized);
         if (pattern == null)
             return new GlobMatch(false, false, input, normalized, null);
 
-        bool ignored = IsIgnored(input);
+        bool ignored = IsIgnored(input, normalized);
         return new GlobMatch(!ignored, ignored, input, normalized, pattern);
     }
 
     /// <summary>
-    /// Returns a regex equivalent to the patterns of this glob, with <see cref="GlobOptions.RegexOptions"/> applied and,
-    /// when <see cref="GlobOptions.IgnoreCase"/> is set, <see cref="RegexOptions.IgnoreCase"/> and
-    /// <see cref="RegexOptions.CultureInvariant"/>.
+    /// Returns a regex equivalent to the patterns of this glob, with <see cref="GlobOptions.RegexOptions"/> and
+    /// <see cref="GlobOptions.MatchTimeout"/> applied and, when <see cref="GlobOptions.IgnoreCase"/> is set,
+    /// <see cref="RegexOptions.IgnoreCase"/> and <see cref="RegexOptions.CultureInvariant"/>.
     /// </summary>
     /// <remarks>
     /// The regex does not apply <see cref="GlobOptions.IgnorePatterns"/>, <see cref="GlobOptions.MatchFileNameOnly"/>,
@@ -452,7 +672,17 @@ public sealed class Glob
         if (_compiled.Length == 1)
             return _compiled[0].Regex;
 
-        return _combinedRegex ??= new Regex(ToRegexString(), _compiled[0].Regex.Options);
+        return _combinedRegex ?? Interlocked.CompareExchange(ref _combinedRegex, CreateCombinedRegex(), null) ?? _combinedRegex;
+    }
+
+    /// <summary>
+    /// Builds the regex of all patterns, with the options and match timeout of the patterns.
+    /// </summary>
+    /// <returns>The regex.</returns>
+    /// <exception cref="ArgumentException">The combined source is not a valid regex.</exception>
+    private Regex CreateCombinedRegex()
+    {
+        return CompiledPattern.CreateRegex(ToRegexString(), _compiled[0].RegexOptions, Options.MatchTimeout);
     }
 
     /// <summary>
@@ -468,8 +698,8 @@ public sealed class Glob
     /// are portable themselves.
     /// </para>
     /// <para>
-    /// The source does not encode <see cref="GlobOptions.RegexOptions"/>, <see cref="GlobOptions.IgnoreCase"/>,
-    /// <see cref="GlobOptions.IgnorePatterns"/>, <see cref="GlobOptions.MatchFileNameOnly"/>,
+    /// The source does not encode <see cref="GlobOptions.RegexOptions"/>, <see cref="GlobOptions.MatchTimeout"/>,
+    /// <see cref="GlobOptions.IgnoreCase"/>, <see cref="GlobOptions.IgnorePatterns"/>, <see cref="GlobOptions.MatchFileNameOnly"/>,
     /// <see cref="GlobOptions.InputNormalizer"/>, separator normalization or the rule that an input equal to a pattern
     /// matches.
     /// </para>
@@ -499,7 +729,16 @@ public sealed class Glob
     /// <returns>The first matching pattern, or <see langword="null"/> if none matches.</returns>
     private string? FindPattern(string input, string normalized)
     {
+        if (Options.MatchFileNameOnly && _matchesSpans)
+        {
+            int index = FindPatternIndex(input.AsSpan(), normalized.AsSpan(), !ReferenceEquals(normalized, input));
+            return index < 0 ? null : _compiled[index].Pattern;
+        }
+
         string? fileName = Options.MatchFileNameOnly ? PathUtilities.BaseName(normalized, _convertSeparators) : null;
+        if (_index != null)
+            return FindIndexed(input, normalized, fileName ?? normalized);
+
         foreach (var compiled in _compiled)
         {
             string pattern = compiled.Pattern;
@@ -516,11 +755,19 @@ public sealed class Glob
     /// <summary>
     /// Determines whether the ignore patterns of this glob match <paramref name="input"/>.
     /// </summary>
+    /// <remarks>
+    /// The ignore glob has the same options apart from its ignore patterns, so without <see cref="GlobOptions.InputNormalizer"/>
+    /// it would normalize <paramref name="input"/> to <paramref name="normalized"/> too; with one, the normalizer is called again.
+    /// </remarks>
     /// <param name="input">The original input, before normalization.</param>
+    /// <param name="normalized">The input as returned by <see cref="Normalize"/>.</param>
     /// <returns><see langword="true"/> if there are ignore patterns and one matches <paramref name="input"/>; otherwise, <see langword="false"/>.</returns>
-    private bool IsIgnored(string input)
+    private bool IsIgnored(string input, string normalized)
     {
-        return _ignore != null && _ignore.IsMatch(input);
+        if (_ignore == null)
+            return false;
+
+        return Options.InputNormalizer == null ? _ignore.FindPattern(input, normalized) != null : _ignore.IsMatch(input);
     }
 
     /// <summary>

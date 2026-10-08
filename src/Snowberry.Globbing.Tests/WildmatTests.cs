@@ -6,9 +6,6 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class WildmatTests
 {
-    // POSIX option needed for [!...] bracket negation
-    private static readonly GlobOptions s_PosixOptions = new() { PosixClasses = true };
-
     [Theory]
     [InlineData("foo", "foo", true)]
     [InlineData("foo", "bar", false)]
@@ -27,7 +24,7 @@ public class WildmatTests
     [InlineData("foo", "[^f]oo", false)]
     public void Wildmat_Brackets(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -35,7 +32,7 @@ public class WildmatTests
     [InlineData("moobar", "[^f]*", true)]
     public void Wildmat_BracketsWithStar(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]

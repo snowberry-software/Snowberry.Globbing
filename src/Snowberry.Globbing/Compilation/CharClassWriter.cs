@@ -55,7 +55,8 @@ internal static class CharClassWriter
             if (c == '\\' && i + 1 < content.Length)
             {
                 c = content[++i];
-                cls.Append('\\');
+                if (RegexSyntax.KeepsEscape(c))
+                    cls.Append('\\');
                 cls.Append(c);
                 text.Append(c);
                 continue;

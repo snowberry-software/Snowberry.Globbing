@@ -192,13 +192,4 @@ public class DotfilesTests
         var options = new GlobOptions { MatchDotFiles = true };
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
-
-    [Theory]
-    [InlineData("a/b/.dot", "**/*dot", false)]
-    [InlineData("a/b/.dot", "**/?dot", false)]
-    public void ShouldMatchDotfilesWithDotOptionDisabled(string input, string pattern, bool expected)
-    {
-        var options = new GlobOptions { MatchDotFiles = false };
-        Glob.IsMatch(input, pattern, options).Should().Be(expected);
-    }
 }

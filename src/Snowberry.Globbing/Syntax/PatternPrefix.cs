@@ -33,17 +33,6 @@ internal static class PatternPrefix
     }
 
     /// <summary>
-    /// Reads a character without bounds failures.
-    /// </summary>
-    /// <param name="s">The text to read.</param>
-    /// <param name="i">The zero-based position.</param>
-    /// <returns>The character at <paramref name="i"/>, or <c>'\0'</c> if <paramref name="i"/> is past the end of <paramref name="s"/>.</returns>
-    private static char At(ReadOnlySpan<char> s, int i)
-    {
-        return i < s.Length ? s[i] : '\0';
-    }
-
-    /// <summary>
     /// Counts the leading <c>!</c> that negate the pattern; a <c>!</c> that opens <c>!(...)</c> is not counted.
     /// </summary>
     /// <remarks>
@@ -59,11 +48,11 @@ internal static class PatternPrefix
         if (pattern.IsEmpty || pattern[0] != '!')
             return 0;
 
-        if (options.Extglobs && At(pattern, 1) == '(' && (At(pattern, 2) != '?' || At(pattern, 3) is not ('!' or '=' or '<' or ':')))
+        if (options.Extglobs && GlobLexer.OpensNegatedExtglob(pattern, 0))
             return 0;
 
         int count = 1;
-        while (At(pattern, count) == '!' && (At(pattern, count + 1) != '(' || At(pattern, count + 2) == '?'))
+        while (GlobLexer.At(pattern, count) == '!' && (GlobLexer.At(pattern, count + 1) != '(' || GlobLexer.At(pattern, count + 2) == '?'))
             count++;
 
         return count;

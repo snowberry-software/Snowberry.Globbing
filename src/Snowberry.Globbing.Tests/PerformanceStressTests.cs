@@ -2,8 +2,6 @@ namespace Snowberry.Globbing.Tests;
 
 public class PerformanceStressTests
 {
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     private static string Nest(string open, string close, int depth)
     {
         return string.Concat(Enumerable.Repeat(open, depth)) + "b" + string.Concat(Enumerable.Repeat(close, depth));
@@ -19,13 +17,13 @@ public class PerformanceStressTests
         string half = string.Join("/", Enumerable.Repeat("dir", 500));
         string path = half + "/" + middle + "/" + half + "/" + fileName;
 
-        new Glob("**/*.js", s_Posix).IsMatch(path).Should().Be(expected);
+        new Glob("**/*.js", TestOptions.Posix).IsMatch(path).Should().Be(expected);
     }
 
     [Fact]
     public void ManyPatterns_InOneGlob_ReportTheMatchingPattern()
     {
-        var glob = new Glob(Enumerable.Range(0, 500).Select(i => $"**/*.{i}.js"), s_Posix);
+        var glob = new Glob(Enumerable.Range(0, 500).Select(i => $"**/*.{i}.js"), TestOptions.Posix);
 
         glob.Match("src/app.250.js").Pattern.Should().Be("**/*.250.js");
         glob.IsMatch("src/app.500.js").Should().BeFalse();
@@ -37,9 +35,9 @@ public class PerformanceStressTests
     [InlineData("{a,", "}")]
     public void Nesting_IsLimitedTo256Levels(string open, string close)
     {
-        new Glob(Nest(open, close, 256), s_Posix).IsMatch("b").Should().BeTrue();
+        new Glob(Nest(open, close, 256), TestOptions.Posix).IsMatch("b").Should().BeTrue();
 
-        var e = FluentActions.Invoking(() => new Glob(Nest(open, close, 257), s_Posix)).Should().ThrowExactly<GlobParseException>().Which;
+        var e = FluentActions.Invoking(() => new Glob(Nest(open, close, 257), TestOptions.Posix)).Should().ThrowExactly<GlobParseException>().Which;
         e.Error.Should().Be(GlobParseError.NestingTooDeep);
     }
 
@@ -51,7 +49,7 @@ public class PerformanceStressTests
     [InlineData("*v{1..100000}", "xv5", false)]
     public void NumericRange_IsCappedInsteadOfExpanded(string pattern, string input, bool expected)
     {
-        new Glob(pattern, s_Posix).IsMatch(input).Should().Be(expected);
+        new Glob(pattern, TestOptions.Posix).IsMatch(input).Should().Be(expected);
     }
 
     [Theory]
@@ -62,6 +60,6 @@ public class PerformanceStressTests
     {
         string input = new string('a', 100_000) + suffix;
 
-        new Glob("*.js", s_Posix).IsMatch(input).Should().Be(expected);
+        new Glob("*.js", TestOptions.Posix).IsMatch(input).Should().Be(expected);
     }
 }

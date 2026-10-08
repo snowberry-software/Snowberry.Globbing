@@ -72,7 +72,7 @@ string regex = new Glob("src/**/*.cs").ToRegexString();
   // info.BasePath == "src/lib", info.GlobPart == "**/*.cs", info.HasGlobstar == true
   ```
 
-- **Fast matching.** Literal text a pattern requires, such as the `.js` of `**/*.js`, is checked with ordinal string comparisons before the regex runs, so most non-matching inputs never reach the regex engine. Matching with an existing `Glob` does not allocate, unless the input needs its backslashes converted or `MatchFileNameOnly` extracts its file name.
+- **Fast matching.** Common shapes such as `*.js`, `**/*.cs` and `src/**` are matched with string operations, without a regex. For other patterns, literal text the pattern requires, such as the `.ts` of `src/*/*.ts`, is checked with ordinal string comparisons first, so most non-matching inputs never reach the regex engine. `IsMatch` on an existing `Glob` does not allocate on .NET 10 unless `InputNormalizer` is set.
 
 ## How It Works
 
@@ -91,8 +91,12 @@ flowchart TD
     input[Input] --> normalize["Normalize separators<br/>(or InputNormalizer)"]
     normalize --> equal{Input equals<br/>the pattern?}
     equal -- yes --> ignored
-    equal -- no --> hasLiteral{Required literal<br/>text present?}
-    hasLiteral -- no --> noMatch([No match])
+    equal -- no --> shape{Common shape?}
+    shape -- yes --> direct{"Matches, checked<br/>without a regex?"}
+    direct -- no --> noMatch([No match])
+    direct -- yes --> ignored
+    shape -- no --> hasLiteral{Required literal<br/>text present?}
+    hasLiteral -- no --> noMatch
     hasLiteral -- yes --> regexMatch{Regex matches?}
     regexMatch -- no --> noMatch
     regexMatch -- yes --> ignored{Matches an<br/>ignore pattern?}
@@ -100,9 +104,9 @@ flowchart TD
     ignored -- no --> match([Match])
 ```
 
-With several patterns, the checks before the ignore patterns run for each pattern in order, and the first one that matches wins.
+With several patterns, the checks before the ignore patterns run for each pattern in order, and the first one that matches wins. When a glob has many patterns, an index of required three-character substrings skips the patterns an input cannot match.
 
-Common shapes such as `*.js` and `**/*` compile to fixed, compact regex forms. A negated pattern such as `!**/node_modules/**` is matched by running the regex of its body and inverting the result, which lets the literal check skip most inputs there too. Only the regex source is public through `ToRegexString()`; the other steps are applied by `Glob` itself.
+Common shapes such as `*.js`, `**/*.cs`, `src/**` and plain names are matched with string operations, without running a regex. Most chains of wildcards, such as `*a*b*c`, compile to regexes that do not backtrack between the wildcards. A negated pattern such as `!**/node_modules/**` is matched by testing its body and inverting the result, so the string-operation and literal checks apply there too. Only the regex source is public through `ToRegexString()`; the other steps are applied by `Glob` itself.
 
 ## Pattern Syntax
 
@@ -121,7 +125,7 @@ Common shapes such as `*.js` and `**/*` compile to fixed, compact regex forms. A
 | `!(a\|b)` | Anything except the alternatives |
 | `\*` | A literal `*` (any character can be escaped) |
 
-Wildcards do not match a leading `.` in a segment unless `MatchDotFiles` is set. An input that is exactly equal to the pattern always matches.
+Wildcards do not match a leading `.` in a segment unless `MatchDotFiles` is set. An input that is exactly equal to the pattern always matches that pattern; ignore patterns still apply.
 
 ## Options
 
@@ -141,7 +145,8 @@ Wildcards do not match a leading `.` in a segment unless `MatchDotFiles` is set.
 | `PosixClasses` | `true` | Expand `[[:alpha:]]` and the other POSIX classes |
 | `StrictSlashes` | `false` | Do not let trailing wildcards also match a trailing `/` |
 | `StrictBrackets` | `false` | Throw on unbalanced `[`, `(` and `{` instead of matching them literally |
-| `RegexOptions` | `None` | Extra options for the regex used for matching and returned by `ToRegex()`, for example `RegexOptions.Compiled` |
+| `RegexOptions` | `None` | Extra options for the regex used for matching and returned by `ToRegex()`, for example `RegexOptions.Compiled`; `NonBacktracking` is not supported |
+| `MatchTimeout` | `null` | Time limit for each regex evaluation; `null` uses the process-wide `REGEX_DEFAULT_MATCH_TIMEOUT`, `Regex.InfiniteMatchTimeout` disables it |
 | `MaxPatternLength` | `65536` | Longest accepted pattern |
 | `InputNormalizer` | `null` | Transforms each input before matching, replacing the separator conversion of `PathStyle` |
 
@@ -162,7 +167,14 @@ string source = new Glob("src/**/*.cs").ToRegexString();
 var files = await db.Files.Where(f => Regex.IsMatch(f.Path, source, RegexOptions.Singleline)).ToListAsync();
 ```
 
-The regex covers the patterns only. `Glob` applies the rest itself: `IgnoreCase` (use `RegexOptions.IgnoreCase`, `~*` in PostgreSQL or the `i` flag in JavaScript), `RegexOptions`, `IgnorePatterns`, `MatchFileNameOnly`, input normalization and the input-equals-pattern rule.
+The regex covers the patterns only. `Glob` applies the rest itself: `IgnoreCase` (use `RegexOptions.IgnoreCase`, `~*` in PostgreSQL or the `i` flag in JavaScript), `RegexOptions`, `MatchTimeout`, `IgnorePatterns`, `MatchFileNameOnly`, input normalization and the input-equals-pattern rule.
+
+### PostgreSQL Performance
+
+- **A trigram index works.** With `CREATE EXTENSION pg_trgm` and a `gin (path gin_trgm_ops)` index, the planner uses the index for any pattern with a literal word of two or more letters or digits, such as the `cs` of `**/*.cs` or the `node_modules` of `**/node_modules/**`. The lookaheads in the regex do not prevent this. Patterns without such a literal (`*`, `**`, `**/.*`) and negated patterns (`!*.md`) still scan the table.
+- **Keep combined regexes small.** PostgreSQL builds the matching automaton again for every row, so the cost per row grows with the length of the regex. A `Glob` of 1,000 patterns gives a 60 KB regex that takes about 2 seconds to compile per connection and about 1 ms per row. For long pattern lists, narrow the rows first with a cheaper or indexed condition, such as a `LIKE` on a required extension, and apply the combined regex to the rest.
+- **Use `~ ANY(...)` for at most 32 regexes.** `path ~ ANY(@regexes)`, with one `ToRegexString()` per pattern, is faster than one combined regex while the array has at most 32 entries. PostgreSQL caches 32 compiled regexes per connection, so a longer array compiles every regex again for every row.
+- **Prefer glibc-based images.** On Alpine-based PostgreSQL images, regexes with more than about 20 distinct characters, such as `**/{yarn.lock,package-lock.json}`, are 10 to 20 times slower per row than on `postgres:17`, because musl's allocator is slow for the automaton's per-row allocations.
 
 ## Error Handling
 
@@ -171,6 +183,7 @@ The regex covers the patterns only. `Glob` applies the rest itself: `IgnoreCase`
 | `null` pattern, pattern list or input | `ArgumentNullException` |
 | An empty pattern list | `ArgumentException` |
 | Any invalid pattern or ignore pattern | `GlobParseException`, with an `Error` code |
+| A regex evaluation exceeds `MatchTimeout`, or the process-wide default when it is `null` | `RegexMatchTimeoutException` |
 
 | `Error` | Cause |
 | --- | --- |
@@ -178,7 +191,7 @@ The regex covers the patterns only. `Glob` applies the rest itself: `IgnoreCase`
 | `PatternTooLong` | The pattern is longer than `MaxPatternLength` |
 | `MissingClosingBracket`, `MissingOpeningBracket`, `MissingClosingParenthesis`, `MissingOpeningParenthesis`, `MissingClosingBrace` | An unbalanced delimiter, with `StrictBrackets` |
 | `NestingTooDeep` | Groups, braces or extended globs nested more than 256 levels deep |
-| `InvalidPattern` | The pattern is not a valid regex, such as `[z-a]`, or `RegexOptions` is an invalid combination |
+| `InvalidPattern` | The pattern is not a valid regex, such as `[z-a]`, or `RegexOptions` is an invalid combination or unsupported, such as `NonBacktracking` |
 
 `GlobParseException` derives from `ArgumentException` and carries the `Pattern`, the `Error` code and the `Offset`; its `ParamName` names the argument the pattern came from (`pattern`, `patterns` or `IgnorePatterns`). Use `Glob.TryCreate` to validate user-supplied patterns without exceptions. Its `error` reports every failure, including a `null` pattern, as a `GlobParseException`, so you can switch on the code:
 
@@ -198,15 +211,20 @@ if (!Glob.TryCreate(userPattern, options, out var glob, out var error))
 
 - **Reuse `Glob` instances.** Construction parses and compiles the pattern; matching does not. The static `Glob.IsMatch(input, pattern)` caches compiled patterns, but a long-lived instance is cheaper still.
 - **The pattern-list overload is not cached.** `Glob.IsMatch(input, patterns)` compiles all patterns on every call; create a `Glob` from the list instead.
-- **Interpreted regex by default.** `RegexOptions.Compiled` pays a large one-time IL-generation cost (hundreds of microseconds to milliseconds per pattern). Set `RegexOptions = RegexOptions.Compiled` only for a glob reused across tens of thousands of inputs or more.
-- **Spans.** `IsMatch(ReadOnlySpan<char>)` matches without allocating a string on .NET 7 and later, when no `InputNormalizer`, ignore patterns or file-name matching are involved.
+- **Interpreted regex by default.** `RegexOptions.Compiled` pays a large one-time IL-generation cost (hundreds of microseconds to milliseconds per pattern). Set `RegexOptions = RegexOptions.Compiled` only for a glob reused across tens of thousands of inputs or more. Patterns matched without a regex never build one, so the option only affects the others.
+- **A match timeout has a small cost.** With `MatchTimeout` set, the regex engine checks the clock while matching, which made patterns that run a regex up to about 20% slower in benchmarks. Patterns matched without a regex, and the default `null`, add nothing.
+- **Many patterns.** A glob with dozens to thousands of patterns, such as a `.gitignore`, is indexed when it is created, which makes matching 4 to 30 times faster at 24 to 1,000 patterns for a small extra construction cost.
+- **No allocations.** On .NET 10, `IsMatch` allocates nothing, including with ignore patterns, file-name matching and Windows separators, unless `InputNormalizer` is set. `Match` allocates only the normalized input when separators are converted. On .NET Framework, the `ReadOnlySpan<char>` overload avoids a string only when every pattern has a common shape.
 
 ## Pitfalls
 
 - **`Auto` path style depends on the platform.** On Windows, `src\app.cs` matches `src/*.cs`; on Linux it does not. Set `PathStyle = GlobPathStyle.Posix` or `Windows` when results must not depend on the OS.
 - **A backslash in a pattern is always an escape.** Write patterns with `/`, even for Windows paths; `src\*.cs` means `src*.cs` with a literal `*`.
 - **Npgsql needs `RegexOptions.Singleline`.** Without it, inputs that contain line breaks match differently in PostgreSQL than in .NET.
-- **`ToRegexString()` does not encode every option.** Ignore patterns, file-name matching, case-insensitivity and `RegexOptions` are not part of the regex text; apply them on the consuming side. Regex syntax you write into a pattern, such as `\d`, and `BraceRangeExpander` output are copied as-is and are only portable if they are portable themselves.
+- **`ToRegexString()` does not encode every option.** Ignore patterns, file-name matching, case-insensitivity, `RegexOptions` and `MatchTimeout` are not part of the regex text; apply them on the consuming side. Regex syntax you write into a pattern, such as `\d`, and `BraceRangeExpander` output are copied as-is and are only portable if they are portable themselves.
+- **Untrusted patterns need a `MatchTimeout`.** Most chains of wildcards do not backtrack, but repeated extended globs with overlapping alternatives backtrack exponentially: `+(a|aa)b` takes about 5 seconds on a 40-character input, and each extra character makes it about 1.6 times slower. When users supply patterns, set `MatchTimeout` and handle `RegexMatchTimeoutException`. The limit applies per regex evaluation, so a glob with several patterns or ignore patterns can take a multiple of it.
+- **`RegexOptions.NonBacktracking` is not supported.** The generated regexes use lookarounds, which the non-backtracking engine rejects, so nearly every pattern fails with `InvalidPattern`. Use `MatchTimeout` to bound matching time instead.
+- **Some characters are not portable.** PostgreSQL counts a character outside the Basic Multilingual Plane, such as an emoji, as one character, while .NET and JavaScript count two, so `?` and the boundaries of `*` differ for such input. With `IgnoreCase`, a few characters fold differently: .NET 10 folds the Kelvin sign (U+212A) to `k` and .NET Framework and JavaScript do not, and PostgreSQL folds the long s (U+017F) to `s` and .NET and JavaScript do not. An escaped ASCII letter, such as `\a`, is regex syntax and means different things in each engine.
 - **Negated patterns never match line breaks.** `!*.md` does not match an input that contains `\n`, `\r` or a Unicode line separator.
 - **Unbalanced delimiters are literal.** `a{b` matches the text `a{b`. Set `StrictBrackets` to reject such patterns instead.
 - **Large ranges match literally.** A numeric range with more than 4,096 values, such as `{1..100000}`, is not expanded and matches only its own text.
