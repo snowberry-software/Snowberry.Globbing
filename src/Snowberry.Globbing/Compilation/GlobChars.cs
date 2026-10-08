@@ -13,9 +13,11 @@ internal sealed class GlobChars
     private GlobChars(string slash, string separators)
     {
         SlashLiteral = slash;
-        Qmark = string.Concat("[^", separators, "]");
+        NotSeparatorOpen = "[^" + separators;
+        Qmark = NotSeparatorOpen + "]";
         QmarkNoDot = string.Concat("[^.", separators, "]");
-        Star = Qmark + "*";
+        SegmentFirstChar = string.Concat("[^.", separators, RegexSyntax.c_LineTerminators, "]");
+        SegmentRun = Qmark + "*";
         DotsSlash = string.Concat("\\.{1,2}(?:", slash, "|", RegexSyntax.c_EndOfInput, ")");
         NoDots = string.Concat("(?!(?:^|", slash, ")", DotsSlash, ")");
         NoDotSlash = string.Concat("(?!\\.{0,1}(?:", slash, "|", RegexSyntax.c_EndOfInput, "))");
@@ -50,8 +52,14 @@ internal sealed class GlobChars
     /// <summary>Gets a lookahead rejecting a <c>.</c> or <c>..</c> segment that starts at this position.</summary>
     public string NoDotsSlash { get; }
 
+    /// <summary>Gets the start of a class of non-separators: <see cref="Qmark"/> without its closing bracket.</summary>
+    public string NotSeparatorOpen { get; }
+
     /// <summary>Gets a lookahead requiring one more character that is not a line terminator.</summary>
     public string OneChar { get; } = "(?=" + RegexSyntax.c_AnyNonLineTerminator + ")";
+
+    /// <summary>Gets a lookahead requiring one more character that is neither a dot nor a line terminator.</summary>
+    public string OneCharNoDot { get; } = "(?=[^." + RegexSyntax.c_LineTerminators + "])";
 
     /// <summary>Gets a literal plus.</summary>
     public string PlusLiteral { get; } = "\\+";
@@ -65,11 +73,14 @@ internal sealed class GlobChars
     /// <summary>Gets a single character other than a dot or separator.</summary>
     public string QmarkNoDot { get; }
 
-    /// <summary>Gets a path separator.</summary>
-    public string SlashLiteral { get; }
+    /// <summary>Gets a single character other than a dot, separator or line terminator.</summary>
+    public string SegmentFirstChar { get; }
 
     /// <summary>Gets any characters within a segment, as a greedy run of <see cref="Qmark"/>.</summary>
-    public string Star { get; }
+    public string SegmentRun { get; }
+
+    /// <summary>Gets a path separator.</summary>
+    public string SlashLiteral { get; }
 
     /// <summary>Gets the fragments for paths separated by <c>/</c> or <c>\</c>.</summary>
     public static GlobChars Windows { get; } = new("[\\\\/]", "\\\\/");

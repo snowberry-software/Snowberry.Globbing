@@ -2,8 +2,6 @@ namespace Snowberry.Globbing.Tests;
 
 public class GlobAnalyzeTests
 {
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     [Fact]
     public void Analyze_DescribesPatternStructure()
     {
@@ -37,7 +35,7 @@ public class GlobAnalyzeTests
     [InlineData("a/[b")]
     public void Analyze_EscapedOrUnbalancedSyntax_IsNotAGlob(string pattern)
     {
-        var info = Glob.Analyze(pattern, s_Posix);
+        var info = Glob.Analyze(pattern, TestOptions.Posix);
 
         info.IsGlob.Should().BeFalse();
         info.BasePath.Should().Be(pattern);
@@ -240,7 +238,7 @@ public class GlobAnalyzeTests
     [Fact]
     public void Analyze_SeparatorsInsideBraces_DoNotSplitSegments()
     {
-        var info = Glob.Analyze("src/{a/b,c}/*.cs", s_Posix);
+        var info = Glob.Analyze("src/{a/b,c}/*.cs", TestOptions.Posix);
 
         info.Segments.Should().Equal(["src", "{a/b,c}", "*.cs"]);
         info.BasePath.Should().Be("src");

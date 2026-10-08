@@ -1,3 +1,5 @@
+using Snowberry.Globbing.Compilation;
+
 namespace Snowberry.Globbing.Tests;
 
 public class GlobOptionsTests
@@ -38,7 +40,13 @@ public class GlobOptionsTests
         "*"
     ];
 
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
+    // Overlapping alternatives under a repeated extended glob backtrack exponentially on a long run of 'a' that cannot match.
+    private const string c_BacktrackingPattern = "+(a|aa)b";
+    private const int c_TimeoutTestLimitMs = 15_000;
+    private static readonly string s_BacktrackingInput = new string('a', 40) + "c";
+
+    // IgnoreCase disables the literal pre-check, so the regex itself must run.
+    private static readonly GlobOptions s_ShortTimeout = TestOptions.Posix with { IgnoreCase = true, MatchTimeout = TimeSpan.FromMilliseconds(200) };
 
     public static TheoryData<string> CompiledPatterns()
     {
@@ -138,6 +146,7 @@ public class GlobOptionsTests
             options.CaptureGroups.Should().BeFalse();
             options.RegexOptions.Should().Be(RegexOptions.None);
             options.MaxPatternLength.Should().Be(65536);
+            options.MatchTimeout.Should().BeNull();
             options.IgnorePatterns.Should().BeEmpty();
             options.InputNormalizer.Should().BeNull();
             options.BraceRangeExpander.Should().BeNull();
@@ -205,6 +214,19 @@ public class GlobOptionsTests
     }
 
     [Theory]
+    [InlineData("!*.MD", "README.md", false)]
+    [InlineData("!*.MD", "app.js", true)]
+    [InlineData("!*.md", "README.MD", false)]
+    [InlineData("!(*.MD)", "README.md", false)]
+    public void IgnoreCase_NegatedPattern_IgnoresCaseOfTheNegatedBody(string pattern, string input, bool expected)
+    {
+        var glob = new Glob(pattern, new GlobOptions { IgnoreCase = true });
+
+        glob.IsMatch(input).Should().Be(expected);
+        glob.IsMatch(input.AsSpan()).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("SRC/file.js", true)]
     [InlineData("src/FILE.JS", true)]
     [InlineData("SRC/file.md", false)]
@@ -219,7 +241,7 @@ public class GlobOptionsTests
     public void IgnorePatterns_AreCopiedWhenSet()
     {
         var source = new List<string> { "*.md" };
-        var options = s_Posix with { IgnorePatterns = source };
+        var options = TestOptions.Posix with { IgnorePatterns = source };
 
         source.Add("*.js");
         source[0] = "*.txt";
@@ -300,8 +322,8 @@ public class GlobOptionsTests
     {
         string[] patterns = ["*.md", "*.js"];
 
-        Glob.IsMatch("A.JS", patterns, s_Posix with { IgnoreCase = true }).Should().BeTrue();
-        Glob.IsMatch("A.JS", patterns, s_Posix).Should().BeFalse();
+        Glob.IsMatch("A.JS", patterns, TestOptions.Posix with { IgnoreCase = true }).Should().BeTrue();
+        Glob.IsMatch("A.JS", patterns, TestOptions.Posix).Should().BeFalse();
     }
 
     [Theory]
@@ -311,7 +333,7 @@ public class GlobOptionsTests
     [InlineData("\"a*\"b", true, true)]
     public void KeepQuotes_KeepsQuotesAsLiteralText(string input, bool keepQuotes, bool expected)
     {
-        Glob.IsMatch(input, "\"a*\"b", s_Posix with { KeepQuotes = keepQuotes }).Should().Be(expected);
+        Glob.IsMatch(input, "\"a*\"b", TestOptions.Posix with { KeepQuotes = keepQuotes }).Should().Be(expected);
     }
 
     [Theory]
@@ -332,7 +354,7 @@ public class GlobOptionsTests
     [InlineData("*", "a/", true)]
     public void MatchFileNameOnly_EmptyInput_NeverMatches(string pattern, string input, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix with { MatchFileNameOnly = true }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix with { MatchFileNameOnly = true }).Should().Be(expected);
     }
 
     [Theory]
@@ -355,7 +377,7 @@ public class GlobOptionsTests
     [Fact]
     public void MatchFileNameOnly_WithPosixPathStyle_TreatsBackslashAsOrdinaryCharacter()
     {
-        var options = s_Posix with { MatchFileNameOnly = true };
+        var options = TestOptions.Posix with { MatchFileNameOnly = true };
 
         Glob.IsMatch("dir/file.js", "file.js", options).Should().BeTrue();
         Glob.IsMatch(@"dir\file.js", "file.js", options).Should().BeFalse();
@@ -398,6 +420,142 @@ public class GlobOptionsTests
         glob.ToRegex().IsMatch(input).Should().Be(expected);
     }
 
+    [Fact(Timeout = c_TimeoutTestLimitMs)]
+    public Task MatchTimeout_AfterTimeout_GlobRemainsUsable()
+    {
+        return Task.Run(() =>
+        {
+            var glob = new Glob(c_BacktrackingPattern, s_ShortTimeout);
+
+            FluentActions.Invoking(() => glob.IsMatch(s_BacktrackingInput)).Should().ThrowExactly<RegexMatchTimeoutException>();
+            glob.IsMatch(new string('A', 12) + "B").Should().BeTrue();
+            glob.IsMatch("ac").Should().BeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public void MatchTimeout_Default_UsesProcessWideDefault()
+    {
+        new Regex("a").MatchTimeout.Should().Be(RegexDefaultMatchTimeout.Value, "the test module configures the process-wide default");
+        new Glob("*.js").ToRegex().MatchTimeout.Should().Be(RegexDefaultMatchTimeout.Value);
+        new Glob(["*.js", "!*.md"]).ToRegex().MatchTimeout.Should().Be(RegexDefaultMatchTimeout.Value);
+    }
+
+    [Fact(Timeout = c_TimeoutTestLimitMs)]
+    public Task MatchTimeout_Exceeded_ByFilter_ThrowsDuringEnumeration()
+    {
+        var filtered = new Glob(c_BacktrackingPattern, s_ShortTimeout).Filter(["a", s_BacktrackingInput]);
+
+        return ShouldTimeOut(() => filtered.ToList(), TestContext.Current.CancellationToken);
+    }
+
+    [Fact(Timeout = c_TimeoutTestLimitMs)]
+    public Task MatchTimeout_Exceeded_ByIgnorePattern_Throws()
+    {
+        var glob = new Glob("**", s_ShortTimeout with { IgnorePatterns = [c_BacktrackingPattern] });
+
+        return ShouldTimeOut(() => glob.IsMatch(s_BacktrackingInput), TestContext.Current.CancellationToken);
+    }
+
+    [Fact(Timeout = c_TimeoutTestLimitMs)]
+    public Task MatchTimeout_Exceeded_ByInputThatPassesTheLiteralPreCheck_Throws()
+    {
+        // The input ends in the literal suffix "b", but 'a' and 'aa' cannot match the separator, so only the regex can reject it.
+        var glob = new Glob(c_BacktrackingPattern, TestOptions.Posix with { MatchTimeout = s_ShortTimeout.MatchTimeout });
+
+        return ShouldTimeOut(() => glob.IsMatch(new string('a', 40) + "/b"), TestContext.Current.CancellationToken);
+    }
+
+    [Fact(Timeout = c_TimeoutTestLimitMs)]
+    public Task MatchTimeout_Exceeded_ByMatch_Throws()
+    {
+        var glob = new Glob(c_BacktrackingPattern, s_ShortTimeout);
+
+        return ShouldTimeOut(() => glob.Match(s_BacktrackingInput), TestContext.Current.CancellationToken);
+    }
+
+    [Theory(Timeout = c_TimeoutTestLimitMs)]
+    [InlineData("!" + c_BacktrackingPattern)]
+    [InlineData("!(" + c_BacktrackingPattern + ")")]
+    public Task MatchTimeout_Exceeded_ByNegatedPattern_Throws(string pattern)
+    {
+        var glob = new Glob(pattern, s_ShortTimeout);
+
+        return ShouldTimeOut(() => glob.IsMatch(s_BacktrackingInput), TestContext.Current.CancellationToken);
+    }
+
+    [Fact(Timeout = c_TimeoutTestLimitMs)]
+    public Task MatchTimeout_Exceeded_BySpanInput_Throws()
+    {
+        var glob = new Glob(c_BacktrackingPattern, s_ShortTimeout);
+
+        return ShouldTimeOut(() => glob.IsMatch(s_BacktrackingInput.AsSpan()), TestContext.Current.CancellationToken);
+    }
+
+    [Fact(Timeout = c_TimeoutTestLimitMs)]
+    public Task MatchTimeout_Exceeded_ByStaticIsMatch_ThrowsAndIsPartOfTheCacheKey()
+    {
+        Glob.IsMatch("ac", c_BacktrackingPattern, s_ShortTimeout with { MatchTimeout = Regex.InfiniteMatchTimeout }).Should().BeFalse();
+
+        return ShouldTimeOut(() => Glob.IsMatch(s_BacktrackingInput, c_BacktrackingPattern, s_ShortTimeout), TestContext.Current.CancellationToken);
+    }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(10_000L)]
+    [InlineData(21_474_836_460_000L)]
+    public void MatchTimeout_InRange_IsAppliedToEveryRegex(long ticks)
+    {
+        var timeout = TimeSpan.FromTicks(ticks);
+        var options = new GlobOptions { MatchTimeout = timeout };
+
+        options.MatchTimeout.Should().Be(timeout);
+        new Glob("*.js", options).ToRegex().MatchTimeout.Should().Be(timeout);
+        new Glob(["*.js", "!*.md"], options).ToRegex().MatchTimeout.Should().Be(timeout);
+    }
+
+    [Fact]
+    public void MatchTimeout_Infinite_DisablesTheTimeout()
+    {
+        var glob = new Glob("*.js", new GlobOptions { MatchTimeout = Regex.InfiniteMatchTimeout });
+
+        glob.ToRegex().MatchTimeout.Should().Be(Regex.InfiniteMatchTimeout);
+        new Glob(["*.js", "!*.md"], new GlobOptions { MatchTimeout = Regex.InfiniteMatchTimeout }).ToRegex().MatchTimeout.Should().Be(Regex.InfiniteMatchTimeout);
+        glob.IsMatch("app.js").Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(-1L)]
+    [InlineData(-20_000L)]
+    [InlineData(21_474_836_460_001L)]
+    public void MatchTimeout_OutOfRange_ThrowsArgumentOutOfRangeException(long ticks)
+    {
+        FluentActions.Invoking(() => new GlobOptions { MatchTimeout = TimeSpan.FromTicks(ticks) })
+            .Should().ThrowExactly<ArgumentOutOfRangeException>()
+            .Which.ParamName.Should().Be(nameof(GlobOptions.MatchTimeout));
+    }
+
+    [Fact]
+    public void MatchTimeout_PartOfOptionsEquality()
+    {
+        var options = new GlobOptions { MatchTimeout = TimeSpan.FromSeconds(1) };
+
+        options.Should().Be(new GlobOptions { MatchTimeout = TimeSpan.FromSeconds(1) });
+        options.Should().NotBe(new GlobOptions { MatchTimeout = TimeSpan.FromSeconds(2) });
+        options.Should().NotBe(GlobOptions.Default);
+    }
+
+    [Fact]
+    public void MatchTimeout_SetToNull_RestoresTheDefault()
+    {
+        var options = new GlobOptions { MatchTimeout = TimeSpan.FromSeconds(1) } with { MatchTimeout = null };
+
+        options.MatchTimeout.Should().BeNull();
+        options.Should().Be(GlobOptions.Default);
+        new Glob("*.js", options).ToRegex().MatchTimeout.Should().Be(RegexDefaultMatchTimeout.Value);
+    }
+
     [Fact]
     public void MaxPatternLength_BelowOne_ThrowsArgumentOutOfRangeException()
     {
@@ -423,12 +581,12 @@ public class GlobOptionsTests
     [Fact]
     public void Options_AreNotModifiedByMatching()
     {
-        var options = s_Posix with { Extglobs = false };
+        var options = TestOptions.Posix with { Extglobs = false };
 
         _ = new Glob("+(a)", options);
-        _ = TestHelpers.Parse("*.js", options);
+        _ = GlobCompiler.CompileRegexSource("*.js", options, fastPaths: false);
 
-        options.Should().Be(s_Posix with { Extglobs = false });
+        options.Should().Be(TestOptions.Posix with { Extglobs = false });
     }
 
     [Fact]
@@ -451,13 +609,17 @@ public class GlobOptionsTests
         Glob.IsMatch(input, pattern, new GlobOptions { PathStyle = pathStyle }).Should().Be(expected);
     }
 
-    [Fact]
-    public void PosixClasses_WhenEnabled_MatchesCharacterClass()
+    [Theory]
+    [InlineData(true, "abc123", true)]
+    [InlineData(true, "!!!", false)]
+    [InlineData(false, "abc123", false)]
+    [InlineData(false, "a]", true)]
+    [InlineData(false, ":]x", true)]
+    public void PosixClasses_ControlsPosixClassExpansion(bool posixClasses, string input, bool expected)
     {
-        var glob = new Glob("[[:alnum:]]*", new GlobOptions { PosixClasses = true });
+        var glob = new Glob("[[:alnum:]]*", new GlobOptions { PosixClasses = posixClasses });
 
-        glob.IsMatch("abc123").Should().BeTrue();
-        glob.IsMatch("!!!").Should().BeFalse();
+        glob.IsMatch(input).Should().Be(expected);
     }
 
     [Fact]
@@ -489,7 +651,7 @@ public class GlobOptionsTests
     [InlineData("(ab)*c", "abxc", true, false)]
     public void RegexQuantifiers_StarAfterGroupRepeatsTheGroup(string pattern, string input, bool regexQuantifiers, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_Posix with { RegexQuantifiers = regexQuantifiers }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix with { RegexQuantifiers = regexQuantifiers }).Should().Be(expected);
     }
 
     [Fact]
@@ -506,5 +668,16 @@ public class GlobOptionsTests
     public void StrictSlashes_RequiresTrailingSlashToMatch(string input, string pattern, bool expected)
     {
         Glob.IsMatch(input, pattern, new GlobOptions { StrictSlashes = true }).Should().Be(expected);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="match"/> on the thread pool and asserts that it exceeds its match timeout.
+    /// </summary>
+    /// <param name="match">The match call.</param>
+    /// <param name="cancellationToken">The token of the test, cancelled when its timeout is exceeded.</param>
+    /// <returns>The task that runs the assertion.</returns>
+    private static Task ShouldTimeOut(Action match, CancellationToken cancellationToken)
+    {
+        return Task.Run(() => { FluentActions.Invoking(match).Should().ThrowExactly<RegexMatchTimeoutException>(); }, cancellationToken);
     }
 }

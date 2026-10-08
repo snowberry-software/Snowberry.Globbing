@@ -92,7 +92,7 @@ public class EdgeCaseTests
     [InlineData("ab", "!x", true)]
     public void EdgeCase_LineTerminatorsInInput(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, new GlobOptions { PathStyle = GlobPathStyle.Posix }).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
     }
 
     [Theory]

@@ -188,7 +188,7 @@ public class AdditionalEdgeCaseTests
     [InlineData("foo\\bar\\baz", "f*/*/*", true)]
     public void PathChars_ShouldMatchMixedSlashesOnWindows(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
+        var options = TestOptions.Windows;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 
@@ -206,7 +206,7 @@ public class AdditionalEdgeCaseTests
     [InlineData("a/b/c.js", "**", true)]
     public void PathChars_ShouldMatchMixedSlashesWithWindowsOption(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
+        var options = TestOptions.Windows;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 
@@ -226,7 +226,7 @@ public class AdditionalEdgeCaseTests
     [InlineData("C:cwd\\another", "*", false)]
     public void PathChars_ShouldNotMatchMultipleWindowsDirectoriesWithSingleStar(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
+        var options = TestOptions.Windows;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 

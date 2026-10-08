@@ -15,17 +15,14 @@ internal struct SyntaxNode
     /// <summary>The index of the first child, or -1.</summary>
     public int FirstChild;
 
-    /// <summary>For a <see cref="SyntaxKind.Dot"/>, the value of <see cref="IsLeadingDot"/>; unused for other kinds.</summary>
-    public bool Flag;
-
-    /// <summary>
-    /// Whether a <see cref="SyntaxKind.Sequence"/> is an extended glob alternative or a brace alternative inside one; the
-    /// alternatives of a group are never marked, even inside an extended glob.
-    /// </summary>
-    public bool InExtglob;
-
     /// <summary>Whether a <see cref="SyntaxKind.Sequence"/> is inside a group or extended glob, at any depth.</summary>
     public bool InParens;
+
+    /// <summary>
+    /// Whether a <see cref="SyntaxKind.Dot"/> can start a path segment: it starts the pattern or follows a separator, or it
+    /// is anywhere inside a group, extended glob or brace alternative. Never set for a plain pattern or another kind.
+    /// </summary>
+    public bool IsLeadingDot;
 
     /// <summary>The kind of node.</summary>
     public SyntaxKind Kind;
@@ -63,10 +60,4 @@ internal struct SyntaxNode
 
     /// <summary>Gets the position after the node in the lexed pattern.</summary>
     public readonly int End => Start + Length;
-
-    /// <summary>
-    /// Gets a value indicating whether a <see cref="SyntaxKind.Dot"/> can start a path segment: it starts the pattern or
-    /// follows a separator, or it is anywhere inside a group, extended glob or brace alternative. Never set for a plain pattern.
-    /// </summary>
-    public readonly bool IsLeadingDot => Flag;
 }

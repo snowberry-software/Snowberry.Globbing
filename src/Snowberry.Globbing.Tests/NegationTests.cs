@@ -5,9 +5,6 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class NegationTests
 {
-    // [!...] is not bracket negation (picomatch parity); use [^...]
-    private static readonly GlobOptions s_PosixOptions = new() { PosixClasses = true };
-
     [Theory]
     [InlineData("!a", "\\!a", true)]
     [InlineData("a", "\\!a", false)]
@@ -68,7 +65,7 @@ public class NegationTests
     [InlineData("c", "[^a]", true)]
     public void ShouldNegateCharacterClassWithExclamation(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -191,7 +188,7 @@ public class NegationTests
     [InlineData("d", "[^a-c]", true)]
     public void ShouldNegateRangeInBrackets(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, s_PosixOptions).Should().Be(expected);
+        Glob.IsMatch(input, pattern).Should().Be(expected);
     }
 
     [Theory]
@@ -406,5 +403,26 @@ public class NegationTests
     {
         var options = new GlobOptions { Negation = false };
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
+    }
+
+    // A globstar matches nothing at a leading dot too, so a negation of it excludes dot files as well.
+    [Theory]
+    [InlineData("!(**)a", ".a", false)]
+    [InlineData("!(**)a", ".ba", false)]
+    [InlineData("!(**)a", "ba", false)]
+    [InlineData("!(**)", ".a", true)]
+    [InlineData("!(foo)a", ".a", true)]
+    public void NegatedGlobstarExtglob_FollowedByText_NeverMatches(string pattern, string input, bool expected)
+    {
+        Glob.IsMatch(input, pattern, TestOptions.Posix).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData(".a")]
+    [InlineData("a")]
+    public void NegatedGlobstar_WithMatchSubstring_NeverMatches(string input)
+    {
+        Glob.IsMatch(input, "!**", new GlobOptions { PathStyle = GlobPathStyle.Posix, MatchSubstring = true }).Should().BeFalse();
     }
 }

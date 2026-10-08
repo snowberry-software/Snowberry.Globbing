@@ -4,8 +4,6 @@ namespace Snowberry.Globbing.Tests;
 
 public class RegexGenerationTests
 {
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     [Theory]
     [InlineData("test.js", true)]
     [InlineData("test.md", false)]
@@ -21,7 +19,7 @@ public class RegexGenerationTests
     [Fact]
     public void CompileRegexSource_WithFastPathsDisabled_DoesNotAllowTrailingSlash()
     {
-        var regex = new Regex(GlobCompiler.CompileRegexSource("*.js", s_Posix, fastPaths: false));
+        var regex = new Regex(GlobCompiler.CompileRegexSource("*.js", TestOptions.Posix, fastPaths: false));
 
         "a.js/".Should().NotMatchRegex(regex);
     }
@@ -29,8 +27,8 @@ public class RegexGenerationTests
     [Fact]
     public void CompileRegexSource_WithMatchDotFiles_OmitsDotLookahead()
     {
-        TestHelpers.Parse("*.js", new GlobOptions { MatchDotFiles = true }).Output.Should().NotContain("(?!\\.)");
-        TestHelpers.Parse("*.js").Output.Should().Contain("(?!\\.)");
+        GlobCompiler.CompileRegexSource("**", new GlobOptions { MatchDotFiles = true }, fastPaths: false).Should().NotContain("(?!\\.)");
+        GlobCompiler.CompileRegexSource("**", GlobOptions.Default, fastPaths: false).Should().Contain("(?!\\.)");
     }
 
     [Fact]
@@ -62,7 +60,7 @@ public class RegexGenerationTests
     [InlineData("!(*.md)")]
     public void ToRegexString_UsesPortableAnchors(string pattern)
     {
-        string source = new Glob(pattern, s_Posix).ToRegexString();
+        string source = new Glob(pattern, TestOptions.Posix).ToRegexString();
 
         source.Should().EndWith(RegexSyntax.c_EndOfInput);
         source.Should().NotContain(@"\z");
@@ -88,13 +86,13 @@ public class RegexGenerationTests
     [InlineData("a.js//", "*.js", false)]
     public void ToRegex_FastPathExtensionPattern_AllowsTrailingSlash(string input, string pattern, bool expected)
     {
-        new Glob(pattern, s_Posix).ToRegex().IsMatch(input).Should().Be(expected);
+        new Glob(pattern, TestOptions.Posix).ToRegex().IsMatch(input).Should().Be(expected);
     }
 
     [Fact]
     public void ToRegex_FastPathExtensionPattern_WithStrictSlashes_DoesNotAllowTrailingSlash()
     {
-        var regex = new Glob("*.js", s_Posix with { StrictSlashes = true }).ToRegex();
+        var regex = new Glob("*.js", TestOptions.Posix with { StrictSlashes = true }).ToRegex();
 
         "a.js/".Should().NotMatchRegex(regex);
     }
@@ -109,6 +107,56 @@ public class RegexGenerationTests
     [InlineData("a.js", "*.js", true)]
     public void ToRegex_TrailingLineBreak_DoesNotMatch(string input, string pattern, bool expected)
     {
-        new Glob(pattern, s_Posix).ToRegex().IsMatch(input).Should().Be(expected);
+        new Glob(pattern, TestOptions.Posix).ToRegex().IsMatch(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("*a*a*b", @"[^/a]*a[^/a]*a[^/]*b")]
+    [InlineData("*-*.js", @"[^/\-]*-[^/]*\.js")]
+    [InlineData("*ab*ab*c", @"[^/a]*(?:a(?!b)[^/a]*)*ab[^/a]*(?:a(?!b)[^/a]*)*ab[^/]*c")]
+    [InlineData("*.test.*", @"[^/]*\.test\.[^/]*")]
+    public void ToRegexString_StarBeforeLiteralAndStar_StopsAtFirstOccurrence(string pattern, string expected)
+    {
+        new Glob(pattern, TestOptions.Posix).ToRegexString().Should().Contain(expected);
+    }
+
+    [Theory]
+    [InlineData("*a*a*b")]
+    [InlineData("(*a)*b")]
+    [InlineData("(*a*a*b)")]
+    public void ToRegexString_StarsObservableThroughCaptures_StayGreedy(string pattern)
+    {
+        new Glob(pattern, TestOptions.Posix with { CaptureGroups = pattern[0] != '(' }).ToRegexString().Should().NotContain("[^/a]");
+    }
+
+    [Theory]
+    [InlineData("*aab*", "aaab", true)]
+    [InlineData("*aab*", "aaba", true)]
+    [InlineData("*ab*ab*c", "ababc", true)]
+    [InlineData("*ab*ab*c", "aabab_c", true)]
+    [InlineData("*ab*ab*c", "abac", false)]
+    [InlineData("*ab*ab*ab*c", "abababc", true)]
+    [InlineData("*ab*ab*ab*c", "ababaabc", true)]
+    [InlineData("*ab*ab*ab*c", "ababac", false)]
+    [InlineData("*a*a*b", "aab", true)]
+    [InlineData("*a*a*b", "ab", false)]
+    [InlineData("*a*a*b", "a/ab", false)]
+    [InlineData("x*.*.*", "x..", true)]
+    [InlineData("x*.*.*", "x.", false)]
+    [InlineData("*A*a*b", "aAab", true)]
+    public void ToRegex_StarBeforeLiteralAndStar_MatchesAsBefore(string pattern, string input, bool expected)
+    {
+        new Glob(pattern, TestOptions.Posix).ToRegex().IsMatch(input).Should().Be(expected);
+        Glob.IsMatch(input.ToUpperInvariant(), pattern, TestOptions.Posix with { IgnoreCase = true }).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ToRegex_LongStarChain_MatchesInLinearTime()
+    {
+        // Twelve plain stars backtrack for hours on this input; each bounded star has one way to reach each split point.
+        var regex = new Regex(new Glob("*a*a*a*a*a*a*a*a*a*a*a*a*b", TestOptions.Posix).ToRegexString(), RegexOptions.None, TimeSpan.FromSeconds(5));
+
+        regex.IsMatch(new string('a', 100_000) + "/b").Should().BeFalse();
+        regex.IsMatch(new string('a', 100_000) + "b").Should().BeTrue();
     }
 }

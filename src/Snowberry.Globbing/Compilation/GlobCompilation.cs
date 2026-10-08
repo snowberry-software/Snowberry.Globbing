@@ -14,4 +14,9 @@ namespace Snowberry.Globbing.Compilation;
 /// <paramref name="Source"/> otherwise; <see langword="null"/> if there is none or it cannot be checked, which is always the case for a
 /// negated pattern without <paramref name="PositiveSource"/>.
 /// </param>
-internal readonly record struct GlobCompilation(string Source, string? PositiveSource, LiteralHint? Hint);
+/// <param name="KeyWindows">The key sets of a pattern that is not negated (see <see cref="KeyGrams"/>), or <see langword="null"/>.</param>
+/// <param name="HintDeferred">
+/// Whether <paramref name="Hint"/> was left out on request because the pattern is a compact shape that starts with <c>*</c>;
+/// <see cref="GlobCompiler.FindDeferredHint"/> finds it.
+/// </param>
+internal readonly record struct GlobCompilation(string Source, string? PositiveSource, LiteralHint? Hint, ulong[][]? KeyWindows, bool HintDeferred);

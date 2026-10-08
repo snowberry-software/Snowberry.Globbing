@@ -7,14 +7,12 @@ namespace Snowberry.Globbing.Tests;
 /// </summary>
 public class ExtglobsMinimatchTests
 {
-    private readonly GlobOptions _opts = new() { PathStyle = GlobPathStyle.Windows };
-
     [Theory]
     [InlineData("a.a", "(a|d).(a|b)*", true)]
     [InlineData("c.a", "(a|d).(a|b)*", false)]
     public void AlternationDotExtension(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, _opts).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -22,7 +20,7 @@ public class ExtglobsMinimatchTests
     [InlineData("z/a", false)]
     public void AtExtglob_NotZOrXWithPath(string input, bool expected)
     {
-        Glob.IsMatch(input, "@(!(z*/*)|*x)", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "@(!(z*/*)|*x)", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -30,7 +28,7 @@ public class ExtglobsMinimatchTests
     [InlineData("\\a\\b\\c", "/a/b/c", true)]
     public void BackslashNotMatching(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, _opts).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -39,7 +37,7 @@ public class ExtglobsMinimatchTests
     [InlineData("c.c", "!(*.[a-b]*)", true)]
     public void CharClassNegation(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, _opts).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -51,7 +49,7 @@ public class ExtglobsMinimatchTests
     [InlineData("foobar", false)]
     public void ComplexNegation_ExcludeFNotO(string input, bool expected)
     {
-        Glob.IsMatch(input, "!(f!(o))", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "!(f!(o))", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -59,7 +57,7 @@ public class ExtglobsMinimatchTests
     [InlineData("/dev/foo/1/2", false)]
     public void DevPath_TcpOrUdp_UnescapedSlashes(string input, bool expected)
     {
-        Glob.IsMatch(input, "/dev/@(tcp|udp)/*/*", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "/dev/@(tcp|udp)/*/*", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -68,7 +66,7 @@ public class ExtglobsMinimatchTests
     [InlineData("b[", "*(a|b\\[)", true)]
     public void EscapedExtglobSyntax(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, _opts).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -76,7 +74,7 @@ public class ExtglobsMinimatchTests
     [InlineData("bar", "!(foo)", true)]
     public void ExclusionNotFoo(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, _opts).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -85,7 +83,7 @@ public class ExtglobsMinimatchTests
     [InlineData("a-b", false)]
     public void ExtglobWithCharClass_AtDot(string input, bool expected)
     {
-        Glob.IsMatch(input, "a@([.])b", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "a@([.])b", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -94,7 +92,7 @@ public class ExtglobsMinimatchTests
     [InlineData("a-b", true)]
     public void ExtglobWithCharClass_AtNotDot(string input, bool expected)
     {
-        Glob.IsMatch(input, "a@([^.])b", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "a@([^.])b", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -104,7 +102,7 @@ public class ExtglobsMinimatchTests
     [InlineData("acb", false)]
     public void ExtglobWithCharClass_AtPunctuation(string input, bool expected)
     {
-        Glob.IsMatch(input, "a@([-.,:; _])b", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "a@([-.,:; _])b", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -113,7 +111,7 @@ public class ExtglobsMinimatchTests
     [InlineData("foobar", false)]
     public void NegationExtglob_DoubleNegation(string input, bool expected)
     {
-        Glob.IsMatch(input, "!(!(foo))", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "!(!(foo))", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -121,7 +119,7 @@ public class ExtglobsMinimatchTests
     [InlineData("foo", false)]
     public void NegationExtglob_TripleNegation(string input, bool expected)
     {
-        Glob.IsMatch(input, "!(!(!(foo)))", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "!(!(!(foo)))", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -132,7 +130,7 @@ public class ExtglobsMinimatchTests
     [InlineData("foobar", true)]
     public void NegationGroup_ExcludeFO(string input, bool expected)
     {
-        Glob.IsMatch(input, "!(f(o))", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "!(f(o))", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -142,7 +140,7 @@ public class ExtglobsMinimatchTests
     [InlineData("foobar", true)]
     public void NegationWithStar_DoubleNegationFoo(string input, bool expected)
     {
-        Glob.IsMatch(input, "!(!(foo))*", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "!(!(foo))*", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -153,7 +151,7 @@ public class ExtglobsMinimatchTests
     [InlineData("x", true)]
     public void NegationWithStar_ExcludeFooPrefix(string input, bool expected)
     {
-        Glob.IsMatch(input, "!(foo)*", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "!(foo)*", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -162,7 +160,7 @@ public class ExtglobsMinimatchTests
     [InlineData("a.c", "!*.(a|b)", true)]
     public void NotStarDotAOrB(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, _opts).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -172,7 +170,7 @@ public class ExtglobsMinimatchTests
     [InlineData("555", false)]
     public void NumberRange_1To6FollowedByDigit(string input, bool expected)
     {
-        Glob.IsMatch(input, "[1-6]([0-9])", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "[1-6]([0-9])", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -182,7 +180,7 @@ public class ExtglobsMinimatchTests
     [InlineData("12abc", false)]
     public void NumberRange_1To6StarDigits(string input, bool expected)
     {
-        Glob.IsMatch(input, "[1-6]*([0-9])", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "[1-6]*([0-9])", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -191,7 +189,7 @@ public class ExtglobsMinimatchTests
     [InlineData("abcd", false)]
     public void PlusAOrAbc(string input, bool expected)
     {
-        Glob.IsMatch(input, "+(a|abc)", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "+(a|abc)", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -200,7 +198,7 @@ public class ExtglobsMinimatchTests
     [InlineData("cdef", false)]
     public void PlusFOrDef(string input, bool expected)
     {
-        Glob.IsMatch(input, "+(f|def)", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "+(f|def)", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -210,8 +208,7 @@ public class ExtglobsMinimatchTests
     [InlineData("acb", false)]
     public void PosixWithExtglob_AtNotAlnum(string input, bool expected)
     {
-        var opts = new GlobOptions { PosixClasses = true };
-        Glob.IsMatch(input, "a@([^[:alnum:]])b", opts).Should().Be(expected);
+        Glob.IsMatch(input, "a@([^[:alnum:]])b").Should().Be(expected);
     }
 
     [Theory]
@@ -219,8 +216,7 @@ public class ExtglobsMinimatchTests
     [InlineData("a-c", false)]
     public void PosixWithExtglob_PlusAlphaDot(string input, bool expected)
     {
-        var opts = new GlobOptions { PosixClasses = true };
-        Glob.IsMatch(input, "+([[:alpha:].])", opts).Should().Be(expected);
+        Glob.IsMatch(input, "+([[:alpha:].])").Should().Be(expected);
     }
 
     [Theory]
@@ -228,8 +224,7 @@ public class ExtglobsMinimatchTests
     [InlineData("a-c", false)]
     public void PosixWithExtglob_StarAlphaDot(string input, bool expected)
     {
-        var opts = new GlobOptions { PosixClasses = true };
-        Glob.IsMatch(input, "*([[:alpha:].])", opts).Should().Be(expected);
+        Glob.IsMatch(input, "*([[:alpha:].])").Should().Be(expected);
     }
 
     [Theory]
@@ -239,7 +234,7 @@ public class ExtglobsMinimatchTests
     [InlineData("abc", false)]
     public void StarAOrBFollowedByCd(string input, bool expected)
     {
-        Glob.IsMatch(input, "*(a|b)cd", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "*(a|b)cd", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -247,7 +242,7 @@ public class ExtglobsMinimatchTests
     [InlineData("aabc", true)]
     public void StarAtABAtC(string input, bool expected)
     {
-        Glob.IsMatch(input, "*(@(a))b@(c)", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "*(@(a))b@(c)", TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -256,7 +251,7 @@ public class ExtglobsMinimatchTests
     [InlineData("a.d", "*.+(b|d)", true)]
     public void StarDotPlusBOrD(string input, string pattern, bool expected)
     {
-        Glob.IsMatch(input, pattern, _opts).Should().Be(expected);
+        Glob.IsMatch(input, pattern, TestOptions.Windows).Should().Be(expected);
     }
 
     [Theory]
@@ -266,6 +261,6 @@ public class ExtglobsMinimatchTests
     [InlineData("foobar", false)]
     public void StarExtglob_DoubleParenFoo(string input, bool expected)
     {
-        Glob.IsMatch(input, "*((foo))", _opts).Should().Be(expected);
+        Glob.IsMatch(input, "*((foo))", TestOptions.Windows).Should().Be(expected);
     }
 }

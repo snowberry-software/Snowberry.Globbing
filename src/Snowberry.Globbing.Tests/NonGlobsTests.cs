@@ -47,7 +47,7 @@ public class NonGlobsTests
     [InlineData("aaa/bbb", "aaa/bbb", true)]
     public void ShouldMatchWindowsPaths(string input, string pattern, bool expected)
     {
-        var options = new GlobOptions { PathStyle = GlobPathStyle.Windows };
+        var options = TestOptions.Windows;
         Glob.IsMatch(input, pattern, options).Should().Be(expected);
     }
 

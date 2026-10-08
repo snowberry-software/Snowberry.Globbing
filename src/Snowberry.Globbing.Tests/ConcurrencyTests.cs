@@ -20,8 +20,6 @@ public class ConcurrencyTests
         "test-3a.txt"
     ];
 
-    private static readonly GlobOptions s_Posix = new() { PathStyle = GlobPathStyle.Posix };
-
     private static void AssertConcurrentMatchesAgree(Func<Glob> create)
     {
         var oracle = create();
@@ -49,11 +47,11 @@ public class ConcurrencyTests
         string[] patterns = ["*.js", "**/*.{js,ts,jsx,tsx}", "src/**/!(*.test|*.spec).{js,ts}", "!(*.md)", "[[:alpha:]]*.log", "{1..300}", longPattern];
         GlobOptions[] variants =
         [
-            s_Posix,
-            new() { PathStyle = GlobPathStyle.Windows },
-            s_Posix with { MatchDotFiles = true },
-            s_Posix with { CaptureGroups = true },
-            s_Posix with { BashCompatibility = true }
+            TestOptions.Posix,
+            TestOptions.Windows,
+            TestOptions.Posix with { MatchDotFiles = true },
+            TestOptions.Posix with { CaptureGroups = true },
+            TestOptions.Posix with { BashCompatibility = true }
         ];
         var cases = (from pattern in patterns
                      from options in variants
@@ -76,7 +74,7 @@ public class ConcurrencyTests
     {
         AssertConcurrentMatchesAgree(() => new Glob(
             ["**/*.js", "!**/*.{js,tsx}"],
-            s_Posix with { IgnorePatterns = ["**/node_modules/**", "!src/**"] }));
+            TestOptions.Posix with { IgnorePatterns = ["**/node_modules/**", "!src/**"] }));
     }
 
     [Theory]
@@ -87,13 +85,13 @@ public class ConcurrencyTests
     [InlineData("test-[0-9][a-z].txt")]
     public void SharedGlob_MatchedConcurrently_AgreesWithSequentialResults(string pattern)
     {
-        AssertConcurrentMatchesAgree(() => new Glob(pattern, s_Posix));
+        AssertConcurrentMatchesAgree(() => new Glob(pattern, TestOptions.Posix));
     }
 
     [Fact]
     public void StaticIsMatch_PastCacheCapacity_AgreesWithUncachedResults()
     {
-        GlobOptions[] variants = [s_Posix, s_Posix with { MatchDotFiles = true }];
+        GlobOptions[] variants = [TestOptions.Posix, TestOptions.Posix with { MatchDotFiles = true }];
         var cases = new List<(string Input, string Pattern, GlobOptions Options, bool Expected)>();
         for (int i = 0; i < 300; i++)
         {
